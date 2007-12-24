@@ -1,0 +1,1987 @@
+################################################################################
+# iparser.itcl
+#
+# utilizes tclparser to construct an Itcl tree of (I)tcl code
+################################################################################
+set dir [file dirname [info script]]
+set auto_path [concat [file join $dir ..] $auto_path]
+
+load [file join $dir libtclparser1.4[info sharedlibext]]
+
+#package require Thread 2.6.2
+package require Itcl 3.3
+package require Itree 1.0
+package require Tclx 8.4
+package require log 1.2
+package require parser::structuredfile 1.0
+
+if {[catch {load {} Thread}]} {
+    package require Thread
+}
+
+catch {
+    namespace import ::itcl::*
+}
+
+package provide parser::tcl 1.4
+
+namespace eval ::parser {
+    namespace eval node {
+    }
+    
+    variable CoreCommands {after append array auto_execok auto_import auto_load \
+                auto_load_index auto_qualify binary break case \
+                catch cd clock close concat continue encoding \
+                eof error eval exec exit expr fblocked fconfigure \
+                fcopy file fileevent flush for foreach format gets \
+                glob global history if incr info interp join lappend \
+                librarypath lindex linsert list llength load lrange \
+                lreplace lsearch lset lsort namespace open package \
+                pid proc puts pwd read rechan regexp regsub rename \
+                return scan seek set socket source split string \
+                subst switch tclLog tell time trace unknown unset \
+                update uplevel upvar variable vwait while else elseif \
+                test
+    }
+    
+    # @v CoreCommands: commands available for Tcl core and Itcl
+    variable ItclCoreCommands {auto_mkindex auto_mkindex_old auto_reset body \
+                cgetbody class code configbody delete delete_helper \
+                ensemble find local pkg_compareExtension pkg_mkIndex \
+                scope tclPkgSetup tclPkgUnknown tcl_findLibrary \
+                public private protected method inherit constructor \
+                destructor \
+                usual component itk_component itk_option
+    }
+    
+    variable CurrAccessLevel ""
+}
+
+# @c parses a package definition. If "package require"
+proc ::parser::node::parsePkg {node cTree content} {
+    set nTk [llength $cTree]
+    if {$nTk == 5} {
+        set aList {pkgSub 1 pkgSwitch 2 pkgName 3 pkgVer 4}
+    } elseif {$nTk == 4} {
+        set aList {pkgSub 1 pkgName 2 pkgVer 3}
+    } elseif {$nTk == 3} {
+        set aList {pkgSub 1 pkgName 2}
+        set pkgVer ""
+    } else {
+        return ""
+    }
+    
+    foreach {tkn idx} $aList {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content $range]
+    }
+    
+    if {![regexp {^re} $pkgSub]} {
+        return
+    }
+    
+    # insert the package import into a special package imports node
+    if {[set pkgImp [$node lookup "Package Imports"]] == ""} {
+        set pkgImp [$node addChild [::parser::Script ::#auto \
+            -type "package" -name "Package Imports" -expanded 0]]
+    }
+    $pkgImp configure -isvalid 1
+    
+    set fakeName "$pkgName $pkgVer"
+    set pkgNode [$pkgImp lookup $fakeName]
+    if {$pkgNode != ""} {
+        $pkgNode configure -isvalid 1
+        return $pkgNode
+    }
+    
+    set pkgNode [::parser::PackageNode ::#auto -type "package" \
+            -name $pkgName -version $pkgVer]
+    $pkgImp addChild $pkgNode
+    return $pkgNode
+}
+
+# @c parses a namespace node
+proc ::parser::node::parseNs {node cTree content defOffPtr} {
+    upvar $defOffPtr defOff
+    
+    set nTk [llength $cTree]
+    if {$nTk != 4} {
+        return ""
+    }
+    
+    foreach {tkn idx} {subCmd 1 nsName 2 nsDef 3} {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content [list [lindex $range 0] [lindex $range 1]]]
+    }
+    
+    if {$subCmd != "eval"} {
+        return ""
+    }
+    
+    # get class definition offset
+    set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
+    set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 1]
+    
+    set nsAll [regsub -all {::} [string trimleft $nsName :] " "]
+    set nsName [lindex $nsAll end]
+    
+    # add the namespace to this node.
+    # First, look if it already exists
+    set pnode [$node lookup [lindex $nsAll 0]]
+    if {$pnode == ""} {
+        # namespace does not exist yet
+        set pnode [::parser::Script ::#auto -name [lindex $nsAll 0] \
+                -type "namespace" -expanded 0]
+        $node addChild $pnode
+    }
+    $pnode configure -isvalid 1
+    
+    for {set j 1} {$j < [llength $nsAll]} {incr j} {
+        # add subsequent namespaces, if they don't exist
+        set newnode [$node lookup [lindex $nsAll $j] \
+            [lrange $nsAll 0 [expr {$j - 1}]]]
+        if {$newnode == ""} {
+            set newnode [::parser::Script ::#auto -type "namespace" \
+                -name [lindex $nsAll $j] -defbrange [list $defOff $defEnd] \
+                -expanded 0]
+            $pnode addChild $newnode
+        }
+        
+        $newnode configure -isvalid 1
+        set pnode $newnode
+    }
+    
+    set nsDef [string trim $nsDef "\{\}"]
+    $pnode configure -definition $nsDef -type "namespace"    
+    return $pnode
+}
+
+# @c parses a proc node. This method is called from [parse]
+# @c when proc nodes are encountered
+#
+# @a cTree: code tree, the list returned from the [::parse]
+# @a cTree: command
+# @a nTk: number of tokens in the code tree
+# @a content: string content. The content to parse as the 
+# @a content: proc is at the offsets in the code tree 
+proc ::parser::node::parseProc {node cTree content accLev defOffPtr} {
+    upvar $defOffPtr defOff
+    set nTk [llength $cTree]
+    if {$nTk == 5} {
+        # we are in a class and have access qualifier
+        set aList {procName 2 argList 3 procBody 4}
+    } elseif {$nTk == 4} {
+        # if this is a node of type class, it could be that
+        # it is a proc definition with access token (public,
+        # private, protected) We will check this later
+        if {$accLev != ""} {
+            set aList {procName 2 argList 3}
+            set procBody ""
+        } else  {
+            set aList {procName 1 argList 2 procBody 3}
+        }
+    } elseif {$nTk == 3} {
+        # only proc definition in a class
+        set aList {procName 1 argList 2}
+        set procBody ""
+    }
+    
+    set defOff 0
+    set defEnd 0
+    set strt [lindex [lindex [lindex $cTree 0] 1] 0]
+    foreach {tkn idx} $aList {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content $range]
+        
+        # extract definition range
+        if {$tkn == "procBody"} {
+            set defOff [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+            set defEnd [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 1]
+        }
+    }
+    
+    set rtns [namespace qualifiers $procName]
+    set nsAll [regsub -all {::} [string trimleft $procName :] " "]
+    set procName [lindex $nsAll end]
+    set procBody [string trim $procBody "\{\}"]
+    set argList [lindex $argList 0]
+    
+    # add the procedure name to the top node, so that
+    # it is accessible from there
+    set topNode [$node getTopnode ::parser::Script]
+    
+    # if proc node already exists, there is nothing to parse. Just return it.
+    set cn [$node lookup $procName [lrange $nsAll 0 end-1]]
+    if {$cn != "" && [$cn cget -type] == "proc"} {
+        # set valid flag for context
+        for {set i 0} {$i < [llength $nsAll]} {incr i} {
+            set ct [$node lookup [lindex $nsAll $i] \
+                [lrange $nsAll 0 [expr {$i - 1}]]]
+            $ct configure -isvalid 1
+                
+        }
+        
+        $cn configure -definition $procBody -arglist $argList \
+            -defoffset [expr {$defOff - $strt}]
+        $topNode addProc $cn
+        return $cn
+    }
+    
+    if {[$node cget -type] == "class"} {
+        # the proc is created in an access level
+        if {$accLev != ""} {
+            lset nsAll end $accLev
+            lappend nsAll $procName
+        } else  {
+            lset nsAll end "public"
+            lappend nsAll $procName
+        }
+        set accLev [lindex $nsAll end-1]
+    }
+    
+    set pn [::parser::ProcNode ::#auto -name $procName -type proc \
+            -definition $procBody  -defoffset [expr {$defOff - $strt}] \
+            -runtimens $rtns -arglist $argList]
+    
+    # Lookup the proc in its namespace. If the namespace does not exist
+    # completely yet, create it in the parent node
+    if {[llength $nsAll] > 1} {
+        set lastQual [lindex $nsAll end-1]
+        set paren [$node lookup $lastQual [lrange $nsAll 0 end-2]]
+        if {$paren == ""} {
+            # parent namespace does not exist
+            set nsp [$node lookup [lindex $nsAll 0]]
+            if {$nsp == ""} {
+                set nsp [::parser::Script ::#auto -type "namespace" \
+                    -name [lindex $nsAll 0]]
+                $node addChild $nsp
+                $nsp appendError {0 end} "namespace does not exist"
+            }
+            for {set i 1} {$i < [expr {[llength $nsAll]-1}]} {incr i} {
+                set nnsp [$node lookup [lindex $nsAll $i] \
+                    [lrange $nsAll 0 [expr {$i - 1}]]]
+                if {$nnsp == ""} {
+                    set nnsp [::parser::Script ::#auto \
+                        -type "namespace" -name [lindex $nsAll $i]]
+                    $nsp addChild $nnsp
+                    $nnsp appendError {0 end} "namespace does not exist"
+                }
+                set nsp $nnsp
+            }
+            $nsp addChild $pn
+            set retNs [join [lrange $nsAll 0 end-1] ::]
+            return -code 2 $pn
+        }
+        $paren addChild $pn
+    } else  {
+        $node addChild $pn
+    }
+    
+    $topNode addProc $pn
+    return $pn
+}
+
+
+# @c parse Web command as issued by websh
+proc ::parser::node::parseWebCmd {node cTree content defOffPtr} {
+    upvar $defOffPtr defOff
+    if {[llength $cTree] != 3} {
+        error "wrong number of args for web::command"
+    }
+    # parse the name
+    set cmdName [::parse getstring $content [lindex [lindex $cTree 1] 1]]
+    set cmdBody [::parse getstring $content [lindex [lindex $cTree 2] 1]]
+    set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
+    set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
+    
+    set strt [lindex [lindex [lindex $cTree 0] 1] 0]
+    set rtns [namespace qualifiers $cmdName]
+    set nsAll [regsub -all {::} [string trimleft $cmdName :] " "]
+    set cmdName [lindex $nsAll end]
+    set cmdBody [string trim $cmdBody "\{\}"]
+    
+    set topNode [$node getTopnode ::parser::Script]
+    set cn [$node lookup $cmdName [lrange $nsAll 0 end-1]]
+    # If the webcmd already exists, just return it and mark all its parent
+    # namespaces as valid
+    if {$cn != "" && [$cn cget -type] == "webcmd"} {
+        # set valid flag for context
+        for {set i 0} {$i < [llength $nsAll]} {incr i} {
+            set ct [$node lookup [lindex $nsAll $i] \
+                [lrange $nsAll 0 [expr {$i - 1}]]]
+            $ct configure -isvalid 1
+        }
+        
+        $cn configure -definition $cmdBody -defoffset [expr {$defOff - $strt}]
+        $topNode addChild $cn
+        return $cn
+    }
+    set pn [::parser::WebCmdNode ::#auto -name $cmdName -type webcmd \
+        -definition $cmdBody -defoffset [expr {$defOff - $strt}] -runtimens $rtns]
+    # Lookup the webcmd in its namespace. If the namespace does not exist
+    # completely yet, create it in the parent node
+    set nnsp $node
+    for {set i 0} {$i < [expr {[llength $nsAll]-1}]} {incr i} {
+        set nns [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
+        if {$nns == ""} {
+            set nns [::parser::Script ::#auto -type "namespace" \
+                -name [lindex $nsAll $i]]
+        }
+        $nnsp addChild $nns
+        set nnsp $nns
+    }
+    #puts #4,[$pn cget -definition],$defOff,$strt
+    $nnsp addChild $pn
+    return $pn
+    
+    #if {[llength $nsAll] > 1} {
+    #    set lastQual [lindex $nsAll end-1]
+    #    set paren [$node lookup $lastQual [lrange $nsAll 0 end-2]]
+    #    if {$paren == ""} {
+    #        # parent namespace does not exist
+    #        set nsp [$node lookup [lindex $nsAll 0]]
+    #        if {$nsp == ""} {
+    #            set nsp [::parser::Script ::#auto -type "namespace" \
+    #                -name [lindex $nsAll 0]]
+    #            $node addChild $nsp
+    #            $nsp appendError {0 end} "namespace does not exist"
+    #        }
+    #        for {set i 1} {$i < [expr {[llength $nsAll]-1}]} {incr i} {
+    #            set nnsp [$node lookup [lindex $nsAll $i] \
+    #                [lrange $nsAll 0 [expr {$i - 1}]]]
+    #            if {$nnsp == ""} {
+    #                set nnsp [::parser::Script ::#auto \
+    #                    -type "namespace" -name [lindex $nsAll $i]]
+    #                $nsp addChild $nnsp
+    #                $nnsp appendError {0 end} "namespace does not exist"
+    #            }
+    #            set nsp $nnsp
+    #        }
+    #        $nsp addChild $pn
+    #        set retNs [join [lrange $nsAll 0 end-1] ::]
+    #        return -code 2 $pn
+    #    }
+    #    $paren addChild $pn
+    #} else  {
+    #    $node addChild $pn
+    #}
+    
+    #$topNode addProc $pn
+    #return $pn
+
+}
+
+# @c parse a class node and returns it as tree
+proc ::parser::node::parseClass {node cTree content defOffPtr} {
+    upvar $defOffPtr defOff
+    
+    set nTk [llength $cTree]
+    
+    foreach {tkn idx} {clsName 1 clsDef 2} {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content \
+                [list [lindex $range 0] [lindex $range 1]]]
+    }
+    
+    # get class definition offset
+    set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
+    set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
+    
+    set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
+    set clsName [lindex $nsAll end]
+    set clsDef [string trim $clsDef "\{\}"]
+    
+    # if class already exists, return it
+    set clsNode [$node lookup $clsName [lrange $nsAll 0 end-1]]
+    if {$clsNode != ""} {
+        for {set i 0} {$i < [llength $nsAll]} {incr i} {
+            set ct [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
+            $ct configure -isvalid 1
+        }
+        
+        $clsNode configure -definition $clsDef -defbrange [list $defOff $defEnd]
+        return $clsNode
+    }
+    
+    if {[llength $nsAll] > 1} {
+        # lookup parent namespaces. Create them if they don't exist
+        set nsNode [$node lookup [lindex $nsAll 0]]
+        if {$nsNode == ""} {
+            set nsNode [::parser::Script ::#auto -isvalid 1 -expanded 0 \
+                    -type "namespace" -name [lindex $nsAll 0]]
+            $node addChild $nsNode
+        }
+        
+        set lna [expr {[llength $nsAll] - 1}]
+        for {set i 1} {$i < $lna} {incr i} {
+            set nnsNode [$node lookup [lindex $nsAll $i] \
+                    [lrange $nsAll 0 [expr {$i - 1}]]]
+            if {$nnsNode == ""} {
+                set nnsNode [::parser::Script ::#auto -isvalid 1 -expanded 0 \
+                        -type "namespace" -name [lindex $nsAll $i]]
+                $nsNode addChild $nnsNode
+            }
+            set nsNode $nnsNode
+        }
+        
+        set clsNode [::parser::ClassNode ::#auto -type "class" \
+                -name $clsName -definition $clsDef -isvalid 1 -expanded 0 \
+                -defbrange [list $defOff $defEnd]]
+        $nsNode addChild $clsNode
+    } else  {
+        if {[$node lookup $clsName] != ""} {
+            return -code error "class $clsName already exists"
+        }
+        
+        set clsNode [::parser::ClassNode ::#auto -type "class" -expanded 0 \
+                -name $clsName -definition $clsDef -isvalid 1]
+        $node addChild $clsNode
+    }
+    
+    return $clsNode
+}
+
+# @c parses a variable node
+proc ::parser::node::parseVar {node cTree content accLev dCfOffPtr dCgOffPtr} {
+    upvar $dCfOffPtr dCfOff
+    upvar $dCgOffPtr dCgOff
+    
+    #if {$accLev != ""} {
+    #    set cTree [lrange $cTree 1 end]
+    #}
+    
+    set nTk [llength $cTree]
+    set alev2 ""
+    set vDef ""
+    set vConf ""
+    set vCget ""
+    if {$nTk == 6} {
+        set aList {vName 2 vDef 3 vConf 4 vCget 5}
+    } elseif {$nTk == 5} {
+        #set aList {vName 1 vDef 2 vConf 3 vCget 4}
+        set aList {alev2 0 vName 1 vDef 2 vConf 3 vCget 4}
+    } elseif {$nTk == 4} {
+        #set aList {vName 1 vDef 2 vConf 3}
+        set aList {alev2 0 vName 1 vDef 2 vConf 3}
+    } elseif {$nTk == 3} {
+        #set aList {vName 1 vDef 2}
+        set aList {alev2 0 vName 1 vDef 2}
+    } elseif {$nTk == 2} {
+        set aList {vName 1}
+        set aList {alev2 0 vName 1}
+    }
+    
+    set dCfOff 0
+    set dCfEnd 0
+    set dCgOff 0
+    set dCgEnd 0
+    foreach {tkn idx} $aList {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content \
+                [list [lindex $range 0] [lindex $range 1]]]
+        
+        # get config/cget definition range
+        if {$tkn == "vConf"} {
+            set dCfOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+            set dCfEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 1]
+            
+        } elseif {$tkn == "vCget"} {
+            set dCgOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+            set dCgEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 1]
+        }
+    }
+    
+    switch -- $alev2 {
+        public -
+        protected -
+        private {
+            # definition contained access level. Move other
+            # attributes one behind
+            set accLev $alev2
+            set vName $vDef
+            set vDef $vConf
+            set vConf $vCget
+            set vCget ""
+        }
+    }
+    
+    set nsAll [regsub -all {::} [string trimleft $vName :] " "]
+    set vName [lindex $nsAll end]
+    set vConf [string trim $vConf "\{\}"]
+    set vCget [string trim $vCget "\{\}"]
+    
+    switch -- [$node cget -type] {
+        class {
+            if {$accLev == ""} {
+                set accLev protected
+            }
+            
+            $node addVariable $vName 0 1
+            # if var already exists, return it
+            set vNode [$node lookup $vName]
+            if {$vNode != "" && [$vNode cget -type] == "[set accLev]_variable"} {
+                $vNode configure -configcode $vConf -cgetcode $vCget \
+                    -definition $vDef -configbrange [list $dCfOff $dCfEnd] \
+                    -cgetbrange [list $dCgOff $dCgEnd] -isvalid 1 \
+                    -type [set accLev]_variable
+                return $vNode
+            }
+            
+            set vNode [$node addChild [::parser::VarNode ::#auto \
+                    -type [set accLev]_variable -name $vName -definition $vDef \
+                    -configcode $vConf -cgetcode $vCget \
+                    -configbrange [list $dCfOff $dCfEnd] \
+                    -cgetbrange [list $dCgOff $dCgEnd]]]
+            return $vNode
+        }
+        proc -
+        method {
+            # TODO: handle when a variable definition is inside proc or method
+            $node addVariable $vName $vDef 1
+            return ""
+        }
+    }
+
+    # not a class variable
+    set vNode [$node lookup $vName [lrange $nsAll 0 end-1]]
+    if {$vNode != ""} {
+        for {set i 0} {$i < [llength $nsAll]} {incr i} {
+            set ct [$node lookup [lindex $nsAll $i] \
+                [lrange $nsAll 0 [expr {$i - 1}]]]
+            $ct configure -isvalid 1
+        }
+        return $vNode
+    }
+    
+    set vNode [::parser::VarNode ::#auto -type "variable" \
+            -definition $vDef -name $vName]
+    
+    if {[llength $nsAll] > 1} {
+        set lastQual [lindex $nsAll end-1]
+        set paren [$node lookup $lastQual [lrange $nsAll 0 end-2]]
+        if {$paren == ""} {
+            # parent namespace does not exist
+            set retNs [join [lrange $nsAll 0 end-1] ::]
+            return -code error "namespace $retNs not found"
+        }
+        $paren addChild $vNode
+        #$paren addVariable $vName $vDef 1
+    } else  {
+        $node addChild $vNode
+        #addVariable $vName $vDef 1
+    }
+    
+    return $vNode
+}
+
+
+proc ::parser::node::parseCommon {node cTree content} {
+}
+
+# @c parses a method node
+proc ::parser::node::parseMethod {node cTree content accLev} {
+    set nTk [llength $cTree]
+    set dOff 0
+    
+    set alev2 ""
+    if {$nTk == 5} {
+        # complete declaration and definition, 
+        # including access level
+        set aList {methName 2 argList 3 methBody 4}
+    } elseif {$nTk == 4} {
+        # declaration and definition, without access level
+        set aList {alev2 0 methName 1 argList 2 methBody 3}
+        
+    } elseif {$nTk == 3} {
+        # just declaration. There will be a body definition
+        set aList {methName 1 argList 2}
+        set methBody ""
+    }
+    
+    # The real start of the method, after comments, spaces etc.
+    set strt [lindex [lindex [lindex $cTree 0] 1] 0]
+    foreach {tkn idx} $aList {
+        set $tkn [::parse getstring $content [lindex [lindex $cTree $idx] 1]]
+        if {[string equal $tkn methBody]} {
+            set dOff [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+        }
+    }
+    
+    # Adjust the access level. If it is one of public, private or
+    # protected, it is the real access level. Otherwise, it's the
+    # methods name.
+    switch -- $alev2 {
+    public -
+    protected -
+    private {
+        set accLev $alev2
+        set methName $argList
+        set argList $methBody
+    }
+    }
+    
+    set argList [lindex $argList 0]
+    
+    if {$accLev == ""} {
+        # defaults to public
+        set accLev public
+    }
+    
+    # return existing method node if already present
+    set mNode [$node lookup $methName]
+    if {$mNode != "" && [$mNode cget -type] == "[set accLev]_method"} {
+        $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
+            -defoffset [expr {$dOff - $strt}]
+        
+        foreach {v d} [$node getVariables] {
+            $mNode addVariable $v $d 1
+        }
+        
+        return $mNode
+    }
+    
+    set mNode [::parser::ProcNode ::#auto -type "[set accLev]_method" \
+        -name $methName -arglist $argList -definition $methBody \
+        -defoffset [expr {$dOff - $strt}]]
+    $node addChild $mNode
+    
+    # add variables from class definition to the method
+    # as variables
+    foreach {v d} [$node getVariables] {
+        $mNode addVariable $v $d 1
+    }
+    
+    return $mNode
+}
+
+proc ::parser::node::parseConstructor {node cTree content defOffPtr} {
+    upvar $defOffPtr defOff
+    set defEnd 0
+    
+    set nTk [llength $cTree]
+    if {$nTk == 3} {
+        # without access level
+        set aList {argList 1 constDef 2}
+        set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
+        set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
+    } elseif {$nTk == 4} {
+        # has access level, but this doesn't matter
+        set aList {accLev 0 argList 2 constDef 3}
+        set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
+        set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 1]
+    } else {
+        return ""
+    }
+    
+    foreach {tkn idx} $aList {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content $range]
+    }
+    
+    set argList [lindex $argList 0]
+    set constDef [string trim $constDef \{\}]
+    
+    if {[$node cget -type] == "access"} {
+        set csNode [[$node getParent] lookup "constructor"]
+        if {$csNode == "" || [$csNode cget -type] != "constructor"} {
+            set csNode [::parser::ProcNode ::#auto \
+                -type "constructor" -name "constructor" \
+                -arglist $argList -definition $constDef]
+            [$node getParent] addChild $csNode
+        }
+        $csNode configure -isvalid 1 -arglist $argList -definition $constDef
+        
+        return $csNode
+    }
+    
+    # return existing method node if already present
+    set csNode [$node lookup "constructor"]
+    if {$csNode != "" && [$csNode cget -type] == "constructor"} {
+        $csNode configure -arglist $argList -definition $constDef -isvalid 1
+        return $csNode
+    }
+    
+    set csNode [::parser::ProcNode ::#auto -type "constructor" \
+        -name "constructor" -arglist $argList -definition $constDef]
+    $node addChild $csNode
+    
+    return $csNode
+    
+}
+
+proc ::parser::node::parseDestructor {node cTree content defOffPtr} {
+    upvar $defOffPtr defOff
+    set defEnd 0
+    set dDef ""
+    
+    if {[llength $cTree] == 2} {
+        set range [lindex [lindex $cTree 1] 1]
+        set dDef [::parse getstring $content $range]
+        set defOff [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 0]
+        set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 1]
+    } else {
+        # TODO: for access level
+        return
+    }
+    
+    set dNode [$node lookup "destructor"]
+    if {$dNode != "" && [$dNode cget -type] == "destructor"} {
+        $dNode configure -definition $dDef -isvalid 1
+        
+        return $dNode
+    }
+    
+    set dNode [::parser::ProcNode ::#auto -definition $dDef \
+        -type "destructor" -name "destructor"]
+    $node addChild $dNode
+    
+    return $dNode
+    
+}
+
+proc ::parser::node::parseLclVar {node cTree content off} {
+    foreach {tkn idx} {varName 1 varDef 2} {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content $range]
+    }
+    
+    set doff [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 0]
+    $node addVariable $varName [expr {$doff + $off}]
+}
+
+proc ::parser::node::parseForeach {node cTree content off} {
+    foreach {tkn idx} {varSect 1 fDef 3} {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content \
+                [list [lindex $range 0] [lindex $range 1]]]
+    }
+    
+    # offset in variable def section of foreach
+    set do0 [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 0]
+    # offset in definition section
+    set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
+    
+    foreach {var} [lindex $varSect 0] {
+        $node addVariable $var [expr {$off + $do0}]
+    }
+    set fDef [string trim $fDef "\{\}"]
+    if {$fDef == ""} {
+        return
+    }
+    ::parser::parse $node [expr {$off + $defOff}] $fDef
+}
+
+proc ::parser::node::parseFor {node cTree content off} {
+    foreach {tkn doff idx} {v1 v1o 1 v2 v2o 2 v3 v3o 3 forDef forDefo 4} {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content \
+                [list [lindex $range 0] [lindex $range 1]]]
+        
+        set $doff [lindex [lindex [lindex [lindex \
+            [lindex $cTree $idx] 2] 0] 1] 0]
+    }
+    
+    set lst [list [lindex $v1 0] $v1o [lindex $v2 0] $v2o \
+        [lindex $v3 0] $v3o [lindex $forDef 0] $forDefo]
+    
+    foreach {elem doff} $lst {
+        if {$elem == ""} {
+            continue
+        }
+        
+        ::parser::parse $node [expr {$doff + $off}] $elem
+    }
+}
+
+proc ::parser::node::parseIf {node cTree content off} {
+    for {set i 1} {$i < [llength $cTree]} {incr i} {
+        set rg [lindex [lindex $cTree $i] 1]
+        set iDef [::parse getstring $content \
+            [list [lindex $rg 0] [lindex $rg 1]]]
+        set iDefOff [lindex [lindex [lindex [lindex \
+            [lindex $cTree $i] 2] 0] 1] 0]
+        
+        switch -- $iDef {
+            "else" -
+            "elseif" {
+                # nothing
+            }
+            default {
+                set iDef [string trim $iDef "\{\}"]
+                if {$iDef != "" && [catch {
+                        ::parser::parse $node [expr {$off + $iDefOff}] $iDef
+                    } msg]} {
+                        #puts "$msg"
+                }
+            }
+        }
+    }
+}
+
+proc ::parser::node::parseSwitch {node cTree content off} {
+    set range [lindex [lindex $cTree end] 1]
+    set sDef [::parse getstring $content \
+        [list [lindex $range 0] [lindex $range 1]]]
+    set sDefOff [lindex [lindex [lindex [lindex \
+        [lindex $cTree end] 2] 0] 1] 0]
+    
+    set sDef [lindex $sDef 0]
+    incr off $sDefOff
+    while {1} {
+        set res [::parse command $sDef {0 end}]
+        set ct [lindex $res 3]
+        if {$ct == ""} {
+            return
+        }
+        
+        incr off [lindex [lindex [lindex [lindex [lindex $ct end] end] 0] 1] 0]
+            
+        set rg [lindex [lindex $ct end] 1]
+        set def [::parse getstring $sDef [list [lindex $rg 0] [lindex $rg 1]]]
+        
+        # parse the definitions
+        set def [lindex $def 0]
+        if {$def != ""} {
+            ::parser::parse $node $off $def
+        }
+        
+        set idx [lindex [lindex $res 2] 0]
+        incr off [lindex [lindex [lindex $ct end] 1] 1]
+        set sDef [::parse getstring $sDef [list $idx end]]
+        
+    }
+}
+
+proc ::parser::node::parseWhile {node cTree content off} {
+    set range [lindex [lindex $cTree end] 1]
+    set wDef [::parse getstring $content \
+        [list [lindex $range 0] [lindex $range 1]]]
+    set wDefOff [lindex [lindex [lindex [lindex \
+        [lindex $cTree end] 2] 0] 1] 0]
+    
+    set wDef [lindex $wDef 0]
+    if {$wDef != ""} {
+        ::parser::parse $node [expr {$off + $wDefOff}] $wDef
+    }
+}
+
+proc ::parser::node::parseInherit {node cTree content} {
+    set classes {}
+    set clsStr ""
+    for {set i 1} {$i < [llength $cTree]} {incr i} {
+        set range [lindex [lindex $cTree $i] 1]
+        set iCls [::parse getstring $content $range]
+        append clsStr ", [string trimleft $iCls :]"
+        
+        set nsAll [regsub -all {::} [string trimleft $iCls :] " "]
+        set iCls [lindex $nsAll end]
+        set iNode ""
+        if {[llength $nsAll] > 1} {
+            # parent class has namespace qualifiers
+            set tn [$node getTopnode]
+            set iNode [$tn lookup $iCls [lrange $nsAll 0 end-1]]
+        } else {
+            set iNode [[$node getParent] lookup $iCls]
+        }
+        
+        if {$iNode != ""} {
+            lappend classes $iNode
+        }
+        
+        if {$iCls == "Widget" || $iCls == "Toplevel"} {
+            # it is an itk widget
+            $node configure -isitk 1
+        }
+    }
+    
+    $node configure -inherits $classes -inheritstring [string range $clsStr 2 end]
+}
+
+# @c parses a method body command. The result is
+# @c set as the method/proc definition in the
+# @c corresponding class
+#
+# @a node: The node object to which the new node belongs (e.g. Script)
+# @a cTree: The code tree, as returned by ::parse command
+# @a content: The content of the definition, as string
+# @a defOffPtr: Pointer to the definition offset. Is returned
+#
+# @r The newly created proc/method body node
+proc ::parser::node::parseBody {node cTree content defOffPtr} {
+    upvar $defOffPtr defOff
+    set nTk [llength $cTree]
+    if {$nTk != 4} {
+        return -code error "wrong args to body command"
+    }
+    
+    # The real start of the method, after comments, spaces etc.
+    set strt [lindex [lindex [lindex $cTree 0] 1] 0]
+    foreach {tkn idx} {bName 1 bArgs 2 bDef 3} {
+        set range [lindex [lindex $cTree $idx] 1]
+        #set $tkn [::parse getstring $content \
+        #    [list [lindex $range 0] [lindex $range 1]]]
+        set $tkn [::parse getstring $content $range]
+    }
+    
+    set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
+    
+    # split body name and look it up in the context
+    # last part is the method/proc name, one before
+    # last is a class, all other parts are namespaces
+    set nsAll [regsub -all {::} [string trimleft $bName :] " "]
+    set bName [lindex $nsAll end]
+    set clsName [lindex $nsAll end-1]
+    set bDef [string trim $bDef "\{\}"]
+    
+    set pNode ""
+    set pNode [$node lookup $bName [concat [lrange $nsAll 0 end-1]]]
+    if {$pNode == ""} {
+        set ns [join [lrange $nsAll 0 end-1] ::]
+        return -code error "$bName not found in context $ns"
+    }
+    
+    $pNode configure -definition $bDef -bodyextern 1 \
+        -defoffset [expr {$defOff - $strt}]
+    return $pNode
+}
+
+
+proc ::parser::node::parseItkComponent {node cTree content off dBdPtr} {
+    upvar $dBdPtr dBdOff
+    set dBdEnd 0
+    
+    set cCmd ""
+    set cPriv "-"
+    set cName ""
+    set cBody ""
+    set cArgDef ""
+    switch -- [llength $cTree] {
+        6 {
+            # itk_component add -private name body argdef
+            set aList {cCmd 1 cPriv 2 cName 3 cBody 4 cArgDef 5}
+        }
+        5 {
+            # itk_component add -private name body or
+            # itk_component add name body argdef
+            set aList {cCmd 1 cPriv 2 cName 3 cBody 4}
+        }
+        4 {
+            # itk_component add name body
+            set aList {cCmd 1 cName 2 cBody 3}
+        }
+        default {
+            #puts "error in component parsing, arg is not 5|4"
+            return
+        }
+    }
+    
+    foreach {tkn idx} $aList {
+        set range [lindex [lindex $cTree $idx] 1]
+        set $tkn [::parse getstring $content [list [lindex $range 0] \
+            [lindex $range 1]]]
+        
+        # get config/cget definition range
+        if {[string match $tkn cBody]} {
+            set dBdOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+            set dBdEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 1]
+        } elseif {[string match $tkn cArgDef]} {
+            set dAdOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+            set dAdEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $idx] 2] 0] 1] 1]
+        }
+        
+    }
+    
+    if {![string match $cCmd add]} {
+        #puts "error in component parsing, $cCmd not known"
+        return
+    }
+    
+    # it could be that cPriv contains the cName
+    if {[string index $cPriv 0] != "-"} {
+        set cArgDef $cBody
+        set cBody $cName
+        set cName $cPriv
+        set cPriv "-"
+    }
+    
+    # Components are usually created in constructors or methods, 
+    # get the class where the component belongs to.
+    set clsNode [$node getParent]
+    while {$clsNode != {} && [$clsNode cget -type] != "class"} {
+        set clsNode [$clsNode getParent]
+    }
+    if {$clsNode == {}} {
+        set clsNode $node
+    }
+    
+    set cmpn [$clsNode lookup "Itk Components"]
+    if {$cmpn == ""} {
+        set cmpn [$clsNode addChild [::parser::Script ::#auto \
+            -type itk_components -name "Itk Components" -expanded 0]]
+    }
+    $cmpn configure -isvalid 1
+    
+    set compNode [$cmpn lookup $cName]
+    if {$compNode == ""} {
+        set compNode [::parser::ItkComponentNode ::#auto]
+        $cmpn addChild $compNode
+    }
+    
+    set t [expr {($cPriv == "-") ? "public_component" : "private_component"}]
+    $compNode configure -type $t -name $cName -isvalid 1
+    
+    return $compNode
+}
+
+# @c parses a test command
+proc ::parser::node::parseTest {node cTree content setupOffPtr bodyOffPtr cleanupOffPtr} {
+    upvar $setupOffPtr setupOff
+    upvar $bodyOffPtr bodyOff
+    upvar $cleanupOffPtr cleanupOff
+    
+    set testName [::parse getstring $content [lindex [lindex $cTree 1] 1]]
+    set testDesc [::parse getstring $content [lindex [lindex $cTree 2] 1]]
+    
+    set setupDef ""
+    set setupEnd 0
+    set bodyDef ""
+    set bodyEnd 0
+    set cleanupDef ""
+    set cleanupEnd 0
+    set resultDef ""
+    set resultOff 0
+    set resultEnd 0
+    for {set i 3} {$i < [llength $cTree]} {incr i} {
+        set key [::parse getstring $content [lindex [lindex $cTree $i] 1]]
+        switch -- $key {
+            -setup {
+                incr i
+                set setupDef [string trim [::parse getstring $content \
+                    [lindex [lindex $cTree $i] 1]] "\{\}"]
+                set setupOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 0]
+                set setupEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 1]
+            }
+            -body {
+                incr i
+                set bodyDef [string trim [::parse getstring $content \
+                    [lindex [lindex $cTree $i] 1]] "\{\}"]
+                set bodyOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 0]
+                set bodyEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 1]
+            }
+            -cleanup {
+                incr i
+                set cleanupDef [string trim [::parse getstring $content \
+                    [lindex [lindex $cTree $i] 1]] "\{\}"]
+                set cleanupOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 0]
+                set cleanupEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 1]
+            }
+            -result {
+                incr i
+                set resultDef [string trim [::parse getstring $content \
+                    [lindex [lindex $cTree $i] 1]] "\{\}"]
+                set resultOff [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 0]
+                set resultEnd [lindex [lindex [lindex \
+                    [lindex [lindex $cTree $i] 2] 0] 1] 1]
+            }
+        }
+        
+    }
+    
+    if {[set testNode [$node lookup $testName]] == ""} {
+        set testNode [$node addChild [::parser::TclTestNode ::#auto \
+            -name $testName -type tcltest]]
+    }
+    $testNode configure -isvalid 1 -description $testDesc \
+        -definition $bodyDef -defbrange [list $bodyOff $bodyEnd] \
+        -setupdef $setupDef -setupbrange [list $setupOff $setupEnd] \
+        -cleanupdef $cleanupDef -cleanupbrange [list $cleanupOff $cleanupEnd] \
+        -resultdef $resultDef -resultbrange [list $resultOff $resultEnd]
+    
+    return $testNode
+}
+
+# @c build a tree. If not content is given (content = ""),
+# @c the object definition is taken as parse content.
+# @c brVar is the name of the variable where the byte
+# @c range is stored, that the content ocupies. Per
+# @c default (brVar = "") it is the -byterange variable
+#
+# @a off: offset in the original content. While setting the
+# @a off: range variables, this is added to the range offsets
+# @a off: that come out of parsing
+# @a content: the content to parse or ""
+proc ::parser::parse {node off content} {
+    variable CurrAccessLevel
+    
+    if {$content == ""} {
+        return
+    }
+    
+    set size [::parse getrange $content]
+    
+    while {1} {
+        # if this step fails, we must not proceed
+        if {[catch {::parse command $content {0 end}} res]} {
+            return
+        }
+        set codeTree [lindex $res 3]
+        if {$codeTree == ""} {
+            return
+        }
+        # get and adjust offset and line
+        set cmdRange [lindex $res 1]
+        lset cmdRange 0 [expr {[lindex $cmdRange 0] + $off}]
+        lset cmdRange 1 [expr {[lindex $cmdRange 1] - 1}]
+        
+        # get the first token and decide further operation
+        set fToken [lindex $codeTree 0]
+        set token [::parse getstring $content [lindex $fToken 1]]
+        switch -- $token {
+            
+            "package" {
+                set pkgNode [node::parsePkg $node $codeTree $content]
+                if {$pkgNode != ""} {
+                    $pkgNode configure -byterange $cmdRange
+                }
+            }
+            
+            "namespace" {
+                set defOff 0
+                set nsn [node::parseNs $node $codeTree $content defOff]
+                if {$nsn != ""} {
+                    $nsn configure -byterange $cmdRange
+                    parse $nsn [expr {$off + $defOff}] [$nsn cget -definition]
+                }
+            }
+            
+            "proc" {
+                set defOff 0
+                set pn [node::parseProc $node $codeTree $content "" defOff]
+                
+                if {$pn != ""} {
+                    $pn configure -byterange $cmdRange
+                    parse $pn [expr {$defOff + $off}] [$pn cget -definition]
+                }
+            }
+            
+            "command" -
+            "web::command" {
+                set defOff 0
+                set pn [node::parseWebCmd $node $codeTree $content defOff]
+                if {$pn != ""} {
+                    $pn configure -byterange $cmdRange
+                    parse $pn [expr {$defOff + $off}] [$pn cget -definition]
+                }
+            }
+            
+            "class" -
+            "itcl::class" -
+            "::itcl::class" {
+                set defOff 0
+                set cnode [node::parseClass $node $codeTree $content defOff]
+                if {$cnode != ""} {
+                    $cnode configure -byterange $cmdRange
+                    parse $cnode [expr {$off + $defOff}] [$cnode cget -definition]
+                    $cnode addVariable this 0 1
+                    if {[$cnode cget -isitk]} {
+                        $cnode addVariable itk_interior 0 1
+                        $cnode addVariable itk_option 0 1
+                    }
+                    $cnode updatePTokens
+                }
+            }
+            
+            "public" -
+            "protected" -
+            "private" {
+                set secToken [lindex $codeTree 1]
+                set range [lindex $secToken 1]
+                set realToken [::parse getstring $content \
+                    [list [lindex $range 0] [lindex $range 1]]]
+                switch -- $realToken {
+                    "variable" {
+                        set dCfOff 0
+                        set dCgOff 0
+                        set vNode [node::parseVar $node $codeTree $content \
+                                $token dCfOff dCgOff]
+                        if {$vNode != ""} {
+                            $vNode configure -byterange $cmdRange
+                            parse $vNode [expr {$dCfOff + $off}] [$vNode cget -configcode]
+                            parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
+                        }
+                    }
+                    "common" {
+                        set cnNode [node::parseCommon $node $codeTree $content]
+                    }
+                    "method" {
+                        set mNode [node::parseMethod $node $codeTree $content \
+                                $token]
+                        if {$mNode != ""} {
+                            $mNode configure -byterange $cmdRange
+                            parse $mNode $off [$mNode cget -definition]
+                            switch -- [$node cget -type] {
+                                "access" {
+                                    [$node getParent] addMethod $mNode
+                                }
+                                "class" {
+                                    $node addMethod $mNode
+                                }
+                            }
+                        }
+                    }
+                    "proc" {
+                        set pn [node::parseProc $node $codeTree $content dummy]
+                        if {$pn != ""} {
+                            $pn configure -byterange $cmdRange
+                            parse $pn $off [$pn cget -definition]
+                        }
+                    }
+                    "default" {
+                        set CurrAccessLevel $token
+                        set defOff [lindex [lindex [lindex [lindex \
+                            [lindex $codeTree 1] 2] 0] 1] 0]
+                        set defEnd [lindex [lindex [lindex [lindex \
+                            [lindex $codeTree 1] 2] 0] 1] 1]
+                        set newCtn [::parse getstring $content \
+                            [lindex [lindex $codeTree 1] 1]]
+                        set newCtn [string trim $newCtn "\{\}"]
+                        parse $node [expr {$off + $defOff}] $newCtn
+                        set CurrAccessLevel ""
+                    }
+                }
+            }
+            
+            "method" {
+                set mNode [node::parseMethod $node $codeTree $content \
+                    $CurrAccessLevel]
+                if {$mNode != ""} {
+                    $mNode configure -byterange $cmdRange
+                    parse $mNode $off [$mNode cget -definition]
+                    switch -- [$node cget -type] {
+                        "access" {
+                            [$node getParent] addMethod $mNode
+                        }
+                        "class" {
+                            $node addMethod $mNode
+                        }
+                    }
+                }
+            }
+            
+            "constructor" {
+                set defOff 0
+                set csNode [node::parseConstructor $node $codeTree $content defOff]
+                if {$csNode != ""} {
+                    $csNode configure -byterange $cmdRange
+                    parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
+                }
+            }
+            
+            "destructor" {
+                set defOff 0
+                set dNode [node::parseDestructor $node $codeTree $content defOff]
+                if {$dNode != ""} {
+                    $dNode configure -byterange $cmdRange
+                    parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
+                }
+            }
+            
+            "variable" {
+                set dCfOff 0
+                set dCgOff 0
+                set vNode [node::parseVar $node $codeTree $content \
+                    $CurrAccessLevel dCgOff dCfOff]
+                if {$vNode != ""} {
+                    $vNode configure -byterange $cmdRange
+                    parse $vNode [expr {$dCfOff + $off}] [$vNode cget -configcode]
+                    parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
+                }
+            }
+            
+            "common" {
+            }
+            
+            "set" {
+                node::parseLclVar $node $codeTree $content $off
+            }
+            
+            "foreach" {
+                node::parseForeach $node $codeTree $content $off
+            }
+            
+            "for" {
+                node::parseFor $node $codeTree $content $off
+            }
+            
+            "if" {
+                node::parseIf $node $codeTree $content $off
+            }
+            
+            "switch" {
+                node::parseSwitch $node $codeTree $content $off
+            }
+            
+            "while" {
+                node::parseWhile $node $codeTree $content $off
+            }
+            
+            "inherit" {
+                node::parseInherit $node $codeTree $content
+            }
+            
+            "body" -
+            "itcl::body" -
+            "::itcl::body" {
+                set defOff 0
+                if {[catch {
+                        node::parseBody $node $codeTree $content defOff
+                    } bNode]} {
+                    
+                    set bNode ""
+                }
+                if {$bNode != ""} {
+                    $bNode configure -defbrange [$bNode cget -byterange]
+                    $bNode configure -byterange $cmdRange
+                    parse $bNode [expr {$off + $defOff}] [$bNode cget -definition]
+                }
+            }
+            
+            itk_component {
+                set dBdOff 0
+                set compNode [node::parseItkComponent $node $codeTree $content \
+                    $off dBdOff]
+                if {$compNode != ""} {
+                    $compNode configure -byterange $cmdRange
+                }
+            }
+            
+            tcltest::test -
+            test {
+                set setupOff 0
+                set bodyOff 0
+                set cleanupOff 0
+                set testNode [node::parseTest $node $codeTree $content \
+                    setupOff bodyOff cleanupOff]
+                if {$testNode != ""} {
+                    $testNode configure -byterange $cmdRange
+                    parse $testNode [expr {$off + $setupOff}] \
+                        [$testNode cget -setupdef]
+                    parse $testNode [expr {$off + $bodyOff}] \
+                        [$testNode cget -definition]
+                    parse $testNode [expr {$off + $cleanupOff}] \
+                        [$testNode cget -cleanupdef]
+                }
+            }
+            
+            default {
+            }
+            
+        }
+        # step forward in the content
+        set idx [lindex [lindex $res 2] 0]
+        incr off $idx
+        set content [::parse getstring $content [list $idx end]]
+    }
+    
+    
+}
+
+# @c reparses the tree, given content. The newNodesPtr and
+# @c oldNodesPtr are filled with a list of nodes that are
+# @c newly created and a list of nodes that are obsolete,
+# @c respectively
+proc ::parser::reparse {node content newNodesPtr oldNodesPtr} {
+    upvar $newNodesPtr newNodes
+    upvar $oldNodesPtr oldNodes
+    set aChBefore [$node getChildren 1]
+    foreach child $aChBefore {
+        $child configure -isvalid 0
+        $child removeVariables
+    }
+    
+    $node removeVariables
+    $node configure -definition $content
+    ::parser::parse $node 0 $content
+    
+    foreach child [$node getChildren 1] {
+        if {[$child cget -isvalid]} {
+            if {![lcontain $aChBefore $child]} {
+                lappend newNodes $child
+            }
+            continue
+        }
+        set par [$child getParent]
+        if {$par != ""} {
+            $par removeChild $child
+            lappend oldNodes $child
+        }
+    }
+}
+
+# @c This class represents a Tcl script that contains Tcl
+# @c commands, namespaces and classes 
+class ::parser::Script {
+    inherit ::parser::StructuredFile
+    
+    
+    constructor {args} {
+        set _Commands [concat $::parser::CoreCommands \
+                $::parser::ItclCoreCommands]
+        eval configure $args
+    }
+    
+    public {
+        variable name ""
+        # @v defbrange: byte range for the definition
+        variable defbrange {}
+        # @v definition: the text that makes up the code definition
+        variable definition ""
+        # @v isvalid: used for reparsing. Indicates, whether the
+        # @v isvalid: node still exists in the content. If not,
+        # @v isvalid: it can be deleted.
+        variable isvalid 1
+        # @v displayformat: overloads the display format
+        variable displayformat {"%s" -name}
+    
+        method parseFile {filename}
+        method lookupRange {range}
+        method print {indent {var ""}}
+        method setCommands {cmds}
+        method getCommands {cmdPtr {deep 0}}
+        method appendError {range error} {
+            lappend Errors $range $error
+        }
+        
+        method getErrors {} {
+            return $ParseErrors
+        }
+        method getVariables {{deep 0}}
+        
+        method removeVariables {} {
+            set _Variables {}
+        }
+        
+        method getProcs {}
+        
+        ##
+        # add a variable and its value to the node and, if
+        # deep is true, to its child nodes
+        method addVariable {var value {deep 0}}
+        
+        ##
+        # add a procedure
+        method addProc {procNode}
+        
+        ##
+        # virtual method for adding method. Only implemented
+        # in class/access, currently
+        method addMethod {methNode}
+    }
+    
+    protected {
+        variable _Commands {}
+        # @v _Commands: list of commands available in the script
+        variable _Variables {}
+        # @v _Variables: list of variables set by some commands
+        variable _GobalVariables {}
+        # @v _GlobalVariables: list of global variables
+        variable _Packages {}
+        # @v _Packages: package names
+        variable Errors {}
+        # @v Errors: a list of potential errors that came up
+        # @v Errors: during the parse process
+        variable _Procedures {}
+        # @v _Procedures: list of procedures
+        
+    }
+    
+    private {
+        
+        method getPackages {pkgListPtr}
+    }
+    
+}
+
+class ::parser::ClassNode {
+    inherit ::parser::Script
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    public variable inherits {}
+    public variable isitk 0
+    # @v inheritstring: A string containing the base classes of this
+    # @v inheritstring: class comma separated. Used for displayformat
+    public variable inheritstring ""
+    # @v displayformat: overrides the display format for tests
+    public variable displayformat {"%s : %s" -name -inheritstring}
+        
+    # @c insert the public and protected identifiers
+    # @c (methods and variables) to this class
+    public method updatePTokens {} {
+        foreach {cls} $inherits {
+            foreach {al} {public protected} {
+                set aln [$cls lookup $al]
+                if {$aln == ""} {
+                    continue
+                }
+                foreach {chd} [$aln getChildren] {
+                    switch -- [$chd cget -type] {
+                        "method" {
+                            addMethod $chd
+                        }
+                        "variable" {
+                            set vName [$chd cget -name]
+                            addVariable $vName 0 1
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+}
+
+class ::parser::ProcNode {
+    inherit ::parser::Script
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    # @v displayformat: overrides the display format for tests
+    public variable displayformat {"%s \{%s\}" -name -arglist}
+    # @v arglist: list of arguments to the proc
+    public variable arglist {} {
+        foreach {arg} $arglist {
+            if {[llength $arg] > 1} {
+                addVariable [lindex $arg 0] 0
+            } else {
+                addVariable $arg 0
+            }
+        }
+    }
+    # @v runtimens: the namespace where this proc is defined
+    # @v runtimens: at runtime
+    public variable runtimens ""
+    # @v bodyextern: indicates whether the body is defined
+    # @v bodyextern: externally via itcl::body
+    public variable bodyextern 0
+    # @v defoffset: The definition offset, counted from the 
+    # @v defoffset: beginning of the whole definition
+    public variable defoffset 0
+    
+}
+
+class ::parser::WebCmdNode {
+    inherit ::parser::Script
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    # @v displayformat: overrides the display format for tests
+    public variable displayformat {"%s" -name}
+    # @v runtimens: the namespace where this proc is defined
+    # @v runtimens: at runtime
+    public variable runtimens ""
+    # @v defoffset: The definition offset, counted from the 
+    # @v defoffset: beginning of the whole definition
+    public variable defoffset 0
+    
+}
+
+class ::parser::VarNode {
+    inherit ::parser::Script
+    
+    public {
+        # @v displayformat: overrides the display format for tests
+        variable displayformat {"%s = %s" -name -shortdefinition}
+        # @v definition: overrides the variable definition
+        variable definition "" {
+            if {[string length $definition] > 20} {
+                configure -shortdefinition [string range $definition 0 20]...
+            } else {
+                configure -shortdefinition $definition
+            }
+        }
+        # @v shortdefinition: an abbreviation of the init definition
+        variable shortdefinition ""
+        # @v configcode: code that is associated with the
+        # @v configcode: configure command in Itcl objects
+        variable configcode ""
+        # @v configcode: code that is associated with the
+        # @v configcode: cget command in Itcl objects
+        variable cgetcode ""
+        # @v configbrange: byte range for the config code
+        variable configbrange {}
+        # @v cgetbrange: byte range for the cget code
+        variable cgetbrange {}
+    }
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+}
+
+class ::parser::ItkComponentNode {
+    inherit ::parser::Script
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    public {
+        # @v accesslevel: Components can have -private accesslevel. By 
+        # @v accesslevel: default, the accesslevel is public
+        variable accesslevel "public"
+        # @v argdefinition: the definition for options (rename, keep etc.)
+        variable argdefinition ""
+    }
+    
+}
+
+class ::parser::PackageNode {
+    inherit ::parser::Script
+    
+    #public variable name "" {} {
+    #    return "$name $version"
+    #}
+    public variable name "" {}
+    public variable version ""
+    # @v version: the package version
+    
+    constructor {args} {
+        eval configure $args
+    }
+}
+
+# @c This class represents a Tcl test. Tests are special commands that
+# @c have a -setup code, a -cleanup code (both optional) and a -result
+# @c They also have a description, but no arguments.
+class ::parser::TclTestNode {
+    inherit ::parser::Script
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    public {
+        # @v description: Test description
+        variable description ""
+        # @v setupbrange: the byte range of the setup code
+        variable setupbrange {}
+        # @v setupdef: setup code definition
+        variable setupdef ""
+        # @v cleanupbrange: byte range of the cleanup code
+        variable cleanupbrange {}
+        # @v cleanupdef: The cleanup definition
+        variable cleanupdef ""
+        # @v resultbrange: byte range for the result definition
+        variable resultbrange {}
+        # @v resultdef: result definition
+        variable resultdef ""
+        # @v displayformat: overrides the display format for tests
+        variable displayformat {"%s: %s" -name -description}
+    }
+    
+}
+
+body ::parser::Script::lookupRange {byte} {
+    # @c lookus up a byte in all child nodes
+    # @c recursively. Returns the node which range
+    # @c includes the byte
+    foreach child $_Children {
+        set chd [$child lookupRange $byte]
+        if {$chd != ""} {
+            return $chd
+        }
+        set a [lindex [$child cget -byterange] 0]
+        set e [expr {[lindex [$child cget -byterange] 1] + $a}]
+        if {$byte > $a && $byte < $e} {
+            return $child
+        }
+    }
+    
+    return ""
+}
+
+body ::parser::Script::print {indent {var ""}} {
+    # @c pretty prints the content of the entire tree
+    # @c into the variable var, if given.
+    # @c Returns the result
+    
+    if {$var != ""} {
+        upvar $var ctn
+    } else  {
+        set ctn ""
+    }
+    
+    append ctn [string repeat " " [expr {$indent * $level}]]
+    switch -- $type {
+        "access" {
+            append ctn "[cget -name]: ([cget -level])\n"
+        }
+        "variable" {
+            append ctn "[cget -type]: [cget -name] ([cget -level])\n"
+            
+            if {[cget -configcode] != ""} {
+                append ctn [string repeat " " \
+                        [expr {$indent * ($level + 1)}]]
+                append ctn "configcode\n"
+            }
+            if {[cget -cgetcode] != ""} {
+                append ctn [string repeat " " \
+                        [expr {$indent * ($level + 1)}]]
+                append ctn "cgetcode\n"
+            }
+        }
+        "method" -
+        "proc" {
+            append ctn "[cget -type]: [cget -name] ([cget -level])\n"
+            if {[cget -bodyextern]} {
+                append ctn [string repeat " " \
+                        [expr {$indent * ($level + 1)}]]
+                append ctn "body\n"
+            }
+        }
+        default {
+            append ctn "[cget -type]: [cget -name] ([cget -level])\n"
+        }
+    }
+    
+    foreach ch $_Children {
+        $ch print $indent ctn
+    }
+    
+    return $ctn
+}
+
+body ::parser::Script::setCommands {cmds} {
+    # @c sets the command list cmds into
+    # @c all siblings that follow this node
+    # @c and all children
+    
+    # TODO: check for byte ranges...
+    set _Commands [concat $cmds $::parser::ItclCoreCommands]
+    # set nsib [nextSibling]
+    # while {$nsib != ""} {
+        # puts [$nsib cget -name]
+        # $nsib setCommands $cmds
+        # set nsib [$nsib nextSibling]
+    # }
+    foreach ch $_Children {
+        $ch setCommands $cmds
+    }
+}
+
+body ::parser::Script::getProcs {} {
+    set res {}
+    foreach {p a acc} $_Procedures {
+        lappend res $p
+    }
+    
+    return $res
+}
+
+body ::parser::Script::getCommands {cmdPtr {deep 0}} {
+    # @c get the commands defined in this script. Walks up
+    # @c the code hierarchy and looks for package definitions
+    # @c then executes "package re" in a sub interpreter
+    # @c to find commands provided by the packages
+    upvar $cmdPtr cmdList
+    
+    set pkgList ""
+    set modified 0
+    set pkgNames ""
+    #set procedures [[getTopnode] getProcs]
+    
+    if {$deep} {
+        getPackages pkgList
+    } else  {
+        foreach ch $_Children {
+            if {[$ch cget -type] != "package"} {
+                continue
+            }
+            
+            lappend pkgList $ch
+            if {![lcontain $_Packages [$ch cget -name]]} {
+                set modified 1
+            }
+            lappend pkgNames [$ch cget -name]
+        }
+    }
+    
+    if {! $modified} {
+        foreach pkn $_Packages {
+            if {![lcontain $pkgNames $pkn]} {
+                set modified 1
+            }
+        }
+    }
+    
+    #getProcs
+    set cmdList [lsort [concat [getProcs] $_Commands]]
+    #if {! $modified} {
+    #    set cmdList [lsort [concat [getProcs] $_Commands]]
+    #    return -code ok ""
+    #}
+    
+    # TODO: this code doesn't work anymore. With multiple threads it is
+    # TODO: tricky to use child interpreters, as is to create threads from
+    # TODO: sub threads. Find another way to get commands and variables
+    # TODO: from packages, maybe parsing them?
+}
+
+body ::parser::Script::getVariables {{deep 0}} {
+    set pkgList ""
+    set modified 0
+    set pkgNames ""
+    if {$deep} {
+        getPackages pkgList
+    } else  {
+        foreach ch $_Children {
+            if {[$ch cget -type] != "package"} {
+                continue
+            }
+            
+            lappend pkgList $ch
+            if {![lcontain $_Packages [$ch cget -name]]} {
+                set modified 1
+            }
+            lappend pkgNames [$ch cget -name]
+        }
+    }
+    
+    # TODO: this code doesn't work anymore. With multiple threads it is
+    # TODO: tricky to use child interpreters, as is to create threads from
+    # TODO: sub threads. Find another way to get commands and variables
+    # TODO: from packages, maybe parsing them?
+    
+    return $_Variables
+    #return [concat $rres $_Variables]
+}
+
+body ::parser::Script::parseFile {filename} {
+    # @c parses the file content
+    if {[catch {set fh [open $filename "r"]} msg]} {
+        return -code error "can not open file: $msg"
+    }
+    
+    set definition [read $fh]
+    close $fh
+    set name [file tail $filename]
+    set type "script"
+    
+    if {[catch {::parser::parse $this 0 $definition} msg]} {
+        ::log::log error "--------------------------------------"
+        ::log::log error "::parser::Script::parseFile "
+        ::log::log error "  ($this, $filename)"
+        ::log::log error $::errorInfo
+    }
+    
+}
+
+body ::parser::Script::addVariable {var value {deep 0}} {
+    if {![lcontain $_Variables $var]} {
+        lappend _Variables $var $value
+    }
+    if {$deep} {
+        foreach {child} $_Children {
+            $child addVariable $var $value $deep
+        }
+    }
+}
+
+body ::parser::Script::addProc {procNode} {
+    # get namespace qualifiers
+    set compName [$procNode cget -name]
+    set prtIsClass 0
+    set prt [$procNode getParent]
+    while {$prt != ""} {
+        #puts $prt,[$prt cget -name]
+        if {[$prt cget -type] == "access" || \
+            [$prt cget -type] == "script"} {
+            set prt [$prt getParent]
+            continue
+        }
+        set compName "[$prt cget -name]::$compName"
+        set prt [$prt getParent]
+    }
+        
+    #puts $type,$compName
+    if {![lcontain $_Procedures $compName]} {
+        lappend _Procedures $compName \
+            [$procNode cget -arglist] ""
+    }
+        
+    foreach {child} $_Children {
+        $child addProc $procNode
+    }
+}
+
+body ::parser::Script::getPackages {pkgListPtr} {
+    # @c get the packages in the tree
+    upvar $pkgListPtr pkgList
+    
+    foreach ch $_Children {
+        if {[$ch cget -type] == "package"} {
+            lappend pkgList $ch
+        } else {
+            $ch getPackages pkgList
+        }
+    }
+    
+}
+
+
+body ::parser::Script::addMethod {methNode} {
+    set mname [$methNode cget -name]
+    set alist [$methNode cget -arglist]
+    if {![lcontain $_Procedures $mname]} {
+        lappend _Procedures $mname $alist ""
+    }
+        
+    foreach {child} $_Children {
+        if {[$child cget -type] == "proc"} {
+            # don't add the method to proc's, it is
+            # not visible there
+            continue
+        }
+        $child addMethod $methNode
+    }
+    
+}
+
+
+#set root [::parser::Script ::#auto -file [lindex $argv 0]]
+#puts [$root print 2]
+#$root reparse [$root cget -definition] a b
+
+#set def [$root cget -definition]
+#$root parse 0 $def
+
+#$root configure -definition $def
+
+#$root getCommands 0
+#$root getCommands 0
+
+#puts [$root print 2]
+# 

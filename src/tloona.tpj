@@ -1,0 +1,47 @@
+format  {TclDevKit Project File}
+fmtver  2.0
+fmttool {TclDevKit Debugger} 3.2
+
+##  Saved at : Wed Sep 13 15:21:25 W. Europe Daylight Time 2006
+##  By       : lehmane2@RPZMR000202
+
+########
+#####
+###
+##
+#
+
+appArg            {}
+appArgList        {{}}
+appDir            C:/home/lehmane2/tcltk/tloona.vfs
+appDirList        C:/home/lehmane2/tcltk/tloona.vfs
+appInterp         C:/MyApps/TclKit/tclkitsh.exe
+appInterpList     {{c:\myapps\tcl\bin\wish.exe} {c:\myapps\tcl\bin\wish84.exe} {c:\myapps\tcl\bin\tclsh.exe} {c:\myapps\tcl\bin\tclsh84.exe} {c:\myapps\msys\1.0\local\bin\wish84.exe} {c:\myapps\msys\1.0\local\bin\tclsh84.exe} C:/MyApps/TclKit/tclkitsh.exe}
+appScript         C:/home/lehmane2/tcltk/tloona.vfs/main.tcl
+appScriptList     C:/home/lehmane2/tcltk/tloona.vfs/main.tcl
+appType           local
+autoAddSpawn      0
+autoKillSub       0
+autoLoad          0
+breakList         {
+	{C:/home/lehmane2/tcltk/tloona.vfs/lib/tclparser1.4/tclparser.itcl 1302 enabled {}}}
+coverage          none
+doInstrument      *
+dontInstrument    {}
+errorAction       1
+instrumentDynamic 1
+instrumentExpect  1
+instrumentIncrTcl 1
+instrumentTclx    0
+portRemote        2576
+prevViewFile      C:/home/lehmane2/tcltk/tloona.vfs/main.tcl
+projVersion       2.0
+spawnList         {}
+varTransformList  {}
+watchList         {}
+
+#
+##
+###
+#####
+########

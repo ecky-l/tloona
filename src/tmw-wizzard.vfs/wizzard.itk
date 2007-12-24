@@ -1,0 +1,149 @@
+# tmw::wizzard
+
+package require Itcl 3.3
+package require Itk 3.3
+package require tile 0.7.5
+package require tmw::dialog 1.0
+
+package provide tmw::wizzard 1.0
+
+itk::usual TLabel {}
+itk::usual TMenubutton {}
+itk::usual TEntry {}
+itk::usual TFrame {}
+
+class ::Tmw::Wizzard {
+    # @c the start wizzard
+    #inherit ::iwidgets::Dialogshell
+    inherit ::Tmw::Dialog
+    
+    itk_option define -okcmd okCmd Command ""
+    itk_option define -prevcmd prevCmd Command ""
+    itk_option define -nextcmd nextCmd Command ""
+    itk_option define -cancelcmd cancelCmd Command ""
+    
+    protected variable WizzPages {}
+    # @v WizzPages: list of the path names of all wizzard pages
+    protected variable Page 0
+    # @v Page: wizzard page that is actually shown
+    protected variable Canceled 0
+    
+    constructor {args} {
+        
+        add Cancel -text "Cancel" -command [code $this onCancel]
+        add Previous -text "Previous" -state disabled \
+                -command [code $this onPrevious] -nowait
+        add Next -text "Next" -state normal -nowait \
+            -command [code $this onNext]
+        add OK -text OK -command [code $this onOk]
+        eval itk_initialize $args
+   
+        #configure -buttonboxpos se
+        configure -buttonpos e
+    }
+    
+    public method addPage {args}
+    public method showPage {pageidx}
+    
+    public method page {} {
+        return $Page
+    }
+    public method canceled {} {
+        return $Canceled
+    }
+    
+    public method hidePage {pageidx}
+    public method removePage {pageidx}
+    public method show {}
+    
+    protected method onCancel {}
+    protected method onNext {}
+    protected method onOk {}
+    protected method onPrevious {}
+}
+
+body ::Tmw::Wizzard::show {} {
+    showPage 0
+    set Canceled 0
+    ::Tmw::Dialog::show
+}
+
+body ::Tmw::Wizzard::addPage {args} {
+    # @c adds a frame to the childsite and returns its path
+    #
+    # @r path to a frame to put widgets inside
+    set f [eval ttk::frame [childsite].page[llength $WizzPages] $args]
+    lappend WizzPages $f
+    return $f
+}
+
+body ::Tmw::Wizzard::showPage {pageidx} {
+    # @c shows the page with pageidx
+    pack [lindex $WizzPages $pageidx] -expand yes -fill both
+}
+
+body ::Tmw::Wizzard::hidePage {pageidx} {
+    # @c hides the page with pageidx
+    pack forget [lindex $WizzPages $pageidx]
+}
+
+body ::Tmw::Wizzard::removePage {pageidx} {
+}
+
+body ::Tmw::Wizzard::onCancel {} {
+    # @c Cancel callback
+    #deactivate
+    hide
+    set Canceled 1
+    eval $itk_option(-cancelcmd)
+}
+
+body ::Tmw::Wizzard::onPrevious {} {
+    # @c Previous callback
+    if {$Page == 0} {
+        return
+    }
+    
+    hidePage $Page
+    incr Page -1
+    showPage $Page
+    
+    if {$Page == 0} {
+        # we're on the first page
+        buttonconfigure Previous -state disabled
+    }
+    
+    buttonconfigure Next -state normal
+    eval $itk_option(-prevcmd)
+}
+
+body ::Tmw::Wizzard::onNext {} {
+    # @c Next callback
+    if {[llength $WizzPages] <= 1} {
+        return
+    }
+    hidePage $Page
+    incr Page
+    showPage $Page
+    
+    if {$Page == [expr {[llength $WizzPages] - 1}]} {
+        # we're on the last page now
+        buttonconfigure Next -state disabled
+        buttonconfigure OK -state normal
+    }
+    
+    buttonconfigure Previous -state normal
+    eval $itk_option(-nextcmd)
+}
+
+body ::Tmw::Wizzard::onOk {} {
+    # @c Ok callback
+    #deactivate
+    hide
+    eval $itk_option(-okcmd)
+}
+
+proc ::Tmw::wizzard {path args} {
+    # @c command to create the start wizzard
+    uplevel ::gui::Wizzard $path $args
+}

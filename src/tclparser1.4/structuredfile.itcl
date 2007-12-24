@@ -1,0 +1,53 @@
+
+package require Itcl 3.3
+package require Itree 1.0
+
+package provide parser::structuredfile 1.4
+
+namespace eval ::parser {}
+
+# @c A general structured file. Can be any file with
+# @c structured content
+class ::parser::StructuredFile {
+    inherit ::itree::Node
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    public {
+        # @v file: the file name. Essentially a node name
+        variable file "" {
+            if {$file != ""} {
+                configure -dirname [file dirname $file] \
+                    -name [file tail $file]
+
+            }
+        }
+        # @v dirname: directory of the file being parsed. This 
+        # @v dirname: attribute is used for displaying the file in
+        # @v dirname: a tree node
+        variable dirname ""
+        
+        # @v byterange: the range in bytes
+        variable byterange {-1 -1}
+        
+        # @c Parses a file. The default implementation does
+        # @c nothing, Subclasses may override
+        method parseFile {filename} {}
+        
+        # @c looks up the range of a file in the tree. Does
+        # @c nothing by default, Subclasses should override
+        method lookupRange {range} {}
+        
+        method getCommands {cmdsPtr {deep 0}} {}
+
+    }
+    
+    protected {
+    }
+    
+    private {
+    }
+    
+}

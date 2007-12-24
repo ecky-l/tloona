@@ -1,0 +1,472 @@
+#
+# browser.itk
+#
+package require tmw::toolbarframe 1.0
+package require tile 0.7.5
+package require Itree 1.0
+package require tmw::plugincore 1.0
+
+package provide tmw::browser 1.0
+
+# unset default bindings for Treeview
+bind Treeview <Double-Button-1> {}
+bind Treeview <Control-Button-1> {}
+
+usual Treeview {}
+usual TScrollbar {}
+usual Browser {}
+
+# @c A browser displays a ttk::treeview inside a toolbarframe. Toolbars
+# @c can be added as needed, containing arbitrary tool buttons.
+class ::Tmw::Browser {
+    inherit ::Tmw::ToolbarFrame
+    
+    # @v -selectcmd: a command that is executed when a tree node was selected
+    itk_option define -selectcmd selectCmd Command "" {
+        bind [component treeview] <<TreeviewSelect>> $itk_option(-selectcmd)
+    }
+    
+    # @v -opencmd: a command that is executed when a tree node is opened
+    itk_option define -opencmd openCmd Command "" {
+        bind [component treeview] <<TreeviewOpen>> {}
+        bind [component treeview] <<TreeviewOpen>> [code $this expand 1]
+        bind [component treeview] <<TreeviewOpen>> +$itk_option(-opencmd)
+    }
+    
+    # @v -closecmd: a command that is executed when a tree node is closed
+    itk_option define -closecmd closeCmd Command "" {
+        bind [component treeview] <<TreeviewClose>> {}
+        bind [component treeview] <<TreeviewClose>> [code $this expand 0]
+        bind [component treeview] <<TreeviewClose>> +$itk_option(-closecmd)
+    }
+    
+    # @v -filter: a command that is executed for filtering tree nodes.
+    # @v -filter: Filtering is performed only, if this is not empty. The
+    # @v -filter: filter command takes an Itree node as argument. It
+    # @v -filter: returns true when the node passes the filter, false
+    # @v -filter: otherwise. If filtering takes place, only the nodes
+    # @v -filter: that passed the filter are displayed.
+    itk_option define -filter filterCmd Command ""
+    
+    constructor {args} {
+        itk_component add treeview {
+            ttk::treeview [component childsite].treeview
+        } {
+            usual
+            keep -show -padding
+        }
+        set T [component treeview]
+        itk_component add -private vscroll {
+            ttk::scrollbar [component childsite].vscroll -command "$T yview"
+        } {
+            usual
+        }
+        
+        set vs [component vscroll]
+        component treeview configure -yscrollcommand "$vs set"
+    
+        grid [component treeview] -row 0 -column 0 -sticky news
+        grid [component vscroll] -row 0 -column 1 -sticky nse
+    
+        grid columnconfigure [component childsite] 0 -weight 1
+        grid rowconfigure [component childsite] 0 -weight 1
+        
+        configure -show tree -padding 0
+        eval itk_initialize $args
+    }
+    
+    public {
+        # @v dosortseq: indicates whether sorting after a sequence should 
+        # @v dosortseq: take place. Used as checkbutton variable, for instance
+        variable dosortseq 1
+        # @v sortsequence: The sequence after which to sort. This list contains
+        # @v sortsequence: the types of nodes in the order in which they are
+        # @v sortsequence: to sort
+        variable sortsequence {}
+        # @v sortalpha
+        variable sortalpha 1
+        # @v nodeformat: a text format for the nodes
+        variable nodeformat {"%s" -name}
+        # @v syncronize: indicates whether the tree view is to be syncronized
+        # @v syncronize: with an other view
+        variable syncronize 1
+        
+        # @c add or refresh itree nodes
+        method add {nodes recursive refresh args}
+        
+        # @c remove itree nodes
+        method remove {nodes {delete no}}
+        
+        # @c set several node icons by type
+        method setNodeIcons {icons} {
+            array set NodeIcons $icons
+        }
+        
+        # @r the node icons currently set for the browser
+        method getNodeIcons {} {
+            return [array get NodeIcons]
+        }
+        
+        # @c (re)sorts the browser if a sort sequence is given or
+        # @c sortalpha is true
+        method sort {}
+        
+        # @c expands/unexpands items. As side effect, the -opencmd is
+        # @c executed
+        #
+        # @a open: whether to expand or to close
+        # @a item: the item. If it is "", the current selection is used
+        method expand {open {item ""}}
+        
+        # @c Expandss all items beneath the given node in the browser 
+        # @c recursively
+        #
+        # @a node: a tree node. If "", all items beneath the root item 
+        # @a node: are expanded
+        method expandAll {{node ""}}
+        
+        # @c Collapses all items beneath the given node in the browser 
+        # @c recursively
+        #
+        # @a node: a tree node. If "", all items beneath the root item 
+        # @a node: are collapsed
+        method collapseAll {{node ""}}
+        
+        # @c delegate to ttk::treeview
+        method item {args} {
+            eval component treeview item $args
+        }
+        
+        # @c delegate to ttk::treeview
+        method selection {args} {
+            eval component treeview selection $args
+        }
+        
+        # @c delegate to ttk::treeview
+        method see {item}
+        
+        # @c delegate to ttk::treeview
+        method exists {args} {
+            eval component treeview exists $args
+        }
+        
+        # @c delegate to ttk::treeview
+        method children {args} {
+            eval component treeview children $args
+        }
+        
+        # @c Adds a select handler
+        method addSelectHandler {code} {
+            if {[lsearch $SelectHandlers $code] < 0} {
+                lappend SelectHandlers $code
+            }
+        }
+        
+    }
+    
+    protected {
+        # @v SelectHandlers: A list of code fragments to be executed when
+        # @v SelectHandlers: the selection changes
+        variable SelectHandlers {}
+        
+        # @v NodeIcons: a list of icons for the nodes. Contains node type
+        # @v NodeIcons: and image icon in that order
+        variable NodeIcons
+        array set NodeIcons {}
+        
+        # @c displays itree nodes recursively
+        method displayTreeNode {node recursive args}
+        
+        # @c applies the -filter to a node recursively. If at least
+        # @c one child node returns true (passes the filter), the method
+        # @c returns true as a whole. This prunes the tree children that
+        # @c don't pass the filter action
+        #
+        # @a node: the tree node to filter
+        #
+        # @r true if subbranches pass the filter, false otherwise
+        method applyFilter {node}
+    }
+    
+    private {
+        # @c recursive method to collapse all nodes
+        method intCollapseAll {node}
+        
+        # @c recursive method to expand all nodes
+        method intExpandAll {node}
+    }
+    
+}
+
+body ::Tmw::Browser::add {nodes recursive refresh args} {
+    foreach {node} $nodes {
+        if {[exists $node]} {
+            if {$refresh} {
+                remove $node
+            } else {
+                continue
+            }
+        }
+        eval displayTreeNode $node $recursive $args
+    }
+}
+
+body ::Tmw::Browser::remove {nodes {delete no}} {
+    set T [component treeview]
+    if {[string equal $nodes all]} {
+        set nodes [children ""]
+    }
+    
+    foreach itm $nodes {
+        if {![exists $itm]} {
+            continue
+        }
+        $T delete $itm
+        $itm configure -displayed 0
+    }
+    
+    if {$delete} {
+        foreach {itm} $nodes {
+            catch {itcl::delete object $itm}
+        }
+    }
+}
+
+body ::Tmw::Browser::sort {} {
+    if {$sortsequence == {} && ! $sortalpha} {
+        return
+    }
+    set topTrees [children {}]
+    remove $topTrees
+    add $topTrees 1 0
+}
+
+body ::Tmw::Browser::expand {open {item ""}} {
+    if {$item == ""} {
+        set item [component treeview selection]
+    }
+    
+    if {![exists $item]} {
+        return
+    }
+    
+    if {$open} {
+        component treeview item $item -open 1
+        $item configure -expanded 1
+    } else {
+        component treeview item $item -open 0
+        $item configure -expanded 0
+    }
+}
+
+body ::Tmw::Browser::collapseAll {{node ""}} {
+    intCollapseAll $node
+    if {[set ch1 [lindex [children $node] 0]] != ""} {
+        see $ch1
+    }
+}
+
+body ::Tmw::Browser::expandAll {{node ""}} {
+    intExpandAll $node
+    if {[set ch1 [lindex [children $node] 0]] != ""} {
+        see $ch1
+    }
+}
+
+body ::Tmw::Browser::see {item} {
+    component treeview see $item
+    set parent [$item getParent]
+    while {$parent != ""} {
+        $parent configure -expanded 1
+        set parent [$parent getParent]
+    }
+}
+
+body ::Tmw::Browser::displayTreeNode {node recursive args} {
+    set widget [component treeview]
+    set nargs $args
+    array set aargs $args
+    
+    if {![applyFilter $node]} {
+        return
+    }
+    
+    if {![info exists aargs(-image)] \
+            && [info exists NodeIcons([$node cget -type])]} {
+        set aargs(-image) $NodeIcons([$node cget -type])
+    }
+    
+    if {![info exists aargs(-text)]} {
+        set dspFmt [$node cget -displayformat]
+        if {$dspFmt == ""} {
+            set dspFmt $nodeformat
+        }
+        
+        set cmd [list format [lindex $dspFmt 0]]
+        foreach {var} [lrange $dspFmt 1 end] {
+            lappend cmd [$node cget $var]
+        }
+        set aargs(-text) [eval $cmd]
+    }
+    
+    set args [array get aargs]
+    set parentNode [$node getParent]
+    if {![$widget exists $parentNode]} {
+        set parentNode ""
+    }
+    
+    set i 0
+    set j 0
+    set tChilds [$widget children $parentNode]
+    set insPos [llength $tChilds]
+    if {$dosortseq} {
+        foreach {elem} $sortsequence {
+            set j $i
+            if {[set sib [lindex $tChilds $i]] == ""} {
+                break
+            }
+            while {$sib != "" && [$sib cget -type] == $elem} {
+                set sib [lindex $tChilds [incr i]]
+            }
+            if {$elem == [$node cget -type]} {
+                set insPos $i
+                break
+            }
+        }
+    }
+    
+    if {$sortalpha} {
+        # find the lexicographical correct position
+        if {$i == 0} {
+            set i $insPos
+        }
+        incr i -1
+        while {$i >= $j} {
+            set sib [lindex $tChilds $i]
+            if {$sib == ""} {
+                break
+            }
+            set sibName [$sib cget -name]
+            if {[string compare [$node cget -name] $sibName] >= 0} {
+                break
+            }
+            incr insPos -1
+            incr i -1
+        }
+    }
+
+    
+    $widget insert $parentNode $insPos -id $node
+    eval $widget item $node $args
+    $widget item $node -open [$node cget -expanded]
+    
+    # insert node data into the columns if necessary
+    if {[set colData [$node cget -data]] != {}} {
+        set colLen [llength [$widget cget -columns]]
+        if {[llength $colData] == $colLen} {
+            for {set i 0} {$i < [llength $colData]} {incr i} {
+                set cdt [lindex $colData $i]
+                if {[string length $cdt] > 20} {
+                    set cdt [string range $cdt 0 20]
+                }
+                $widget set $node $i $cdt
+            }
+        }
+    }
+    
+    if {$recursive} {
+        foreach child [$node getChildren] {
+            eval displayTreeNode $child $recursive $nargs
+        }
+    }
+    
+    $node configure -displayed 1
+}
+
+body ::Tmw::Browser::applyFilter {node} {
+    # if no filter command is given, the filter is always passed
+    if {$itk_option(-filter) == ""} {
+        return 1
+    }
+    
+    set res 0
+    foreach {child} [$node getChildren] {
+        set res [expr {$res || [applyFilter $child]}]
+    }
+    
+    return [expr {$res || [eval $itk_option(-filter) $node]}]
+}
+
+body ::Tmw::Browser::intCollapseAll {node} {
+    foreach {child} [children $node] {
+        component treeview item $child -open 0
+        $child configure -expanded 0
+        intCollapseAll $child
+    }
+}
+
+body ::Tmw::Browser::intExpandAll {node} {
+    foreach {child} [children $node] {
+        component treeview item $child -open 1
+        $child configure -expanded 1
+        intExpandAll $child
+    }
+}
+
+# @c This is a default filter that matches a pattern against a node
+# @c name. It uses regular expression filtering and can be used as 
+# @c -filter option for the browser.
+#
+# @a pattern: the pattern to check
+# @a node: the Itree node
+#
+# @r 1 for success, 0 for decline
+proc ::Tmw::Browser::regexFilter {pattern node} {
+    regexp $pattern [$node cget -name]
+}
+
+# @c This is a default filter that matches a pattern against a node
+# @c name. It uses glob expression filtering and can be used as 
+# @c -filter option for the browser.
+#
+# @a pattern: the pattern to check
+# @a node: the Itree node
+#
+# @r 1 for success, 0 for decline
+proc ::Tmw::Browser::globFilter {pattern node} {
+    string match $pattern [$node cget -name]
+}
+
+# @c This is a filter that matches an exclude list to the node. If
+# @c the node type is in the exclude list, the result is false, if it
+# @c is not in the exclude list, the result is true. By this, it is
+# @c possible to display only nodes of the type that are not to be excluded
+#
+# @a excludeList: a list of types that are to be excluded
+# @a node: the node in question
+#
+# @r 1 for success, 0 for decline
+proc ::Tmw::Browser::typeExcludeFilter {excludeList node} {
+    expr {[lsearch $excludeList [$node cget -type]] < 0}
+}
+
+# @c This filter procedure matches an exclude list of types and a glob
+# @c pattern on -name
+#
+# @a excludeList: a list of types that are to be excluded
+# @a pattern: the pattern to check against -name
+# @a node: the node in question
+# 
+# @r 1 for success, 0 for decline
+proc ::Tmw::Browser::typeExcludeGlobFilter {excludeList pattern node} {
+    expr {[typeExcludeFilter $excludeList $node] && [globFilter $pattern $node]}
+}
+
+proc ::Tmw::browser {path args} {
+    uplevel Tmw::Browser $path $args
+}
+## plugin code
+#plugin Tmw::Browser
+#extends Tmw::Platform {
+#    #puts hello,world
+#}

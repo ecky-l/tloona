@@ -1,0 +1,95 @@
+# tmw::progressdialog
+
+set ::auto_path [concat [file join [file dirname [info script]] .. ] \
+    $::auto_path]
+    
+package require tmw::dialog 1.0
+
+package provide tmw::progressdialog 1.0
+
+
+itk::usual TProgressbar {}
+
+class ::Tmw::ProgressDialog {
+    inherit ::Tmw::Dialog
+    
+    itk_option define -cancelcmd cancelCmd Command ""
+    
+    constructor {args} {
+        itk_component add label {
+            ttk::label [childsite].label
+        } {
+            keep -text
+        }
+        
+        itk_component add progress {
+            ttk::progressbar [childsite].progress
+        } {
+            keep -length -mode
+        }
+        
+        add Cancel -text Cancel -command [code $this onCancel]
+        
+        pack [component label] [component progress] \
+            -expand y -fill both -pady 3 -padx 10
+        
+        eval itk_initialize $args
+        configure -block 0
+    }
+    
+    destructor {
+    }
+    
+    public {
+        variable interval 20
+        variable startimmediately 1
+        variable stopimmediately 1
+        
+        method start {} {
+            [component progress] start $interval
+        }
+        
+        method stop {} {
+            component progress stop
+        }
+        
+        method show {} {
+            if {$startimmediately} {
+                start
+            }
+            
+            ::Tmw::Dialog::show
+        }
+        
+        method hide {} {
+            if {$stopimmediately && \
+                    [info exists itk_component(progress)]} {
+                stop
+            }
+            
+            ::Tmw::Dialog::hide
+        }
+    }
+    
+    protected {
+        method onCancel {} {
+            hide
+            eval $itk_option(-cancelcmd)
+        }
+    }
+    
+    private {
+    }
+    
+}
+
+proc ::Tmw::progressdialog {path args} {
+    uplevel 0 ProgressDialog $path $args
+}
+
+#Tmw::progressdialog .p -mode indeterminate -length 300 \
+#    -title "in progress" -text "heyho"
+#.p show
+#raise .p
+#.p start
+#puts haha

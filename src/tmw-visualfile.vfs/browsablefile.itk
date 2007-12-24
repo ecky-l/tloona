@@ -1,0 +1,130 @@
+
+package require tmw::visualfile 1.0
+package require Tclx 8.4
+package require parser::structuredfile 1.4
+
+package provide tmw::browsablefile 1.0
+
+# @c This class implements a visual file which can be
+# @c displayed and used in a browser
+class ::Tmw::BrowsableFile {
+    inherit Tmw::VisualFile
+    
+    constructor {args} {
+        bind [component textwin] <Button-1> \
+            [code $this selectTreeDisplay %x %y]
+        
+        eval configure $args
+    }
+    
+    public {
+        # @c adds the file to the given code browser
+        method addToBrowser {browser}
+        # @c removes this file from the given file browser
+        method removeFromBrowser {browser}
+        
+        # @c Creates a code tree that represents this file.
+        method createTree {}
+        
+        # @c set the browsable tree
+        method setTree {tree} {
+            set BrowserTree $tree
+        }
+        
+        # @r the browsable tree
+        method getTree {} {
+            return $BrowserTree
+        }
+        
+        # @r the browsers where the file is visible
+        method getBrowsers {} {
+            return $BrowserDisplays
+        }
+        
+        # @c overrides [openFile] in VisualFile. The default
+        # @c implementation here configures the file name
+        # @c for the BrowserTree
+        method openFile {{file ""}}
+        
+        # @c update the highlighting. By default, does nothing.
+        # @c Subclasses may override
+        method updateKwHighlight {keyWords} {
+        }
+        
+        # @c selects the code fragment at mouse position x, y or the 
+        # @c insert cursor.
+        #
+        # @a x: the x position of mouse cursor
+        # @a y: the y position of mouse cursor
+        method selectTreeDisplay {{x -1} {y -1}}
+    }
+    
+    protected {
+        # @v BrowserTree: a tree to display in the browser
+        variable BrowserTree ""
+        
+        # @v BrowserDisplays: a list of displays, where the file content
+        # @v BrowserDisplays: is displayed
+        variable BrowserDisplays {}
+    }
+    
+    private {
+    }
+    
+}
+
+body ::Tmw::BrowsableFile::addToBrowser {browser} {
+    if {![$browser exists $BrowserTree]} {
+        $browser add $BrowserTree 1 0
+    }
+    if {[lsearch $BrowserDisplays $browser] < 0} {
+        lappend BrowserDisplays $browser
+    }
+}
+
+body ::Tmw::BrowsableFile::removeFromBrowser {browser} {
+    $browser remove $BrowserTree
+    set idx [lsearch $BrowserDisplays $browser]
+    lvarpop BrowserDisplays $idx
+}
+
+body ::Tmw::BrowsableFile::createTree {} {
+    if {[getTree] != ""} {
+        return
+    }
+    setTree [::parser::StructuredFile ::#auto -type "file"]
+}
+
+body ::Tmw::BrowsableFile::openFile {{file ""}} {
+    ::Tmw::VisualFile::openFile $file
+    $BrowserTree configure -file [cget -filename] \
+        -displayformat {"%s (%s)" -name -dirname}
+}
+
+body ::Tmw::BrowsableFile::selectTreeDisplay {{x -1} {y -1}} {
+    if {[getTree] == ""} {
+        return
+    }
+    event generate [namespace tail $this] <<TextPositionChanged>>
+    set cdf [[getTree] lookupRange [getTextPos $x $y]]
+    if {$cdf == ""} {
+        return
+    }
+    
+    foreach browser [getBrowsers] {
+        set bwin [$browser component treeview]
+        if {!([$browser exists $cdf] && [winfo ismapped $bwin]
+                && [$browser cget -syncronize])} {
+            continue
+        }
+        
+        $browser selection set $cdf
+        $browser see $cdf
+    }
+}
+
+
+# @c convenience command for constructing files
+proc ::Tmw::browsablefile {path args} {
+    uplevel ::Tmw::BrowsableFile $path $args
+}
