@@ -1,20 +1,22 @@
 
 package provide tloona::sdx 1.0
 
+package require starkit 1.3.1
+
 # fix bug in two mk4vfs revs (needed when "mkfile" and "local" differ)
-switch -- [package require mk4vfs] {
-    1.0 - 1.1 {
-        proc vfs::mk4::Mount {mkfile local args} {
-            set db [eval [list ::mk4vfs::_mount $local $mkfile] $args]
-            ::vfs::filesystem mount $local [list ::vfs::mk4::handler $db]
-            ::vfs::RegisterMount $local [list ::vfs::mk4::Unmount $db]
-            return $db
-        }
-        proc mk4vfs::mount {local mkfile args} {
-            uplevel [list ::vfs::mk4::Mount $mkfile $local] $args
-        }
-    }
-}
+#switch -- [package require starkit] {
+#    1.0 - 1.1 {
+#        proc vfs::mk4::Mount {mkfile local args} {
+#            set db [eval [list ::mk4vfs::_mount $local $mkfile] $args]
+#            ::vfs::filesystem mount $local [list ::vfs::mk4::handler $db]
+#            ::vfs::RegisterMount $local [list ::vfs::mk4::Unmount $db]
+#            return $db
+#        }
+#        proc mk4vfs::mount {local mkfile args} {
+#            uplevel [list ::vfs::mk4::Mount $mkfile $local] $args
+#        }
+#    }
+#}
 
 set ::InitLog 0
 proc ::tclLog {msg} {
