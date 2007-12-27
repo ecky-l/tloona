@@ -162,7 +162,7 @@ class ::Tloona::Console {
     # @c creates the widgets and initializes the console
     protected method initialize {} {
         itk_component add textwin {
-            ctext $itk_interior.textwin -wrap none
+            ctext $itk_interior.textwin -wrap word
         }
         set T [component textwin]
         

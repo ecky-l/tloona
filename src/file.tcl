@@ -41,7 +41,10 @@ class ::Tloona::TclFile {
     # @c overrides the openFile method
     public method openFile {file} {
         ::Tmw::VisualFile::openFile $file
-        reparseTree
+        if {[catch {reparseTree} msg]} {
+            puts $msg
+        }
+        #catch {reparseTree} msg
     }
 
     # @c overloads the savefile from File
@@ -49,8 +52,10 @@ class ::Tloona::TclFile {
         set ctn [::Tmw::VisualFile::saveFile $file]
         modified 0
         update
-        
-        reparseTree
+        if {[catch {reparseTree} msg]} {
+            puts $msg
+        }
+        #reparseTree
     }
     
     # @c Creates a code tree that represents this file.

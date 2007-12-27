@@ -126,6 +126,8 @@ proc ::Tloona::initIcons {} {
                 public_method $Icons(TclPublicMethod) \
                 protected_method $Icons(TclProtectedMethod) \
                 private_method $Icons(TclPrivateMethod) \
+                xo_proc $Icons(TclProc) \
+                xo_instproc $Icons(TclPublicMethod) \
                 variable $Icons(TclVar) \
                 public_variable $Icons(TclPublicVar) \
                 protected_variable $Icons(TclProtectedVar) \
@@ -301,7 +303,7 @@ proc ::main {args} {
         if {![file exists $file]} {
             continue
         }
-        set fob [$TloonaApplication openFile $file 0]
+        set fob [$TloonaApplication openFile $file 1]
     }
     #update
     
