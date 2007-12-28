@@ -31,7 +31,7 @@ class ::Tloona::Fs::Starkit {
                 .kit {
                     extracted 0
                 }
-                .vfs {
+                default {
                     extracted 1
                 }
             }
@@ -221,7 +221,7 @@ class ::Tloona::KitBrowser {
             .vfs {
             }
             default {
-                error "cannot handle this file/dir type"
+                #error "cannot handle this file/dir type"
             }
         }
         
@@ -321,7 +321,6 @@ class ::Tloona::KitBrowser {
         while {$parent != "" && ![$parent isa ::Tmw::Fs::FSContent]} {
             set parent [$parent getParent]
         }
-        
         if {![isOpen $parent]} {
         	    set cls [eval $itk_option(-openfilecmd) [$parent cget -name] 0]
              $cls setTree $parent
@@ -418,7 +417,6 @@ class ::Tloona::KitBrowser {
         if {[llength $args] == 0} {
             eval chain $args
         }
-        
         set selOp [lindex $args 0]
         set items {}
         foreach {item} [lindex $args 1] {

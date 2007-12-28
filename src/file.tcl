@@ -87,6 +87,7 @@ class ::Tloona::TclFile {
             set newList {}
             set oldList {}
             ::parser::reparse $codeTree $ctn newList oldList
+            #bp
             foreach {elem} $oldList {
                 itcl::delete object $elem
             }

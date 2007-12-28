@@ -57,6 +57,15 @@ namespace eval ::parser {
                 usual component itk_component itk_option
     }
     
+    # @v XotclCoreCommands: A list of core commands for xotcl
+    variable XotclCoreCommands {Class Object instproc create alloc instdestroy \
+        instfilter instfilterguard instforward instinvar instmixin instparametercmd \
+        new parameter parameterclass recreate superclass my self \
+        abstract autoname check cleanup contains copy destroy extractConfigureArg \
+        filter filtersearch forward getExitHandler hasclass instvar invar isclass \
+        ismetaclass ismixin isobject istype mixin move noinit parametercmd procsearch \
+        requireNamespace setExitHandler volatile}
+    
     variable CurrAccessLevel ""
 }
 
@@ -1094,7 +1103,6 @@ proc ::parser::xotcl::parseClass {node cTree content defOffPtr} {
             set ct [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
             $ct configure -isvalid 1
         }
-        
         #$cNode configure -definition $clsDef -defbrange [list $defOff $defEnd]
         return $clsNode
     }
@@ -1515,7 +1523,7 @@ proc ::parser::parse {node off content} {
                 set nm [::parse getstring $content [lindex [lindex $codeTree 0] 1]]
                 set nsAll [regsub -all {::} [string trimleft $nm :] " "]
                 set nm [lindex $nsAll end]
-                set tn [[$node getTopnode] lookup $nm [lrange $nsAll 0 end-1]]
+                set tn [[$node getTopnode ::parser::Script] lookup $nm [lrange $nsAll 0 end-1]]
                 if {$tn != {} && [$tn isa ::parser::XotclClassNode]} {
                     set defOff -1
                     set preOff -1
@@ -1552,11 +1560,11 @@ proc ::parser::reparse {node content newNodesPtr oldNodesPtr} {
         $child configure -isvalid 0
         $child removeVariables
     }
-    
+    #bp
     $node removeVariables
     $node configure -definition $content
     ::parser::parse $node 0 $content
-    
+    #bp
     foreach child [$node getChildren 1] {
         if {[$child cget -isvalid]} {
             if {![lcontain $aChBefore $child]} {
@@ -1579,8 +1587,8 @@ class ::parser::Script {
     
     
     constructor {args} {
-        set _Commands [concat $::parser::CoreCommands \
-                $::parser::ItclCoreCommands]
+        set _Commands [concat $::parser::CoreCommands $::parser::ItclCoreCommands \
+            $::parser::XotclCoreCommands]
         eval configure $args
     }
     

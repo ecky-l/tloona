@@ -163,20 +163,25 @@ class Tloona::Mainapp {
             openFile $uri 0
         }
         
-        while {1} {
-            set uri [tk_chooseDirectory -mustexist 1 \
-                -initialdir $_InitDir -parent [namespace tail $this]]
-            if {$uri == ""} {
-                return
-            }
-            if {[file extension $uri] == ".vfs" } {
-                break
-            }
-                
-            tk_messageBox -type ok -icon info -title \
-                "Not a vfs directory" \
-                -message "Directory must have the ending .vfs"
+        set uri [tk_chooseDirectory -mustexist 1 -initialdir $_InitDir \
+            -parent [namespace tail $this]]
+        if {$uri == ""} {
+            return
         }
+        #while {1} {
+        #    set uri [tk_chooseDirectory -mustexist 1 \
+        #        -initialdir $_InitDir -parent [namespace tail $this]]
+        #    if {$uri == ""} {
+        #        return
+        #    }
+            #if {[file extension $uri] == ".vfs" } {
+            #    break
+            #}
+                
+            #tk_messageBox -type ok -icon info -title \
+            #    "Not a vfs directory" \
+            #    -message "Directory must have the ending .vfs"
+        #}
         
         openFile $uri 0
     }
@@ -801,6 +806,16 @@ class Tloona::Mainapp {
             }
             
             default {
+                if {[file isdirectory $uri]} {
+                    if {[isOpen $uri] != ""} {
+                        Tmw::message $TloonaApplication "Project exists" ok \
+                            "The project $uri exists already"
+                        return
+                    }
+                    openKitFile $uri
+                    return
+                }
+                
                 set fType [lindex [fileutil::fileType $uri] 0]
                 if {[string equal $fType text]} {
                     if {[set fileObj [isOpen $uri]] != ""} {

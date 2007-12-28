@@ -139,7 +139,7 @@ class ::Tloona::CodeBrowser {
     # @a parent: the parent frame. A dropframe, created by toolbar
     protected method createSortList {parent} {
         itk_component add sortlist {
-            listbox $parent.sortlist -height 16 -width 16 -background white \
+            listbox $parent.sortlist -height 18 -width 16 -background white \
                 -borderwidth 1 -relief flat
         }
         
@@ -169,9 +169,11 @@ class ::Tloona::CodeBrowser {
                 protected_variable \
                 private_variable \
                 public_method \
+                xo_instproc \
                 protected_method \
                 private_method \
                 proc \
+                xo_proc \
                 namespace
             }
         }
