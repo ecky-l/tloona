@@ -582,7 +582,6 @@ starkit::header @TYPE@ @OPTS@
         
         switch $type {
             mk4 {
-                breakpoint ""
                 vfs::mk4::Mount $out $out
                 set argv $syncopts
                 lappend argv -compress $compress -verbose $verbose \

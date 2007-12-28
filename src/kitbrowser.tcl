@@ -182,7 +182,12 @@ class ::Tloona::KitBrowser {
         set tb [toolbar tools -pos n -compound none]
         
         set tw [component treeview]
-        bind $tw <Button-3> [code $this contextMenu %X %Y %x %y]
+        if {[string match $::tcl_platform(os) Darwin]} {
+            # On Mac the right mouse button is Button-2
+            bind $tw <Button-2> [code $this contextMenu %X %Y %x %y]
+        } else {
+            bind $tw <Button-3> [code $this contextMenu %X %Y %x %y]
+        }
         bind $tw <Double-Button-1> [code $this onFileOpen %x %y]
         bind $tw <Control-Button-1> [code $this selectCode %x %y 1]
         configure -sortalpha 0 -nodeformat {"%s" -tail}
@@ -220,13 +225,9 @@ class ::Tloona::KitBrowser {
             }
             .vfs {
             }
-            default {
-                #error "cannot handle this file/dir type"
-            }
         }
         
-        set fs [::Tloona::Fs::starkit -name $root -type "starkit" \
-            -expanded 0]
+        set fs [::Tloona::Fs::starkit -name $root -type "starkit" -expanded 0]
         if {![$fs extracted]} {
             set mw [cget -mainwindow]
             if {$mw != "" && [$mw isa ::Tloona::Mainapp]} {
