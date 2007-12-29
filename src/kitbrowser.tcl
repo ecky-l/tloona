@@ -88,9 +88,13 @@ body ::Tloona::Fs::Starkit::extracted {{e -1}} {
 }
 
 body ::Tloona::Fs::Starkit::wrap {args} {
-    global auto_path TloonaRoot
+    global auto_path TloonaRoot UserOptions
     if {![extracted]} {
         return
+    }
+    
+    if {$UserOptions(PathToSDX) == ""} {
+        error "Need SDX. Get it from http://www.equi4.com/starkit/sdx.html"
     }
     
     set nargs {}
@@ -141,15 +145,13 @@ body ::Tloona::Fs::Starkit::wrap {args} {
         }
     }
     
-    set script "set ::auto_path [list $auto_path]\n"
-    #append script "set ::TloonaRoot $TloonaRoot \n"
-    append script "package require vfs::mk4\n"
-    append script "package require tloona::sdx 1.0\n"
-    append script "package require debug\n"
-    append script "eval sdx::wrap::wrap $k $nargs \n"
-    set tid [thread::create]
-    thread::send -async $tid $script var
-    vwait var
+    set script "source $::UserOptions(PathToSDX)\n"
+    append script "package require sdx\n"
+    append script "set tmpDir [pwd]\n"
+    append script "cd [eval file join [lrange [file split $k] 0 end-1]]\n"
+    append script "sdx::sdx wrap $k $nargs \n"
+    append script "cd \$tmpDir \n"
+    eval $script
     
     return $k
 }
@@ -307,6 +309,7 @@ class ::Tloona::KitBrowser {
         }
         
         if {[$file isa ::Tmw::Fs::FSContent]} {
+            refreshFile $file
             set cls [eval $itk_option(-openfilecmd) [$file cget -name] 0]
             if {$cls == ""} {
                 return

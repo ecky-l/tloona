@@ -128,3 +128,7 @@ set ::UserOptions(LastOpenDocuments) {}
 
 # kit projects (starkits)
 set ::UserOptions(KitProjects) {}
+
+# Path to SDX for wrapping files
+set ::UserOptions(PathToSDX) ""
+set ::UserOptions(DefaultModifier) "Control"

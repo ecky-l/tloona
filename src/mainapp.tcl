@@ -143,8 +143,7 @@ class Tloona::Mainapp {
         global TloonaApplication
         set uri ""
         set ft {
-            {"Tcl Files" {.tcl .tk .itcl .itk}}
-            {Starkits {.kit .exe}} 
+            {"Tcl Files" {.tcl .tk .tm .itcl .itk .xotcl}}
             {Tests .test}
             {Web {.html .htm .tml .adp}}
         }
@@ -168,21 +167,6 @@ class Tloona::Mainapp {
         if {$uri == ""} {
             return
         }
-        #while {1} {
-        #    set uri [tk_chooseDirectory -mustexist 1 \
-        #        -initialdir $_InitDir -parent [namespace tail $this]]
-        #    if {$uri == ""} {
-        #        return
-        #    }
-            #if {[file extension $uri] == ".vfs" } {
-            #    break
-            #}
-                
-            #tk_messageBox -type ok -icon info -title \
-            #    "Not a vfs directory" \
-            #    -message "Directory must have the ending .vfs"
-        #}
-        
         openFile $uri 0
     }
 
@@ -750,8 +734,10 @@ class Tloona::Mainapp {
         switch -- $ending {
             ".tcl" -
             ".tk" -
+            ".tm" -
             ".itcl" -
             ".itk" -
+            ".xotcl" -
             ".test" -
             ".ws3" {
                 if {[set fileObj [isOpen $uri]] != ""} {
@@ -877,46 +863,46 @@ class Tloona::Mainapp {
     }
     
     protected method defaultMenu {} {
-        global Icons
+        global Icons UserOptions
         
         menuentry File.New -type command -toolbar maintoolbar \
             -image $Tmw::Icons(FileNew) -command [code $this onFileNew] \
-            -accelerator Ctrl-n
+            -accelerator [set UserOptions(DefaultModifier)]-n
         menuentry File.Open -type cascade -image $Tmw::Icons(FileOpen)
         menuentry File.Open.File -type command  -toolbar maintoolbar \
             -command [code $this onFileOpen] -image $Icons(TclFileOpen) \
-            -accelerator Ctrl-o -label "File..."
+            -accelerator [set UserOptions(DefaultModifier)]-o -label "File..."
         menuentry File.Open.Project -type command -label "Project..." \
             -toolbar maintoolbar -command [code $this onProjectOpen] \
-            -image $Icons(KitFileOpen) -accelerator Ctrl-p
+            -image $Icons(KitFileOpen) -accelerator [set UserOptions(DefaultModifier)]-p
         
         menuentry File.Save -type command -toolbar maintoolbar \
             -image $Tmw::Icons(FileSave) -command [code $this onFileSave] \
-            -accelerator Ctrl-s
+            -accelerator [set UserOptions(DefaultModifier)]-s
         menuentry File.Close -type command -toolbar maintoolbar \
             -image $Tmw::Icons(FileClose) -command [code $this onFileClose] \
-            -accelerator Ctrl-w
+            -accelerator [set UserOptions(DefaultModifier)]-w
         menuentry File.Sep0 -type separator -toolbar maintoolbar
         menuentry File.Quit -type command -toolbar maintoolbar \
             -image $Tmw::Icons(ActExit) -command [code $this onQuit] \
-            -accelerator Ctrl-q
+            -accelerator [set UserOptions(DefaultModifier)]-q
         
         menuentry Edit.Undo -type command -toolbar maintoolbar \
             -image $Tmw::Icons(ActUndo) -command [code $this onEditUndo] \
-            -accelerator Ctrl-z
+            -accelerator [set UserOptions(DefaultModifier)]-z
         menuentry Edit.Redo -type command -toolbar maintoolbar \
             -image $Tmw::Icons(ActRedo) -command [code $this onEditRedo] \
-            -accelerator Ctrl-r
+            -accelerator [set UserOptions(DefaultModifier)]-r
         menuentry Edit.Sep0 -type separator -toolbar maintoolbar
         menuentry Edit.Cut -type command -toolbar maintoolbar \
             -image $Tmw::Icons(EditCut) -command [code $this onEditCut] \
-            -accelerator Ctrl-x
+            -accelerator [set UserOptions(DefaultModifier)]-x
         menuentry Edit.Copy -type command -toolbar maintoolbar \
             -image $Tmw::Icons(EditCopy) -command [code $this onEditCopy] \
-            -accelerator Ctrl-c
+            -accelerator [set UserOptions(DefaultModifier)]-c
         menuentry Edit.Paste -type command -toolbar maintoolbar \
             -image $Tmw::Icons(EditPaste) -command [code $this onEditPaste] \
-            -accelerator Ctrl-v
+            -accelerator [set UserOptions(DefaultModifier)]-v
     }
         
     # @c shows a particular window part

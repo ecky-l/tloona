@@ -24,9 +24,16 @@ package require log 1.2
 package require tloona::mainapp 1.0
 package require debug 1.0
 package require starkit
-package require tloona::sdx 1.0
+#package require tloona::sdx 1.0
 
 #trace set exception -uncaught [list breakpoint dummy]
+
+# Bug in Tk 8.5?
+if {[string match $tcl_platform(os) Darwin] && [string match $tcl_version 8.5]} {
+    #rename the scrollbar command
+    rename ttk::scrollbar ttk::__scrollbar
+    rename ttk::_scrollbar_ ttk::scrollbar
+}
 
 puts "Tloona comm ID: [set ::CommId [::comm::comm self]]"
 source [file join $::TloonaRoot src toolbutton.tcl]

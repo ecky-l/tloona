@@ -224,33 +224,7 @@ body ::Tmw::Platform::menuentry {name args} {
                 lappend nargs $arg $accel
             }
             delete {
-#                set sName $M.[string tolower $name]
-#                if {![info exists Menus($sName)]} {
-#                    return
-#                }
-#                
-#                # delete the menu entry or, if "all" is given, delete
-#                # all entries beneath the current given one
-#                if {[lindex $args [incr i]] != "all"} {
-#                    set parent [join [lrange [split $sName .] 0 end-1] .]
-#                    set i [lindex $Menus($sName) 2]
-#                    $parent delete $i
-#                    
-#                    # delete toolbutton
-#                    #if {[set tb [lindex $Menus($sName) 3]] != ""} {
-#                    #    component mainframe toolbutton $tb delete
-#                    #}
-#                } else {
-#                    $sName delete 0 end
-#                    if {[set tbb [lindex $Menus($sName) 4]] != ""} {
-#                        $tbb delete 0 end
-#                    }
-#                    #destroy $sName
-#                    #unset Menus($sName)
-#                }
-                
                 return
-                
             }
             default {
                 lappend nargs $arg
@@ -298,6 +272,7 @@ body ::Tmw::Platform::menuentry {name args} {
         
         if {$cmd != "" && $accel != ""} {
             set accel [regsub {Ctrl} $accel Control]
+            set accel [regsub {Meta} $accel M1]
             bind [namespace tail $this] <[set accel]> $cmd
         }
         
@@ -407,6 +382,7 @@ body ::Tmw::Platform::menuentry {name args} {
     
     if {$cmd != "" && $accel != ""} {
         set accel [regsub {Ctrl} $accel Control]
+        set accel [regsub {Meta} $accel M1]
         bind [namespace tail $this] <[set accel]> $cmd
     }
     

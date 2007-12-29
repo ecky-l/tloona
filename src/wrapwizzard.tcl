@@ -104,6 +104,8 @@ class ::Tloona::WrapWizzard {
     }
     
     private method _initKitPackSel {parent} {
+        global Tmw::Icons UserOptions
+        
         itk_component add kitsel {
             ttk::radiobutton $parent.kitsel -text "Create Starkit" \
                 -variable [scope _KitSel] -value kit
@@ -114,10 +116,28 @@ class ::Tloona::WrapWizzard {
                 -variable [scope _KitSel] -value pack
         }
         
-        pack [component kitsel] [component packsel] \
-            -side top -expand y -fill both -padx 20 -pady 10
+        # SDX selection widgets
+        set f [ttk::frame $parent.fselsdx]
+        ttk::label $f.lselsdx -text "Path to SDX: "
+        itk_component add selsdx {
+            ttk::entry $f.selsdx -width 20 -textvariable ::UserOptions(PathToSDX)
+        }
+        ttk::button $f.bselsdx -image $::Tmw::Icons(FileOpen) -command [code $this selectSDX]
+        ttk::label $f.dlhint -text "(see http://www.equi4.com/starkit/sdx.html)" \
+            -font {Helvetica 10}
+        grid $f.lselsdx [component selsdx] $f.bselsdx -padx 5
+        grid $f.dlhint -columnspan 3 -pady 1 -sticky w
+        
+        pack [component kitsel] [component packsel] $f -side top -expand y \
+            -fill both -padx 20 -pady 10
     }
-
+    
+    private method selectSDX {} {
+        global UserOptions
+        set ::UserOptions(PathToSDX) [tk_getOpenFile -filetypes {{Starkits {.kit}}} \
+            -parent [namespace tail $this]]
+    }
+    
     private method _initOptions {parent} {
         # interp option
         itk_component add c_interp {
