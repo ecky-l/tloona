@@ -167,11 +167,12 @@ class ::Tloona::Console {
         set T [component textwin]
         
         itk_component add -private vscroll {
-            ttk::scrollbar $itk_interior.vscroll -command "$T yview"
+            ttk::scrollbar $itk_interior.vscroll -command "$T yview" \
+                -class TScrollbar
         }
         itk_component add -private hscroll {
             ttk::scrollbar $itk_interior.hscroll -orient horizontal \
-                -command "$T xview"
+                -command "$T xview" -class TScrollbar
         }
         
         set vs [component vscroll]

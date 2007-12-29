@@ -81,12 +81,13 @@ class ::Tmw::VisualFile {
         set T [component textwin]
     
         itk_component add -private vscroll {
-            ttk::scrollbar [childsite].vscroll -command "$T yview"
+            ttk::scrollbar [childsite].vscroll -command "$T yview" \
+                -class TScrollbar
         }
     
         itk_component add -private hscroll {
             ttk::scrollbar [childsite].hscroll -command "$T xview" \
-                    -orient horizontal
+                    -orient horizontal -class TScrollbar
         }
         
         set vs [component vscroll]

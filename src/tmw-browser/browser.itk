@@ -57,7 +57,8 @@ class ::Tmw::Browser {
         }
         set T [component treeview]
         itk_component add -private vscroll {
-            ttk::scrollbar [component childsite].vscroll -command "$T yview"
+            ttk::scrollbar [component childsite].vscroll -command "$T yview" \
+                -class TScrollbar
         } {
             usual
         }

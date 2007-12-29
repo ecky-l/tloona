@@ -213,10 +213,11 @@ class ::Tloona::VarInspector {
         }
         set T [component valuedisplay]
         itk_component add -private vscroll {
-            ttk::scrollbar $f.vscroll -command "$T yview"
+            ttk::scrollbar $f.vscroll -command "$T yview" -class TScrollbar
         }
         itk_component add -private hscroll {
-            ttk::scrollbar $f.hscroll -orient horizontal -command "$T xview"
+            ttk::scrollbar $f.hscroll -orient horizontal -command "$T xview" \
+                -class TScrollbar
         }
         $T configure -xscrollcommand [list $f.hscroll set] \
             -yscrollcommand [list $f.vscroll set]
@@ -469,7 +470,7 @@ class ::Tloona::DebugConfigDlg {
         }
         set L [component configlist]
         set vscroll [ttk::scrollbar $f1.vscroll -orient vertical \
-            -command [list $L yview]]
+            -command [list $L yview] -class TScrollbar]
         $L configure -yscrollcommand [list $vscroll set]
         
         set f2 [ttk::frame $f1.buttons -relief flat -borderwidth 0]

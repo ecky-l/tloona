@@ -53,7 +53,7 @@ class ::Tloona::Completor {
             -borderwidth 0
         
         set L [component list]
-        set vs [ttk::scrollbar $itk_interior.vscroll \
+        set vs [ttk::scrollbar $itk_interior.vscroll -class TScrollbar \
             -command [list $L yview]]
         component list configure -yscrollcommand [list $vs set]
         
