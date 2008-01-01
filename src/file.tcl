@@ -52,10 +52,10 @@ class ::Tloona::TclFile {
         set ctn [::Tmw::VisualFile::saveFile $file]
         modified 0
         update
-        if {[catch {reparseTree} msg]} {
-            puts $msg
-        }
-        #reparseTree
+        #if {[catch {reparseTree} msg]} {
+        #    puts $msg
+        #}
+        reparseTree
     }
     
     # @c Creates a code tree that represents this file.
@@ -79,46 +79,26 @@ class ::Tloona::TclFile {
         
         set ctn [component textwin get 1.0 end]
         set ctn [string range $ctn 0 end-1]
-        tsv::set fileVars content $ctn
-        tsv::set itclObj codeTree [getTree]
-        set script {
-            set codeTree [tsv::get itclObj codeTree]
-            set ctn [tsv::get fileVars content]
-            set newList {}
-            set oldList {}
-            ::parser::reparse $codeTree $ctn newList oldList
-            #bp
-            foreach {elem} $oldList {
-                itcl::delete object $elem
-            }
-            set cmds {}
-            catch {$codeTree getCommands cmds} msg
-            tsv::set var commandList $cmds
-        }
         
-        $TloonaApplication showProgress 1
-        if {[set tp [cget -threadpool]] != ""} {
-            set job [tpool::post -nowait $tp $script]
-            tpool::wait $tp $job
-        } else {
-            eval $script
-        }
-        $TloonaApplication showProgress 0
-        
-        updateKwHighlight [tsv::get var commandList]
-        
-        foreach browser [getBrowsers] {
+        foreach {browser} [getBrowsers] {
             set sel [$browser selection]
-            set cTree [getTree]
             $browser remove [getTree]
-            $browser add [getTree] 1 0
-            
-            # reset the selection
             if {$sel != {} && [$browser exists $sel]} {
                 $browser selection set $sel
                 $browser see $sel
             }
-        }    
+        }
+        set newList {}
+        set oldList {}
+        ::parser::reparse [getTree] $ctn newList oldList
+        foreach {elem} $oldList {
+            itcl::delete object $elem
+        }
+        [getTree] getCommands cmds
+        updateKwHighlight $cmds
+        foreach browser [getBrowsers] {
+            $browser add [getTree] 1 1
+        }
     }
         
     # @c shows a completion box with possibilities for commands,
@@ -652,7 +632,6 @@ class ::Tloona::TclFile {
         
         $T tag add sel "$start linestart" "$end lineend"
     }
-    
     
     # @c set default bindings for the widget
     protected method setBindings {} {

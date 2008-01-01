@@ -532,8 +532,7 @@ class Tloona::Mainapp {
     # @c callback that is triggered when the currently selected
     # @c file changes
     public method onCurrFile {{file ""}} {
-        if {$file != "" && \
-                    [catch {component textnb select $file} msg]} {
+        if {$file != "" && [catch {component textnb select $file} msg]} {
             return -code error "no such file"
         }
         
@@ -615,7 +614,6 @@ class Tloona::Mainapp {
                 break
             }
         }
-        
         if {$toSelect == ""} {
             return
         }
@@ -763,6 +761,7 @@ class Tloona::Mainapp {
                 }
                 $fCls updateHighlights
                 $fCls addToBrowser [component codebrowser]
+                $fCls addToBrowser [component kitbrowser]
                 update
             }
             ".kit" {

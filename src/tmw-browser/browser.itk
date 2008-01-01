@@ -223,7 +223,7 @@ body ::Tmw::Browser::remove {nodes {delete no}} {
             continue
         }
         $T delete $itm
-        $itm configure -displayed 0
+        catch {$itm configure -displayed 0}
     }
     
     if {$delete} {
@@ -292,8 +292,7 @@ body ::Tmw::Browser::displayTreeNode {node recursive args} {
         return
     }
     
-    if {![info exists aargs(-image)] \
-            && [info exists NodeIcons([$node cget -type])]} {
+    if {![info exists aargs(-image)] && [info exists NodeIcons([$node cget -type])]} {
         set aargs(-image) $NodeIcons([$node cget -type])
     }
     

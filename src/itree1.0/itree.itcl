@@ -162,7 +162,7 @@ class ::itree::Node {
     
     public method print {{chind 4}} {
         puts -nonewline [string repeat " " [expr {$chind * $level}]]
-        puts "[cget -name] ([cget -level])"
+        puts "$this : [cget -name] ([cget -level])"
         foreach ch $_Children {
             $ch print $chind
         }

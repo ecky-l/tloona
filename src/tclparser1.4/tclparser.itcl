@@ -1152,6 +1152,10 @@ proc ::parser::xotcl::parseClass {node cTree content defOffPtr} {
         }
     }
     
+    if {$classes == {}} {
+        return $clsNode
+    }
+    
     foreach {iCls} [lindex $classes 0] {
         set nsAll [regsub -all {::} [string trimleft $iCls :] " "]
         set iCls [lindex $nsAll end]
@@ -1161,7 +1165,8 @@ proc ::parser::xotcl::parseClass {node cTree content defOffPtr} {
             set tn [$node getTopnode]
             set iNode [$tn lookup $iCls [lrange $nsAll 0 end-1]]
         } else {
-            set iNode [[$node getParent] lookup $iCls]
+            set tn [expr {([$node getParent] == "") ? $node : [$node getParent]}]
+            set iNode [$tn lookup $iCls]
         }
         
         if {$iNode != ""} {
