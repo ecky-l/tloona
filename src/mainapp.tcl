@@ -1263,35 +1263,19 @@ class Tloona::Mainapp {
     # @r true if it is part, false otherwise
     private method isProjectPart {uri treePtr} {
         upvar $treePtr tree
-        
-        set vfsDirs {}
-        set dirList [file split $uri]
-        for {set i 0} {$i < [llength $dirList]} {incr i} {
-            set dir [lindex $dirList $i]
-            if {![string equal [file extension $dir] .vfs]} {
-                continue
-            }
-            
-            lappend vfsDirs [eval file join [lrange $dirList 0 $i]]
-        }
-        
-        if {$vfsDirs == {}} {
-            return no
-        }
-        
-        foreach {vfs} [component kitbrowser getStarkits] {
-            if {[lsearch $vfsDirs [$vfs cget -name]] < 0} {
-                continue
-            }
-            
-            foreach {kid} [$vfs getChildren yes] {
-                if {[$kid cget -name] == $uri} {
-                    set tree $kid
-                    return yes
+        set tree {}
+        foreach {prj} [component kitbrowser getStarkits] {
+            set pn [$prj cget -name]
+            set pnl [string length $pn]
+            if {[string compare -length $pnl $pn $uri] == 0} {
+                foreach {kid} [$prj getChildren yes] {
+                    if {[$kid cget -name] == $uri} {
+                        set tree $kid
+                    }
                 }
+                return yes
             }
         }
-        
         return no
     }
     

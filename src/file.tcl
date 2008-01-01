@@ -9,7 +9,6 @@ package require tloona::codecompletion 1.0
 package require tloona::htmlparser 1.0
 
 package provide tloona::file 1.0
-
 # @c a special Tcl/Tk file representation with 
 # @c features & functionality for Tcl/Tk files
 class ::Tloona::TclFile {

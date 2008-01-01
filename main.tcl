@@ -241,10 +241,8 @@ proc ::main {args} {
     # load configuration file
     global UserOptions tcl_platform TloonaRoot TloonaApplication
     Tloona::openLog
-    #set tPool [Tloona::createThreadPool]
     Tloona::initIcons
     Tloona::loadUserOptions
-    #tile::setTheme $UserOptions(Theme)
     ttk::style theme use $UserOptions(Theme)
     
     wm withdraw .
@@ -256,7 +254,6 @@ proc ::main {args} {
         }
     }
     # create the tooltip and completion box
-    #tpool::preserve $tPool
     ::Tloona::Mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
             -filetabsize $UserOptions(FileNTabs) -progressincr 5 \
             -filetabexpand $UserOptions(FileExpandTabs) -threadpool "" ;#$tPool
