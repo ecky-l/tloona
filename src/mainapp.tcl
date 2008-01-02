@@ -1064,7 +1064,6 @@ class Tloona::Mainapp {
                 -font $UserOptions(ConsoleFont)
         }
         component output createBackend [info nameofexecutable] yes
-        $cnb add [component output] -text "Debug Console"
         
         itk_component add console {
             Tloona::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
@@ -1076,7 +1075,8 @@ class Tloona::Mainapp {
         #puts [info frame [info frame]]
         set C [component console]
         set _DefaultInterp [$C createInterp 1]
-        $cnb add $C -text "Slave Console"
+        $cnb add $C -text "Console"
+        $cnb add [component output] -text "Debug Process"
     }
         
     # @c open a Tcl/Itcl file

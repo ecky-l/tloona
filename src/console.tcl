@@ -410,7 +410,6 @@ class ::Tloona::SlaveConsole {
         if {$set} {
             configure -slave $nSlave -colors $colors
             set History($slave) {}
-            #configure 
         }
         
         return $nSlave
@@ -446,12 +445,18 @@ class ::Tloona::SlaveConsole {
     # @c Set the alias commands for an interpreter
     protected method setAliases {interp} {
         $interp eval "set auto_path \{$::auto_path\}\n"
-        interp alias $interp puts {} [code $this putsAlias]
-        interp alias $interp exit {} [code $this exitAlias]
+        $interp eval {
+            rename puts __puts__
+            rename exit __exit__
+            rename gets __gets__
+        }
+        interp alias $interp puts {} [code $this putsAlias $interp]
+        interp alias $interp exit {} [code $this exitAlias $interp]
+        interp alias $interp gets {} [code $this getsAlias $interp]
     }
     
     # @c The puts alias for slave interpreters
-    private method putsAlias {args} {
+    private method putsAlias {interp args} {
         if {[llength $args] > 3} {
             error "invalid arguments"
         }
@@ -483,7 +488,7 @@ class ::Tloona::SlaveConsole {
     }
         
     # @c The exit alias for slave interpreters
-    private method exitAlias {args} {
+    private method exitAlias {interp args} {
         interp delete $slave
         interp create $slave
         setAliases $slave
@@ -493,6 +498,44 @@ class ::Tloona::SlaveConsole {
         
         component textwin delete 1.0 end
         return
+    }
+    
+    # @c Gets alias for slave interpreter
+    private method getsAlias {interp args} {
+        if {[llength $args] < 1 || [llength $args] > 2} {
+            error "wrong # of args, should be gets channel ?var?"
+        }
+        if {[string match [lindex $args 0] stdin]} {
+            set T [component textwin]
+            set origRet [bind $T <Return>]
+            bind $T <Return> "[code $this getsStdin]; break"
+            vwait ::vVar
+            $T mark gravity limit right
+            $T fastinsert limit $::vVar output
+            $T see limit
+            $T mark gravity limit left
+            bind $T <Return> $origRet
+            
+            # if a variable name was specified, set the variable
+            if {[llength $args] == 2} {
+                $interp eval [list set [lindex $args 1] $::vVar]
+            }
+            unset ::vVar
+            return
+        }
+        
+        # if we reached here, there is another channel to read
+        $interp eval __gets__ $args
+    }
+    
+    # @c Small helper procedure to gets stdin in slave interpreter
+    private method getsStdin {args} {
+        global vVar
+        set T [component textwin]
+        $T mark set insert end
+        set ::vVar [$T get limit end]
+        $T insert insert "\n"
+        $T mark set limit insert
     }
     
 }
