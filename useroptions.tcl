@@ -81,10 +81,12 @@ set ::UserOptions(CodeBrowser,SortSeq) {
     private_method
     proc
     namespace
+    test
 }
 set ::UserOptions(KitBrowser,SortSeq) {
     directory
     tclfile
+    testfile
     file
     package
     variable
@@ -102,6 +104,7 @@ set ::UserOptions(KitBrowser,SortSeq) {
     private_method
     proc
     namespace
+    test
 }
 set ::UserOptions(CodeBrowser,SortAlpha) 1
 set ::UserOptions(KitBrowser,SortAlpha) 1

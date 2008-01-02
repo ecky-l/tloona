@@ -92,6 +92,9 @@ proc ::Tmw::Fs::build {rootObj ignoreBackup {pThread ""}} {
                 .ws3 {
                     set type tclfile
                 }
+                .test {
+                    set type testfile
+                }
                 .png -
                 .jpg -
                 .jpeg -
@@ -124,7 +127,8 @@ proc ::Tmw::Fs::build {rootObj ignoreBackup {pThread ""}} {
                 
                 # create an empty code tree and set it for the thing
                 switch -- $type {
-                    tclfile {
+                    tclfile -
+                    testfile {
                         $thing setTree [::parser::Script ::#auto \
                             -type "script" -file $file \
                             -displayformat {"%s (%s)" -name -dirname}]
@@ -134,8 +138,6 @@ proc ::Tmw::Fs::build {rootObj ignoreBackup {pThread ""}} {
                 }
                 $rootObj addChild $thing
             }
-            
-            
             $thing configure -isvalid 1
         }
         

@@ -82,6 +82,8 @@ proc ::Tloona::initIcons {} {
     array set Icons {}
     set IconPath [file join $TloonaRoot icons]
     
+    set Icons(TclTestfile) [image create photo -file [file join $IconPath tcltestfile.png]]
+    
     set Icons(TclPublic) [image create photo -file [file join $IconPath public_method.png]]
     set Icons(TclProtected) [image create photo -file [file join $IconPath protected_method.png]]
     set Icons(TclPrivate) [image create photo -file [file join $IconPath private_method.png]]
@@ -108,6 +110,7 @@ proc ::Tloona::initIcons {} {
     # @v Icons: This is an array which contains the icons that are displayed
     # @v Icons: in the code and project browsers for different types of files
     set Icons(ScriptIcons) [list script $::Tmw::Icons(TclFile) \
+                testfile $Icons(TclTestfile) \
                 file $::Tmw::Icons(DocumentFile) \
                 webscript $::Tmw::Icons(WebFile) \
                 webcmd $::Tmw::Icons(WebScript) \

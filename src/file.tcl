@@ -93,10 +93,16 @@ class ::Tloona::TclFile {
         foreach {elem} $oldList {
             itcl::delete object $elem
         }
+        set cmds {}
         [getTree] getCommands cmds
         updateKwHighlight $cmds
         foreach browser [getBrowsers] {
+            set sel [$browser selection]
             $browser add [getTree] 1 1
+            if {$sel != {} && [$browser exists $sel]} {
+                $browser selection set $sel
+                $browser see $sel
+            }
         }
     }
         

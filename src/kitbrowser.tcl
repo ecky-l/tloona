@@ -208,8 +208,7 @@ class ::Tloona::KitBrowser {
                 # check whether the vfs directory exists already
                 # If so, ask to delete it
                 if {[file isdirectory $kf]} {
-                    Tmw::dialog .dlg -title "VFS exists" \
-                        -master $TloonaApplication
+                    Tmw::dialog .dlg -title "VFS exists" -master $TloonaApplication
                     .dlg add Ok -text "Delete directory"
                     .dlg add Cancel -text "Cancel"
                     set m "Directory $kf already exists\n"
@@ -258,41 +257,7 @@ class ::Tloona::KitBrowser {
         }
         
         # parse the tcl files
-        tsv::set itclObj FileSys $fs
-        set script {
-            set fs [tsv::get itclObj FileSys]
-            Tmw::Fs::build $fs 1
-            #foreach {fsf} [$fs getChildren yes] {
-            #    if {[string equal [$fsf cget -type] tclfile]} {
-            #        set fn [$fsf cget -name]
-            #        $fsf parseFile $fn
-            #    }
-            #}
-        }
-        
-        #eval $script
-        set mw [cget -mainwindow]
-        if {$mw != "" && [$mw isa ::Tloona::Mainapp]} {
-            set oldst [$mw cget -status]
-            $mw configure -status "Parsing project [file tail $root]"
-            $mw showProgress 1
-            if {[set tp [cget -threadpool]] != ""} {
-                set job [tpool::post -nowait $tp $script]
-                tpool::wait $tp $job
-            } else {
-                eval $script
-            }
-            $mw showProgress 0
-            $mw configure -status $oldst
-        } else {
-            if {[set tp [cget -threadpool]] != ""} {
-                set job [tpool::post -nowait $tp $script]
-                tpool::wait $tp $job
-            } else {
-                eval $script
-            }
-        }
-        
+        Tmw::Fs::build $fs 1
         add $fs 1 0
         lappend Starkits $fs
         return $fs
@@ -482,7 +447,8 @@ class ::Tloona::KitBrowser {
     # @c on the open cross before the file or when files are opened initially
     public method refreshFile {item} {
         switch -- [$item cget -type] {
-        tclfile {
+        tclfile -
+        testfile {
             set chds [[$item getTree] getChildren yes]
             if {[llength $chds] == 1 && [string equal [$chds cget -name] dummy]} {
                 $item removeChild $chds

@@ -75,7 +75,7 @@ class Tloona::Mainapp {
     private variable CommIDs {}
         
     constructor {args} {
-        global Icons
+        global Icons UserOptions
         createPanes
         createNavigators
         createConsole
@@ -86,7 +86,7 @@ class Tloona::Mainapp {
         menuentry Edit.Search -type checkbutton -toolbar maintoolbar \
             -image $Tmw::Icons(ActFileFind) -command [code $this onEditSearch %K] \
             -label "Search & Replace" -variable [scope _ShowSearchReplace] \
-            -accelerator Ctrl-f
+            -accelerator [set UserOptions(DefaultModifier)]-f
         menuentry Code.Comment -type command -toolbar maintoolbar \
             -image $Icons(ToggleCmt) -command [code $this onToggleComment] \
             -label "Comment/Uncomment section"
@@ -765,19 +765,6 @@ class Tloona::Mainapp {
                 $fCls addToBrowser [component kitbrowser]
                 update
             }
-            ".kit" {
-                openKitFile $uri
-                return
-            }
-            ".vfs" {
-                if {[isOpen $uri] != ""} {
-                    Tmw::message $TloonaApplication "Project exists" ok \
-                        "The project $uri exists already"
-                    return
-                }
-                openKitFile $uri
-                return
-            }
             ".tml" -
             ".html" -
             ".htm" -
@@ -790,7 +777,8 @@ class Tloona::Mainapp {
                 }
                 set fCls [openWebFile $uri]
             }
-            
+            ".kit" -
+            ".vfs" -
             default {
                 if {[file isdirectory $uri]} {
                     if {[isOpen $uri] != ""} {
@@ -1086,12 +1074,9 @@ class Tloona::Mainapp {
         global UserOptions
         
         set T [component textnb]
-        set cls [::Tloona::tclfile $T.file$_FileIdx \
-                -filename $uri -font $filefont \
-                -tabsize $filetabsize \
-                -expandtab $filetabexpand \
-                -mainwindow [namespace tail $this] \
-                -backupfile $UserOptions(File,Backup) \
+        set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $filefont \
+                -tabsize $filetabsize -expandtab $filetabexpand \
+                -mainwindow [namespace tail $this] -backupfile $UserOptions(File,Backup) \
                 -threadpool [cget -threadpool]]
                 
         set ttl [file tail $uri]

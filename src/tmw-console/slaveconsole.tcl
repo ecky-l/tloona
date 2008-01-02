@@ -132,7 +132,7 @@ class ::Tmw::SlaveConsole {
             $T see limit
             $T mark gravity limit left
         } else {
-            puts -nonewline $chan $string
+            $interp eval __puts__ $args
         }
         
     }
@@ -159,19 +159,18 @@ class ::Tmw::SlaveConsole {
             set T [component textwin]
             set origRet [bind $T <Return>]
             bind $T <Return> "[code $this getsStdin]; break"
-            vwait ::vVar
-            $T mark gravity limit right
-            $T fastinsert limit $::vVar output
+            vwait ::getsVar
+            set result [string range $::getsVar 0 end-1] ;# remove trailing \n
+            unset ::getsVar
             $T see limit
-            $T mark gravity limit left
             bind $T <Return> $origRet
             
             # if a variable name was specified, set the variable
             if {[llength $args] == 2} {
-                $interp eval [list set [lindex $args 1] $::vVar]
+                $interp eval [list set [lindex $args 1] $result]
+                set result [string length $result]
             }
-            unset ::vVar
-            return
+            return $result
         }
         
         # if we reached here, there is another channel to read
@@ -180,10 +179,10 @@ class ::Tmw::SlaveConsole {
     
     # @c Small helper procedure to gets stdin in slave interpreter
     private method getsStdin {args} {
-        global vVar
+        global getsVar
         set T [component textwin]
         $T mark set insert end
-        set ::vVar [$T get limit end]
+        set ::getsVar [$T get limit end]
         $T insert insert "\n"
         $T mark set limit insert
     }
