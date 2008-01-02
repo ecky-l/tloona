@@ -5,7 +5,7 @@
 package require Itcl 3.3
 package require Itk 3.3
 
-package provide tloona::console 1.0
+package provide tmw::console 1.0
 
 usual Ctext {
 	keep -width -height -background -borderwidth \
@@ -25,7 +25,7 @@ usual Console {}
 usual SlaveConsole {}
 usual BackendConsole {}
 
-namespace eval ::Tloona {}
+namespace eval ::Tmw {}
 
 # @c This is a basic console widget. It contains a ctext widget
 # @c as input and output channel and the possibility to colorize
@@ -33,7 +33,7 @@ namespace eval ::Tloona {}
 # @c consoles, which are e.g. attached to a slave interpreter or
 # @c to to any backend (IO pipe based or socket based). Commands
 # @c are saved in a history for later retrieval.
-class ::Tloona::Console {
+class ::Tmw::Console {
     inherit ::itk::Widget
     
     # @v -font: The console font
@@ -354,8 +354,8 @@ class ::Tloona::Console {
 
 # @c This is a console that evaluates commands in an associated
 # @c slave interpreter
-class ::Tloona::SlaveConsole {
-    inherit ::Tloona::Console
+class ::Tmw::SlaveConsole {
+    inherit ::Tmw::Console
     
     public variable slave "" {
         if {$slave == ""} {
@@ -373,7 +373,7 @@ class ::Tloona::SlaveConsole {
         ::eval itk_initialize $args
     }
     
-    # @c @see Tloona::Console::eval
+    # @c @see Tmw::Console::eval
     public method eval {cmd} {
         set T [component textwin]
         $T mark set insert end
@@ -543,8 +543,8 @@ class ::Tloona::SlaveConsole {
 
 # @c This console dispatches commands to a backend Tclsh/wish process
 # @c through an IO pipe and gathers the output from there.
-class ::Tloona::BackendConsole {
-    inherit ::Tloona::Console
+class ::Tmw::BackendConsole {
+    inherit ::Tmw::Console
     
     constructor {args} {
         addOutFilter [code $this filterCmdHighl]
@@ -559,7 +559,7 @@ class ::Tloona::BackendConsole {
         }
     }
     
-    # @see Tloona::Console::getCommands
+    # @see Tmw::Console::getCommands
     public method eval {cmd} {
         set cmd [string trimright $cmd \n]
         set rcmd "puts <cons_res>;"
@@ -572,7 +572,7 @@ class ::Tloona::BackendConsole {
     }
         
     # @r Commands in the backend. 
-    # @see Tloona::Console::getCommands
+    # @see Tmw::Console::getCommands
     public method getCommands {gSlave} {
         set script "set nsCmdList \{\};"
         append script "getNsCmd :: nsCmdList;"
@@ -664,7 +664,7 @@ class ::Tloona::BackendConsole {
             deleteBackend $backend
             createBackend $exe yes
             component textwin delete 1.0 end
-            Tloona::Console::eval dummy
+            Tmw::Console::eval dummy
             event generate $itk_interior <<BackendExit_[set backend]>>
             focus -force [component textwin].t
             return
@@ -685,7 +685,7 @@ class ::Tloona::BackendConsole {
             set GetsResult 1
         } elseif {[string match </cons_res> $line]} {
             set GetsResult 0
-            Tloona::Console::eval $line
+            Tmw::Console::eval $line
         } elseif {$GetsResult} {
             component textwin fastinsert insert [set line]\n result
         }
@@ -759,10 +759,10 @@ class ::Tloona::BackendConsole {
 
 
 
-proc ::Tloona::slaveconsole {path args} {
+proc ::Tmw::slaveconsole {path args} {
     uplevel 0 SlaveConsole $path $args
 }
 
-proc ::Tloona::backendconsole {path args} {
+proc ::Tmw::backendconsole {path args} {
     uplevel 0 BackendConsole $path $args
 }

@@ -5,7 +5,8 @@ package require tmw::platform 1.0
 package require tmw::icons 1.0
 package require tloona::kitbrowser 1.0
 package require tloona::codebrowser 1.0
-package require tloona::console 1.0
+package require tmw::slaveconsole 1.0
+package require tmw::backendconsole 1.0
 package require tloona::file 1.0
 package require fileutil 1.7
 package require parser::tcl 1.4
@@ -1056,17 +1057,17 @@ class Tloona::Mainapp {
     # @c creates the console
     private method createConsole {} {
         global UserOptions
-            
+        
         set cnb [component consolenb]
         itk_component add output {
-            Tloona::backendconsole $cnb.output \
+            Tmw::backendconsole $cnb.output \
                 -colors $UserOptions(TclSyntax) \
                 -font $UserOptions(ConsoleFont)
         }
         component output createBackend [info nameofexecutable] yes
         
         itk_component add console {
-            Tloona::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
+            Tmw::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
                 -font $UserOptions(ConsoleFont)
         }
             
