@@ -167,7 +167,6 @@ proc ::Tloona::loadUserOptions {} {
     global UserOptions TloonaRoot
     variable RcFile
     array set UserOptions {}
-    
     if {![file exists $RcFile]} {
         uplevel 1 source [file join $TloonaRoot useroptions.tcl]
     } else {
