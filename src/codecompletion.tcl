@@ -100,9 +100,6 @@ class ::Tloona::Completor {
         set xc [expr {[winfo rootx $textwin] + $x}]
         set yc [expr {[winfo rooty $textwin] + $y}]
         
-        set mywin [namespace tail $this]
-        wm geometry $mywin +$xc+$yc
-        wm deiconify $mywin
         
         # backup orginal bindings. We're going to bind
         # other scripts
@@ -117,10 +114,8 @@ class ::Tloona::Completor {
         bind $textwin <Key-Return> "[code $this _insert]; break"
         bind $textwin <KeyRelease> [code $this _update %K]
         
-        set script "if \{\[focus\] != \"[component list]\" && "
-        append script "\[focus\] != \"[component list]\"\} "
-        append script "\{$this hide\}\n"
-        bind $textwin <FocusOut> [list after 10 $script]
+        set script "if \{\[focus\] != \"[component list]\"\} \{$this hide\}\n"
+        bind $textwin <FocusOut> [list after 1000 $script]
         
         set L [component list]
         bind $L <Key-Return> [code $this _insert]
@@ -138,16 +133,24 @@ class ::Tloona::Completor {
             set _Word ""
         }
         
+        # show the list with entries to select
+        # TODO: make that it works a second time
+        set mywin [namespace tail $this]
+        wm geometry $mywin +$xc+$yc
+        wm deiconify $mywin
+        wm attributes $mywin -topmost yes
+        
         set Showing 1
     }
         
     # @c Hides the completion box and restores bindings on the text window
-    public method hide {} {
+    public method hide {args} {
         if {! $Showing} {
             return
         }
         
         wm withdraw [namespace tail $this]
+        #wm attributes [namespace tail $this] -topmost no
         bind $textwin <Key-Up> $_Bindings(Up)
         bind $textwin <Key-Down> $_Bindings(Down)
         bind $textwin <Key-Return> $_Bindings(Return)
@@ -159,10 +162,8 @@ class ::Tloona::Completor {
     
     private method _select {updown} {
         set L [component list]
-        
         set act [$L index active]
         $L selection clear $act
-        
         switch -- $updown {
             "Up" -
             "up" {
