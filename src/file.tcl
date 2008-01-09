@@ -611,8 +611,8 @@ class ::Tloona::TclFile {
         for {set i $ls} {$i <= $le} {incr i} {
             set line [$T get $i.0 "$i.0 lineend"]
             set v ""
-            regexp -all {^([ \t]*)[^ ]+} $line m v
-            if {[set nl [string length $v]] < $minInd} {
+            set rr [regexp -all {^([ \t]*)[^ ]+} $line m v]
+            if {$rr && ([set nl [string length $v]] < $minInd)} {
                 set minInd $nl
             }
         }
@@ -762,6 +762,10 @@ class ::Tloona::TclFile {
                 }
             }
         }
+    }
+    
+    private method closeBraces {} {
+        
     }
         
     # @c handles the word just before the insertion cursor.

@@ -79,8 +79,10 @@ class Tloona::Mainapp {
         createPanes
         createNavigators
         createConsole
-        createDebugTools
-        $Debugger configure -console [component output]
+        
+        # disable the debugger features for now... this does not work currently
+        #createDebugTools
+        #$Debugger configure -console [component output]
         
         menuentry Edit.Sep1 -type separator -toolbar maintoolbar
         menuentry Edit.Search -type checkbutton -toolbar maintoolbar \
@@ -1046,13 +1048,14 @@ class Tloona::Mainapp {
     private method createConsole {} {
         global UserOptions
         
+        # disable this for now... just overhead
         set cnb [component consolenb]
-        itk_component add output {
-            Tmw::backendconsole $cnb.output \
-                -colors $UserOptions(TclSyntax) \
-                -font $UserOptions(ConsoleFont)
-        }
-        component output createBackend [info nameofexecutable] yes
+        #itk_component add output {
+        #    Tmw::backendconsole $cnb.output \
+        #        -colors $UserOptions(TclSyntax) \
+        #        -font $UserOptions(ConsoleFont)
+        #}
+        #component output createBackend [info nameofexecutable] yes
         
         itk_component add console {
             Tmw::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
@@ -1065,7 +1068,7 @@ class Tloona::Mainapp {
         set C [component console]
         set _DefaultInterp [$C createInterp 1]
         $cnb add $C -text "Console"
-        $cnb add [component output] -text "Debug Process"
+        #$cnb add [component output] -text "Debug Process"
     }
         
     # @c open a Tcl/Itcl file
