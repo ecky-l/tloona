@@ -1,3 +1,4 @@
+package provide debug 1.0
 
 proc up {} {
     uplevel 2 {
