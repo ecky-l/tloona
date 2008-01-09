@@ -34,7 +34,7 @@ class ::Tloona::Completor {
     array set _Bindings {}
     
     private variable _Word ""
-        
+    
     # @v Showing: indicates whether the completor is showing
     private variable Showing 0
         
