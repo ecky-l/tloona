@@ -100,7 +100,6 @@ class ::Tloona::Completor {
         set xc [expr {[winfo rootx $textwin] + $x}]
         set yc [expr {[winfo rooty $textwin] + $y}]
         
-        
         # backup orginal bindings. We're going to bind
         # other scripts
         set _Bindings(Up) [bind $textwin <Key-Up>]
@@ -139,6 +138,7 @@ class ::Tloona::Completor {
         wm geometry $mywin +$xc+$yc
         wm deiconify $mywin
         wm attributes $mywin -topmost yes
+        focus -force $textwin
         
         set Showing 1
     }
