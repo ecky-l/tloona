@@ -48,7 +48,7 @@ class ::Tloona::Completor {
             keep -background -relief -borderwidth
             keep -foreground
         }
-        
+      
         configure -background white -relief flat \
             -borderwidth 0
         
@@ -107,16 +107,15 @@ class ::Tloona::Completor {
         set _Bindings(Return) [bind $textwin <Key-Return>]
         set _Bindings(KeyRelease) [bind $textwin <KeyRelease>]
         set _Bindings(FocusOut) [bind $textwin <FocusOut>]
+        set _Bindings(Key-Escape) [bind $textwin <Key-Esc>]
         
         bind $textwin <Key-Up> "[code $this _select up]; break"
         bind $textwin <Key-Down> "[code $this _select down]; break"
         bind $textwin <Key-Return> "[code $this _insert]; break"
         bind $textwin <KeyRelease> [code $this _update %K]
+        bind $textwin <Key-Escape> [code $this hide]
         
-        set script "if \{\[focus\] != \"[component list]\"\} \{\n"
-        append script "$this hide\n"
-        append script "focus -force $textwin \n"
-        append script "\}\n"
+        set script "if \{\[focus\] != \"[component list]\"\} \{$this hide\}\n"
         bind $textwin <FocusOut> [list after 5000 $script]
         
         set L [component list]
@@ -124,6 +123,7 @@ class ::Tloona::Completor {
         bind $L <Double-Button-1> [code $this _insert]
         bind $L <KeyPress> [list $textwin fastinsert insert %A]
         bind $L <KeyRelease> [code $this _update %K]
+        bind $L <Key-Escape> [code $this hide]
         
         # save the characters just before insert
         set ci [$textwin index "insert -1c"]
@@ -136,13 +136,11 @@ class ::Tloona::Completor {
         }
         
         # show the list with entries to select
-        # TODO: make that it works a second time
         set mywin [namespace tail $this]
         wm geometry $mywin +$xc+$yc
         wm deiconify $mywin
         wm attributes $mywin -topmost yes
-        focus -force $textwin
-        
+        focus -force $textwin.t
         set Showing 1
     }
         
@@ -159,8 +157,8 @@ class ::Tloona::Completor {
         bind $textwin <Key-Return> $_Bindings(Return)
         bind $textwin <KeyRelease> $_Bindings(KeyRelease)
         bind $textwin <FocusOut> $_Bindings(FocusOut)
-        
-        focus -force $textwin
+        bind $textwin <Key-Escape> $_Bindings(Key-Escape)
+        focus -force $textwin.t
         set Showing 0
     }
     

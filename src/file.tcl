@@ -43,7 +43,6 @@ class ::Tloona::TclFile {
         if {[catch {reparseTree} msg]} {
             puts $msg
         }
-        #catch {reparseTree} msg
     }
 
     # @c overloads the savefile from File
