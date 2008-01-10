@@ -838,13 +838,10 @@ class Tloona::Mainapp {
         
     # @c Removes a Comm id
     public method removeCommID {id} {
-        puts geee,$CommIDs,$id
         if {[set idx [lsearch $CommIDs $id]] < 0} {
             return
         }
-        puts here,$CommIDs
         set CommIDs [lreplace $CommIDs $idx $idx]
-        puts after,$CommIDs
     }
         
     # @r Comm IDs

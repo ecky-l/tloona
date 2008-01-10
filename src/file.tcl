@@ -51,9 +51,6 @@ class ::Tloona::TclFile {
         set ctn [::Tmw::VisualFile::saveFile $file]
         modified 0
         update
-        #if {[catch {reparseTree} msg]} {
-        #    puts $msg
-        #}
         reparseTree
     }
     
@@ -79,14 +76,12 @@ class ::Tloona::TclFile {
         set ctn [component textwin get 1.0 end]
         set ctn [string range $ctn 0 end-1]
         
+        array set sel {}
         foreach {browser} [getBrowsers] {
-            set sel [$browser selection]
+            set sel($browser) [$browser selection]
             $browser remove [getTree]
-            if {$sel != {} && [$browser exists $sel]} {
-                $browser selection set $sel
-                $browser see $sel
-            }
         }
+        
         set newList {}
         set oldList {}
         ::parser::reparse [getTree] $ctn newList oldList
@@ -97,11 +92,10 @@ class ::Tloona::TclFile {
         [getTree] getCommands cmds
         updateKwHighlight $cmds
         foreach browser [getBrowsers] {
-            set sel [$browser selection]
             $browser add [getTree] 1 1
-            if {$sel != {} && [$browser exists $sel]} {
-                $browser selection set $sel
-                $browser see $sel
+            if {$sel($browser) != {} && [$browser exists $sel($browser)]} {
+                $browser selection set $sel($browser)
+                $browser see $sel($browser)
             }
         }
     }

@@ -113,8 +113,11 @@ class ::Tloona::Completor {
         bind $textwin <Key-Return> "[code $this _insert]; break"
         bind $textwin <KeyRelease> [code $this _update %K]
         
-        set script "if \{\[focus\] != \"[component list]\"\} \{$this hide\}\n"
-        bind $textwin <FocusOut> [list after 1000 $script]
+        set script "if \{\[focus\] != \"[component list]\"\} \{\n"
+        append script "$this hide\n"
+        append script "focus -force $textwin \n"
+        append script "\}\n"
+        bind $textwin <FocusOut> [list after 5000 $script]
         
         set L [component list]
         bind $L <Key-Return> [code $this _insert]
@@ -157,6 +160,7 @@ class ::Tloona::Completor {
         bind $textwin <KeyRelease> $_Bindings(KeyRelease)
         bind $textwin <FocusOut> $_Bindings(FocusOut)
         
+        focus -force $textwin
         set Showing 0
     }
     
