@@ -4,7 +4,7 @@
 package require tmw::toolbarframe 1.0
 package require tile 0.7.5
 package require Itree 1.0
-package require tmw::plugincore 1.0
+package require tmw::plugin 1.0
 
 package provide tmw::browser 1.0
 

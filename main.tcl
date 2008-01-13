@@ -14,7 +14,7 @@ package require comm 4.3
 package require img::png 1.3
 package require tmw::dialog 1.0
 package require tmw::icons 1.0
-package require tmw::plugincore 1.0
+package require tmw::plugin 1.0
 package require log 1.2
 package require tloona::mainapp 1.0
 package require debug 1.0
@@ -259,8 +259,6 @@ proc ::main {args} {
     ::Tloona::Mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
             -filetabsize $UserOptions(FileNTabs) -progressincr 5 \
             -filetabexpand $UserOptions(FileExpandTabs) -threadpool "" ;#$tPool
-    
-    Tmw::Plugin::addinstance Tmw::Platform $TloonaApplication
     
     wm geometry $TloonaApplication $UserOptions(MainGeometry)
     update

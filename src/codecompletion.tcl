@@ -48,7 +48,7 @@ class ::Tloona::Completor {
             keep -background -relief -borderwidth
             keep -foreground
         }
-      
+        
         configure -background white -relief flat \
             -borderwidth 0
         

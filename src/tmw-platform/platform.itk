@@ -6,7 +6,7 @@ package require Tclx 8.4
 
 package require tmw::icons 1.0
 package require tmw::toolbarframe 1.0
-package require tmw::plugincore 1.0
+package require tmw::plugin 1.0
 
 package provide tmw::platform 1.0
 
@@ -46,7 +46,7 @@ itk::usual TProgressbar {}
 # @component statusline: The status line. Contains a status message and a
 # @component statusline: progress indicator that can be displayed on demand
 class Tmw::Platform {
-    inherit itk::Toplevel Tmw::Plugin::Plugin
+    inherit itk::Toplevel
     
     itk_option define -width width Width 800 {
         component mainframe configure -width $itk_option(-width)
