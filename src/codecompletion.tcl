@@ -49,7 +49,7 @@ class ::Tloona::Completor {
             keep -foreground
         }
         
-        configure -background white -relief flat \
+        itk_initialize -background white -relief flat \
             -borderwidth 0
         
         set L [component list]
@@ -90,7 +90,6 @@ class ::Tloona::Completor {
         if {$Showing} {
             hide
         }
-        
         # if the completion list is empty (that is, no suggestions 
         # to make), do nothing.
         if {[getItems] == {}} {
@@ -136,10 +135,10 @@ class ::Tloona::Completor {
         }
         
         # show the list with entries to select
-        set mywin [namespace tail $this]
+        set mywin [component hull]
         wm geometry $mywin +$xc+$yc
         wm deiconify $mywin
-        wm attributes $mywin -topmost yes
+        raise $mywin
         focus -force $textwin.t
         set Showing 1
     }

@@ -255,6 +255,7 @@ proc ::main {args} {
             wm iconbitmap . -default [file join $TloonaRoot icons tide.ico]
         }
     }
+    
     # create the tooltip and completion box
     ::Tloona::Mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
             -filetabsize $UserOptions(FileNTabs) -progressincr 5 \
@@ -300,3 +301,5 @@ proc ::main {args} {
 }
 
 ::main
+
+

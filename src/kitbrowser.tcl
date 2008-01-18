@@ -184,7 +184,7 @@ class ::Tloona::KitBrowser {
         set tb [toolbar tools -pos n -compound none]
         
         set tw [component treeview]
-        if {[string match $::tcl_platform(os) Darwin]} {
+        if {[tk windowingsystem] eq "aqua"} {
             # On Mac the right mouse button is Button-2
             bind $tw <Button-2> [code $this contextMenu %X %Y %x %y]
         } else {

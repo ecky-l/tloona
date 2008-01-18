@@ -143,8 +143,8 @@ class ::Tmw::SlaveConsole {
         interp create $slave
         setAliases $slave
         
-        set History($slave) {}
-        set HistLevel 0
+        #set History($slave) {}
+        #set HistLevel 0
         
         component textwin delete 1.0 end
         return

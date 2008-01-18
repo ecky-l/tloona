@@ -57,14 +57,14 @@ class Tmw::Platform {
     
     constructor {args} {
         itk_component add mainmenu {
-            menu $itk_interior.mainmenu -tearoff no -relief raised
+            #puts $itk_interior,[component hull]
+            ::menu [component hull].mainmenu -tearoff no -relief raised
         } {
             usual
             rename -relief -menurelief menuRelief Relief
             rename -borderwidth -menubd menuBd Borderwidth
         }
-        component hull configure -menu [component mainmenu]
-        
+        itk_initialize -menu [component mainmenu]
         addStatusLine
         addMainframe
         
