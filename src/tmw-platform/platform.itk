@@ -64,7 +64,11 @@ class Tmw::Platform {
             rename -relief -menurelief menuRelief Relief
             rename -borderwidth -menubd menuBd Borderwidth
         }
-        itk_initialize -menu [component mainmenu]
+        
+        if {[catch {itk_initialize -menu [component mainmenu]}]} {
+            component hull configure -menu [component mainmenu]
+        }
+        
         addStatusLine
         addMainframe
         
