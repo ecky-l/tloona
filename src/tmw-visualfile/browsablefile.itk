@@ -12,7 +12,7 @@ class ::Tmw::BrowsableFile {
     
     constructor {args} {
         bind [component textwin] <Button-1> \
-            [code $this selectTreeDisplay %x %y]
+            [code $this updateCurrentNode %x %y]
         
         eval configure $args
     }
@@ -53,10 +53,7 @@ class ::Tmw::BrowsableFile {
         
         # @c selects the code fragment at mouse position x, y or the 
         # @c insert cursor.
-        #
-        # @a x: the x position of mouse cursor
-        # @a y: the y position of mouse cursor
-        method selectTreeDisplay {{x -1} {y -1}}
+        method selectTreeDisplay {}
     }
     
     protected {
@@ -66,6 +63,15 @@ class ::Tmw::BrowsableFile {
         # @v BrowserDisplays: a list of displays, where the file content
         # @v BrowserDisplays: is displayed
         variable BrowserDisplays {}
+        
+        # @v CurrentNode: The node we are currently in. This is updated
+        # @v CurrentNode: when the cursor position changes in the file
+        variable CurrentNode ""
+        
+        #
+        # @a x: the x position of mouse cursor
+        # @a y: the y position of mouse cursor
+        method updateCurrentNode {{x -1} {y -1}}
     }
     
     private {
@@ -101,25 +107,29 @@ body ::Tmw::BrowsableFile::openFile {{file ""}} {
         -displayformat {"%s (%s)" -name -dirname}
 }
 
-body ::Tmw::BrowsableFile::selectTreeDisplay {{x -1} {y -1}} {
+body ::Tmw::BrowsableFile::selectTreeDisplay {} {
     if {[getTree] == ""} {
-        return
-    }
-    event generate [namespace tail $this] <<TextPositionChanged>>
-    set cdf [[getTree] lookupRange [getTextPos $x $y]]
-    if {$cdf == ""} {
         return
     }
     
     foreach browser [getBrowsers] {
         set bwin [$browser component treeview]
-        if {!([$browser exists $cdf] && [winfo ismapped $bwin]
+        if {!([$browser exists $CurrentNode] && [winfo ismapped $bwin]
                 && [$browser cget -syncronize])} {
             continue
         }
         
-        $browser selection set $cdf
-        $browser see $cdf
+        $browser selection set $CurrentNode
+        $browser see $CurrentNode
+    }
+}
+
+body ::Tmw::BrowsableFile::updateCurrentNode {{x -1} {y -1}} {
+    event generate [namespace tail $this] <<TextPositionChanged>>
+    set tmp $CurrentNode
+    set CurrentNode [[getTree] lookupRange [getTextPos $x $y]]
+    if {![string equal $tmp $CurrentNode]} {
+        selectTreeDisplay
     }
 }
 

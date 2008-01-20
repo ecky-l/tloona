@@ -24,7 +24,7 @@ class ::Tmw::SlaveConsole {
     }
     
     # @c @see Tmw::Console::eval
-    public method eval {cmd} {
+    public method eval {cmd {gotDef 0}} {
         set T [component textwin]
         $T mark set insert end
         
@@ -35,6 +35,8 @@ class ::Tmw::SlaveConsole {
         } else {
             if {$result != ""} {
                 append result \n
+            } elseif {$gotDef} {
+                append result [lindex [split $cmd \n] 0] " ..." \n
             }
             $T fastinsert insert $result result
         }

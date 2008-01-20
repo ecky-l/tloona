@@ -14,6 +14,10 @@ package provide tloona::file 1.0
 class ::Tloona::TclFile {
     inherit ::Tmw::BrowsableFile
     
+    # @v sendcmd: A command that is executed for sending code to foreign
+    # @v sendcmd: interpreters
+    public variable sendcmd ""
+    
     # @v _CmdThread: Thread where commands in the file are evaluated
     private variable _CmdThread ""
     # @v _Namespaces: all namespaces in this file, according to packages
@@ -633,17 +637,30 @@ class ::Tloona::TclFile {
     
     # @c set default bindings for the widget
     protected method setBindings {} {
+        global UserOptions
         set T [component textwin]
         
         # code completion bindings
-        bind $T <Control-space> [code $this showCmdCompl 1]
+        set accel $UserOptions(DefaultModifier)
+        set accel [regsub {Ctrl} $accel Control]
+        set accel [regsub {Meta} $accel M1]
+        bind $T <[set accel]-space> [code $this showCmdCompl 1]
+        bind $T <[set accel]-Return> "[code $this sendCode];break"
         
-        bind $T <Key-Up> [code $this selectTreeDisplay]
-        bind $T <Key-Down> [code $this selectTreeDisplay]
-        bind $T <Key-Left> [code $this selectTreeDisplay]
-        bind $T <Key-Right> [code $this selectTreeDisplay]
+        bind $T <Key-Up> [code $this updateCurrentNode]
+        bind $T <Key-Down> [code $this updateCurrentNode]
+        bind $T <Key-Left> [code $this updateCurrentNode]
+        bind $T <Key-Right> [code $this updateCurrentNode]
         bind $T <KeyPress> [code $this onKeyPress %K %A]
         bind $T <KeyRelease> [code $this handleInputChar %A]
+    }
+    
+    # @c Sends code to via the sendcmd procedure
+    protected method sendCode {} {
+        if {$sendcmd == ""} {
+            return
+        }
+        $sendcmd [::Tloona::getNodeDefinition $CurrentNode]
     }
     
     # @c handles the character that was typed last. Invoked 

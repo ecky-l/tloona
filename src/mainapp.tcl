@@ -985,6 +985,8 @@ class Tloona::Mainapp {
                 -mainwindow $itk_interior
         }
         set kb [component kitbrowser]
+        # add a command to send code to the builtin console
+        $kb addSendCmd [code $this sendToConsole]
         $kb setNodeIcons [concat [$kb getNodeIcons] $Icons(ScriptIcons)]
         $bnb add $kb -text "Workspace"
         bind [component kitbrowser] <<SortSeqChanged>> \
@@ -999,6 +1001,7 @@ class Tloona::Mainapp {
         }
     
         component codebrowser setNodeIcons $Icons(ScriptIcons)
+        component codebrowser addSendCmd [code $this sendToConsole]
         $bnb add [component codebrowser] -text "Outline"
         set V [component codebrowser component treeview]
         bind $V <Button-1> [code $this selectCode %W %x %y 0]
@@ -1076,7 +1079,9 @@ class Tloona::Mainapp {
         set T [component textnb]
         set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $filefont \
                 -tabsize $filetabsize -expandtab $filetabexpand \
-                -mainwindow [namespace tail $this] -backupfile $UserOptions(File,Backup) \
+                -mainwindow [namespace tail $this] \
+                -backupfile $UserOptions(File,Backup) \
+                -sendcmd [code $this sendToConsole] \
                 -threadpool [cget -threadpool]]
                 
         set ttl [file tail $uri]
@@ -1263,6 +1268,11 @@ class Tloona::Mainapp {
             }
         }
         return no
+    }
+    
+    # @c Send a script to the internal console
+    private method sendToConsole {script} {
+        component console eval $script 1
     }
     
 }

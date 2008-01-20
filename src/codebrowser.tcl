@@ -43,6 +43,10 @@ class ::Tloona::CodeBrowser {
     # @v CodeTrees: that no code tree gets lost
     protected variable CodeTrees {}
         
+    # @v SendCmds: list of commands that are executed to send a code
+    # @v SendCmds: definition to one or more foreign interpreters
+    protected variable SendCmds {}
+
     constructor {args} {
         createToolbar
         eval itk_initialize $args
@@ -73,7 +77,15 @@ class ::Tloona::CodeBrowser {
         add $CodeTrees 1 0
     
     }
-        
+    
+    # @c Add a command to the list of commands that are used to send
+    # @c scripts to foreign interpreters
+    public method addSendCmd {cmd} {
+        if {[lsearch $SendCmds $cmd] < 0} {
+            lappend SendCmds $cmd
+        }
+    }
+    
     # @c Sends a code definition per comm to another interpreter
     # @c This can serve as a callback for a menu entry
     #
@@ -90,6 +102,12 @@ class ::Tloona::CodeBrowser {
         switch -- $type {
         comm {
             sendCommDefinition $node $id
+        }
+        console {
+            set script [::Tloona::getNodeDefinition $node]
+            foreach {cmd} $SendCmds {
+                $cmd $script
+            }
         }
         }
     }
@@ -304,27 +322,7 @@ class ::Tloona::CodeBrowser {
             }
         }
         
-        set script ""
-        if {[string match *method [$node cget -type]]} {
-            append script "body "
-        } elseif {[string match proc [$node cget -type]]} {
-            append script "proc "
-        } else {
-            # not supported yet
-            return
-        }
-        
-        # get fully qualified name
-        set name [$node cget -name]
-        set parent [$node getParent]
-        while {$parent != "" && [$parent isa ::parser::StructuredFile]} {
-            set name [$parent cget -name]::[set name]
-            set parent [$parent getParent]
-        }
-        
-        append script :: "$name [list [$node cget -arglist]] {"
-        append script [string trim [$node cget -definition] "{}"]
-        append script "}"
+        set script [::Tloona::getNodeDefinition $node]
         #puts $script
         if {[catch {comm::comm send $id $script} m]} {
             Tmw::message $mw "Error from $id" ok \
@@ -426,6 +424,36 @@ class ::Tloona::CodeOutline {
     
 }
 
+# @c Gets the node definition of a proc or class item and constructs
+# @c a script to be send to other interpreters
+#
+# @a node: the node, a parser object
+# @r the script to be sent
+proc ::Tloona::getNodeDefinition {node} {
+    set script ""
+    if {[string match *method [$node cget -type]]} {
+        append script "body "
+    } elseif {[string match proc [$node cget -type]]} {
+        append script "proc "
+    } else {
+        # not supported yet
+        return
+    }
+    
+    # get fully qualified name
+    set name [$node cget -name]
+    set parent [$node getParent]
+    while {$parent != "" && [$parent isa ::parser::StructuredFile]} {
+        set name [$parent cget -name]::[set name]
+        set parent [$parent getParent]
+    }
+    
+    append script :: "$name [list [$node cget -arglist]] {"
+    append script [string trim [$node cget -definition] "{}"]
+    append script "}"
+    
+    return $script
+}
 
 proc ::Tloona::codeoutline {path args} {
     uplevel ::Tloona::CodeOutline $path $args

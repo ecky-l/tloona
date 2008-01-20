@@ -542,6 +542,10 @@ class ::Tloona::KitBrowser {
             }
             .kitcmenu.commm add command -label "New Comm ID" \
                 -command [code $this sendDefinition $realItem comm ""]
+            
+            # to the console
+            .kitcmenu add command -label "Send to Console" -command \
+                [code $this sendDefinition $realItem console ""]
         }
         
         tk_popup .kitcmenu $xr $yr
