@@ -128,7 +128,7 @@ body ::Tmw::BrowsableFile::updateCurrentNode {{x -1} {y -1}} {
     event generate [namespace tail $this] <<TextPositionChanged>>
     set tmp $CurrentNode
     set CurrentNode [[getTree] lookupRange [getTextPos $x $y]]
-    if {![string equal $tmp $CurrentNode]} {
+    if {$CurrentNode != "" && ![string equal $tmp $CurrentNode]} {
         selectTreeDisplay
     }
 }
