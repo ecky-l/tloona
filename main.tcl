@@ -245,7 +245,7 @@ proc ::main {args} {
     Tloona::openLog
     Tloona::initIcons
     Tloona::loadUserOptions
-    ttk::style theme use $UserOptions(Theme)
+    catch {ttk::style theme use $UserOptions(Theme)}
     
     wm withdraw .
     if {$tcl_platform(platform) == "windows"} {
