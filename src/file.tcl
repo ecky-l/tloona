@@ -638,8 +638,15 @@ class ::Tloona::TclFile {
     # @c set default bindings for the widget
     protected method setBindings {} {
         global UserOptions
-        set T [component textwin].t
+        set T [component textwin]
         
+        # switch the bindtags sequence. The textwin (ctags textwin)
+        # must come first in the list
+        set ntags [lindex [bindtags $T.t] 1]
+        lappend ntags [lindex [bindtags $T.t] 0]
+        set ntags [concat $ntags [lrange [bindtags $T.t] 2 end]]
+        bindtags $T.t $ntags
+
         # code completion bindings
         set accel $UserOptions(DefaultModifier)
         set accel [regsub {Ctrl} $accel Control]

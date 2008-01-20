@@ -536,6 +536,7 @@ body ::Tmw::ToolbarFrame::dropframe {name args} {
     return [lindex $Dropframes($toolbar,$name) 0]
 }
 
+
 body ::Tmw::ToolbarFrame::showRegions {} {
     
     set is [pack slaves $itk_interior]

@@ -10,6 +10,16 @@ package require tmw::plugin 1.0
 
 package provide tmw::platform 1.0
 
+plugin provide tmw-platform 1.0 {
+    # @e menuentry: define or configure menu entries
+    extensionpoint menuentry {[Tmw::Platform::instance] menuentry}
+    extensionpoint viewleft {[Tmw::Platform::instance] getSite left}
+    extensionpoint viewmiddle {[Tmw::Platform::instance] getSite middle}
+    extensionpoint viewright {[Tmw::Platform::instance] getSite right}
+    extensionpoint viewdownleft {[Tmw::Platform::instance] getSite downleft}
+    extensionpoint viewdownright {[Tmw::Platform::instance] getSite downright}
+}
+
 # Toolbar options
 # See toolbutton.tcl.
 option add *Toolbar.relief groove
@@ -31,6 +41,8 @@ itk::usual TButton {}
 itk::usual Toolbar {}
 itk::usual TLabel {}
 itk::usual TProgressbar {}
+itk::usual TPanedwindow {}
+itk::usual TNotebook {}
 
 # @c The main application Megawidget makes it easy to create main frames. It
 # @c contains methods to create menus, toolbars and a status line. The toolbar
@@ -55,7 +67,15 @@ class Tmw::Platform {
         component mainframe configure -height $itk_option(-height)
     }
     
+    # @v Instance: This is a singleton instance of this class
+    private common Instance ""
+    
     constructor {args} {
+        set caller [string range [info level [expr [info level] - 1]] end-20 end]
+        puts $caller
+        if {![string match Platform::instance [lindex $caller 0]]} {
+            error "Tmw::Platform can not be directly instantiated - use instance"
+        }
         itk_component add mainmenu {
             #puts $itk_interior,[component hull]
             ::menu [component hull].mainmenu -tearoff no -relief raised
@@ -71,6 +91,7 @@ class Tmw::Platform {
         
         addStatusLine
         addMainframe
+        createPanes
         
         toolbar maintoolbar -pos n -compound none
         defaultMenu
@@ -171,6 +192,13 @@ class Tmw::Platform {
         # @c callback handler for default Edit.Paste menu entry. Needs
         # @c to be overridden by clients
         method onEditPaste {} {}
+        # @c Get child site in the specified place, one of left, middle,
+        # @c right, downleft, downright.
+        # 
+        # @a where: position of child site
+        # @a what: command to create a child in this site, e.g. frame, notebook...
+        # @a args: optional args to the creation
+        method getSite {where args}
         
         # @r the mainframe
         method mainframe {} {
@@ -185,6 +213,11 @@ class Tmw::Platform {
         variable Menus
         array set Menus {}
         
+        # @v NSitesUpper: Number of sites in the upper paned window
+        variable NSitesUpper 0
+        # @v NSitesLower: Number of sites in the lower paned window
+        variable NSitesLower 0
+        
         # @c creates the default main menu.
         # @c Override in your app, if you need special menu entries
         method defaultMenu {}
@@ -195,8 +228,42 @@ class Tmw::Platform {
         method addStatusLine {}
         # @c Creates the mainframe to place widgets inside
         method addMainframe {}
+        # @c Creates panes inside the mainframe. This is done by 
+        # @c ttk::panedwindows which can be arranged differently
+        method createPanes {}
     }
     
+}
+
+proc ::Tmw::Platform::instance {args} {
+    if {$Instance == ""} {
+        set Instance [eval ::Tmw::Platform $args]
+    }
+    return $Instance
+}
+
+body ::Tmw::Platform::getSite {where args} {
+    set parent [component upperpw]
+    switch -- $where {
+        downleft -
+        downright {
+            set parent [component lowerpw]
+        }
+    }
+    if {[winfo exists $parent.where]} {
+        return [component where]
+    }
+    itk_component add $where {
+        eval ttk::notebook $parent.$where $args
+    }
+    
+    array set chk {left 1 middle 2 right 3 downleft 1 downright 2}
+    if {[llength [winfo children $parent]] > $chk($where)} {
+        $parent insert [incr chk($where) -1] [component $where]
+    } else {
+        $parent add [component $where]
+    }
+    return [component $where]
 }
 
 body ::Tmw::Platform::menuentry {name args} {
@@ -507,9 +574,25 @@ body ::Tmw::Platform::addMainframe {} {
     pack [component mainframe] -expand yes -fill both
 }
 
-proc ::Tmw::mainapp {path args} {
-    uplevel 0 Platform $path $args
+# @c creates the pane parts in the main window
+body ::Tmw::Platform::createPanes {} {
+    set mainpw [::ttk::panedwindow [mainframe].mainpw -orient vertical]
+    
+    itk_component add upperpw {
+        ::ttk::panedwindow $mainpw.upperpw -orient horizontal
+    }
+    itk_component add lowerpw {
+        ::ttk::panedwindow $mainpw.lowerpw -orient horizontal
+    }
+    
+    $mainpw add [component upperpw] -weight 1
+    $mainpw add [component lowerpw] -weight 1
+    pack $mainpw -expand yes -fill both
 }
 
-## plugin code
-plugin Tmw::Platform
+
+
+proc ::Tmw::mainapp {path args} {
+    uplevel 0 ::Tmw::Platform::instance $path $args
+}
+

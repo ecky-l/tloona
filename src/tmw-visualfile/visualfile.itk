@@ -556,7 +556,7 @@ body ::Tmw::VisualFile::colorizeInsert {{key ""}} {
     }
     
     
-    set T [component textwin]
+    set T [component textwin].t
     set line [lindex [split [$T index insert] .] 0]
     set nline [expr {$line + 1}]
     
