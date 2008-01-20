@@ -42,7 +42,7 @@ class Tloona::Mainapp {
     public variable threadpool "" {
         component kitbrowser configure -threadpool [cget -threadpool]
     }
-        
+    
     # @v _FileIdx: the index of the actual file
     private variable _FileIdx 0
     # @v _Files: triple holding file objects
@@ -917,6 +917,17 @@ class Tloona::Mainapp {
                 
     }
     
+    # @c switch between widgets inside the application
+    protected method switchWidgets {} {
+        set cfw [$_CurrFile component textwin].t
+        set consw [component console component textwin].t
+        if {[string match [focus] $cfw]} {
+            focus -force $consw
+        } elseif {[string match [focus] $consw]} {
+            focus -force $cfw
+        }
+    }
+    
     # @c creates the pane parts in the main window
     private method createPanes {} {
         itk_component add browsepw {
@@ -1062,10 +1073,10 @@ class Tloona::Mainapp {
                 -font $UserOptions(ConsoleFont)
         }
             
-        #breakpoint
-        #puts [info level [info level]]
-        #puts [info frame [info frame]]
         set C [component console]
+        
+        # associate the widget switch command with the console
+        bind [$C component textwin].t <Control-Tab> "[code $this switchWidgets];break"
         set _DefaultInterp [$C createInterp 1]
         $cnb add $C -text "Console"
         #$cnb add [component output] -text "Debug Process"
@@ -1083,7 +1094,10 @@ class Tloona::Mainapp {
                 -backupfile $UserOptions(File,Backup) \
                 -sendcmd [code $this sendToConsole] \
                 -threadpool [cget -threadpool]]
-                
+        
+        # set binding for shortcut to change windows
+        bind [$cls component textwin].t <Control-Tab> "[code $this switchWidgets];break"
+        
         set ttl [file tail $uri]
         component textnb add $cls -text $ttl
         

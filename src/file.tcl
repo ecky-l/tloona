@@ -638,7 +638,7 @@ class ::Tloona::TclFile {
     # @c set default bindings for the widget
     protected method setBindings {} {
         global UserOptions
-        set T [component textwin]
+        set T [component textwin].t
         
         # code completion bindings
         set accel $UserOptions(DefaultModifier)
