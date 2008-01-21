@@ -96,7 +96,6 @@ class ::Tmw::SlaveConsole {
     
     # @c Set the alias commands for an interpreter
     protected method setAliases {interp} {
-        $interp eval "set auto_path \{$::auto_path\}\n"
         $interp eval {
             rename puts __puts__
             rename exit __exit__

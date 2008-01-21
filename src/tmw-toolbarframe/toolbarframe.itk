@@ -321,61 +321,60 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     set type ""
     set stickto "front"
     set separate 1
+    set position end
     
-    # check for special arguments
-    if {[set i [lsearch $args -type]] >= 0} {
-        lvarpop args $i
-        set type [lvarpop args $i]
-    }
-    if {[set i [lsearch $args -toolbar]] >= 0} {
-        lvarpop args $i
-        set toolbar [lvarpop args $i]
-    }
-    if {[set i [lsearch $args -stickto]] >= 0} {
-        lvarpop args $i
-        set stickto [lvarpop args $i]
-        switch -- $stickto {
-            front - back {
-            }
-            default {
-                error "-stickto must be \"front\" or \"back\""
+    if {[string match [lindex $args end] delete]} {
+        # the delete operation needs special treatment
+        array set aa [lrange $args 0 end-1]
+        if {[info exists aa(-toolbar)]} {
+            set toolbar $aa(-toolbar)
+        }
+        set nargs delete
+    } else {
+        array set aa $args
+        foreach {vv v} {-type type -position position -toolbar toolbar \
+                -stickto stickto -separate separate} {
+            if {[info exists aa($vv)]} {
+                set $v $aa($vv)
+                unset aa($vv)
             }
         }
-    }
-    if {[set i [lsearch $args -separate]] >= 0} {
-        lvarpop args $i
-        set separate [lvarpop args $i]
+        set nargs [array get aa]
     }
     
     # toolbar component name must be provided
     set T ""
     set path [regsub -all {\.} [string tolower $name] {_}]
-    
+    set rName [string tolower [lindex [split $name .] 0]]
+    set tbm $T.$rName
     if {$toolbar == "" || [catch {component $toolbar} T]} {
         error "-toolbar must be provided and valid! ($T)"
     }
     
     # if the widget path exists, configure or delete it
     if {[winfo exists $T.$path]} {
-        if {[llength $args] == 1} {
-            if {$args == "delete"} {
+        if {[llength $nargs] == 1} {
+            if {$nargs == "delete"} {
                 destroy $T.$path
                 set newl {}
-                foreach {ltype lpath} $Buttons($toolbar) {
+                foreach {ltype lpath lstickto} $Buttons($toolbar) {
                     if {[string match $lpath $T.$path]} {
                         continue
                     }
-                    lappend newl $ltype $lpath
+                    lappend newl $ltype $lpath $lstickto
                 }
+                set idx [lsearch $Buttons($toolbar,$tbm) $T.$path]
+                set Buttons($toolbar,$tbm) [lreplace \
+                    $Buttons($toolbar,$tbm) $idx $idx]
                 
                 set Buttons($toolbar) $newl
                 return
             }
             
-            return [$T.$path cget $args]
+            return [$T.$path cget $nargs]
         }
         
-        eval $T.$path configure $args
+        eval $T.$path configure $nargs
         return
     }
     
@@ -383,9 +382,6 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     # determines a category. Each category is separated by a 
     # ttk::separator - if the category (and hence the separator)
     # does not exist yet, create it
-    set rName [string tolower [lindex [split $name .] 0]]
-    set tbm $T.$rName
-    
     switch -- $Positions($toolbar) {
         n - s {
             if {[string match $stickto front]} {
@@ -416,37 +412,43 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     }
     
     # compound configuration
-    if {[set i [lsearch $args -compound]] >= 0} {
-        lset args [incr i] $Compounds($toolbar)
+    if {[set i [lsearch $nargs -compound]] >= 0} {
+        lset nargs [incr i] $Compounds($toolbar)
     } else {
-        lappend args -compound $Compounds($toolbar)
+        lappend nargs -compound $Compounds($toolbar)
     }
     
     # define widget and pack/widget arguments, depending on which 
     # type of toolbutton is to create
     set cmd ttk::button
     set packArgs [list -side $side -expand n -fill both]
+    if {[info exists Buttons($toolbar,$tbm)] && ![string match $position end]} {
+        # get widget to insert before. All prev. created buttons
+        # are in order in the Buttons array (together with their
+        # type and stickto option)
+        lappend packArgs -before [lindex $Buttons($toolbar,$tbm) $position]
+    }
     switch -- $type {
         command {
             set cmd ttk::button
-            lappend args -style Toolbutton
+            lappend nargs -style Toolbutton
         }
         checkbutton {
             set cmd ttk::checkbutton
-            lappend args -style Toolbutton
+            lappend nargs -style Toolbutton
         }
         radiobutton {
             set cmd ttk::radiobutton
-            lappend args -style Toolbutton
+            lappend nargs -style Toolbutton
         }
         menubutton -
         cascade {
             set cmd ttk::menubutton
-            #lappend args -style Toolbutton
+            #lappend nargs -style Toolbutton
         }
         separator {
             set cmd ttk::separator
-            set args [list -orient $orient]
+            set nargs [list -orient $orient]
             set packArgs [list -expand n -side $side -fill none -padx 1]
             set type innersep
         }
@@ -456,15 +458,27 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     }
     
     # create the widget
-    set b [eval $cmd $T.$path $args]
-    if {$separate} {
-        eval pack $b -before $Separators($tbm) $packArgs
+    set b [$cmd $T.$path {*}$nargs]
+    if {$separate && [lsearch $packArgs -before] < 0} {
+        pack $b -before $Separators($tbm) {*}$packArgs
     } else {
-        eval pack $b $packArgs
+        pack $b {*}$packArgs
     }
     
-    lappend Buttons($toolbar) $type $T.$path $stickto
-    #puts $Buttons($toolbar)
+    set ri [expr {
+        [string match $position end] ? $position : $position * 3
+    }]
+    set Buttons($toolbar) [linsert $Buttons($toolbar) $ri \
+            $type $T.$path $stickto]
+    
+    # store the window another times in the separator group, so that
+    # later toolbuttons can determine their position correctly
+    if {![info exists Buttons($toolbar,$tbm)]} {
+        lappend Buttons($toolbar,$tbm) $T.$path
+    } else {
+        set Buttons($toolbar,$tbm) [linsert $Buttons($toolbar,$tbm) \
+            $position $T.$path]
+    }
     return $T.$path
 }
 
