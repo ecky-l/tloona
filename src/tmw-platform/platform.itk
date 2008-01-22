@@ -447,6 +447,7 @@ body ::Tmw::Platform::addMenuEntry {name type pos toolbar args} {
     # Step through all dotted components except the last one and
     # create cascades if they don't exist
     set casc [component mainmenu]
+    set ppos $pos
     foreach {cc} [lrange [split $name .] 0 end-1] {
         set pcasc $casc
         append casc .[string tolower $cc]
@@ -454,6 +455,9 @@ body ::Tmw::Platform::addMenuEntry {name type pos toolbar args} {
             continue
         }
         menu $casc -tearoff no
+        if {$pcasc == [component mainmenu] && $pos != "end"} {
+            incr pos
+        }
         $pcasc insert $pos cascade -menu $casc -label $cc
         set pos end
     }
@@ -484,7 +488,7 @@ body ::Tmw::Platform::addMenuEntry {name type pos toolbar args} {
             set args [lreplace $args $i [incr i]]
         }
         # the position where the button should go
-        component mainframe toolbutton $name -type $type -position $pos \
+        component mainframe toolbutton $name -type $type -position $ppos \
             -toolbar $toolbar {*}$args
         set MToolButton($name) $toolbar
     }

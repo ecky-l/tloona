@@ -402,13 +402,43 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
             set tsfill x
         }
     }
-            
+    
+    set btnPackPos $position ;# this is the real position for the button
     if {$separate && ![info exists Separators($tbm)]} {
         set sep [set rName]sep
         set Separators($tbm) [ttk::separator $T.$sep -orient $orient]
-        pack $Separators($tbm) -expand n -fill $tsfill -side $side \
-            -padx 2 -pady 2
-        lappend Buttons($toolbar) separator $Separators($tbm) $stickto
+        # If a position was given, treat this as the groups position and
+        # place the separator directly before the first button in the 
+        # group that is currently at this position. If no more groups 
+        # exist than $position, place the group at the end as usual
+        set sepNames [array names Separators]
+        set pArgs [list -expand n -fill $tsfill -side $side -padx 2 -pady 2]
+        set j end
+        if {![string match $position end] && [llength $sepNames] > $position} {
+            set i 0
+            set j 1
+            set pWidget [lindex $Buttons($toolbar) 0]
+            foreach {tp w d} $Buttons($toolbar) {
+                incr j 3
+                if {[string match $tp separator]} {
+                    if {$i == $position} {
+                        lappend pArgs -before [lindex $Buttons($toolbar) $j]
+                        incr j -4
+                        break
+                    }
+                    # take the widget from the next 3x group
+                    set pWidget [lindex $Buttons($toolbar) $j]
+                    incr i
+                }
+            }
+        }
+        pack $Separators($tbm) {*}$pArgs
+        
+        set Buttons($toolbar) [linsert $Buttons($toolbar) $j \
+            separator $Separators($tbm) $stickto]
+        # adjust position so that the window is later inserted at the
+        # right position
+        set position [expr {[string match $j end] ? $j : ($j + 3)/3}]
     }
     
     # compound configuration
@@ -422,11 +452,14 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     # type of toolbutton is to create
     set cmd ttk::button
     set packArgs [list -side $side -expand n -fill both]
-    if {[info exists Buttons($toolbar,$tbm)] && ![string match $position end]} {
+    if {[info exists Buttons($toolbar,$tbm)] && 
+        ![string match $position end] &&
+        [llength $Buttons($toolbar,$tbm)] > $btnPackPos} {
         # get widget to insert before. All prev. created buttons
         # are in order in the Buttons array (together with their
         # type and stickto option)
-        lappend packArgs -before [lindex $Buttons($toolbar,$tbm) $position]
+        puts [llength $Buttons($toolbar,$tbm)],$position
+        lappend packArgs -before [lindex $Buttons($toolbar,$tbm) $btnPackPos]
     }
     switch -- $type {
         command {
@@ -468,6 +501,7 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     set ri [expr {
         [string match $position end] ? $position : $position * 3
     }]
+    puts $position,$ri
     set Buttons($toolbar) [linsert $Buttons($toolbar) $ri \
             $type $T.$path $stickto]
     
