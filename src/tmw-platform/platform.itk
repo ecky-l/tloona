@@ -507,7 +507,7 @@ body ::Tmw::Platform::deleteMenuEntry {name} {
     set path [string tolower $name]
     set parent [join [lrange [split $path .] 0 end-1] .]
     set M [component mainmenu]
-    for {set i 0} {$i < [$M.$parent index end]} {incr i} {
+    for {set i 0} {$i <= [$M.$parent index end]} {incr i} {
         switch -- [$M.$parent type $i] {
         command {
             set enam [$M.$parent entrycget $i -label]
