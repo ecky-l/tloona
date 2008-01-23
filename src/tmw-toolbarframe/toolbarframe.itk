@@ -451,7 +451,7 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     # define widget and pack/widget arguments, depending on which 
     # type of toolbutton is to create
     set cmd ttk::button
-    set packArgs [list -side $side -expand n -fill both]
+    set befPack {}
     if {[info exists Buttons($toolbar,$tbm)] && 
         ![string match $position end] &&
         [llength $Buttons($toolbar,$tbm)] > $btnPackPos} {
@@ -459,8 +459,9 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
         # are in order in the Buttons array (together with their
         # type and stickto option)
         puts [llength $Buttons($toolbar,$tbm)],$position
-        lappend packArgs -before [lindex $Buttons($toolbar,$tbm) $btnPackPos]
+        set befPack [list -before [lindex $Buttons($toolbar,$tbm) $btnPackPos]]
     }
+    set packArgs [concat -side $side -expand n -fill both $befPack]
     switch -- $type {
         command {
             set cmd ttk::button
@@ -482,7 +483,8 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
         separator {
             set cmd ttk::separator
             set nargs [list -orient $orient]
-            set packArgs [list -expand n -side $side -fill none -padx 1]
+            set packArgs [concat -expand n -side $side \
+                -fill none -padx 1 $befPack]
             set type innersep
         }
         default {
@@ -501,7 +503,6 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     set ri [expr {
         [string match $position end] ? $position : $position * 3
     }]
-    puts $position,$ri
     set Buttons($toolbar) [linsert $Buttons($toolbar) $ri \
             $type $T.$path $stickto]
     
