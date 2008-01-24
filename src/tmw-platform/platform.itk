@@ -476,7 +476,7 @@ body ::Tmw::Platform::addMenuEntry {name type pos toolbar args} {
         lappend args -label [lindex [split $name .] end]
     } else {
         # store the name of the separator
-        set MSeparators($casc) [lindex [split $name .] end]
+        lappend MSeparators($casc) [lindex [split $name .] end]
     }
     $casc insert $pos $type {*}$args
     
@@ -499,6 +499,7 @@ body ::Tmw::Platform::addMenuEntry {name type pos toolbar args} {
         component mainframe toolbutton $name -type $type -position $ppos \
             -toolbar $toolbar {*}$args
         set MToolButton($name) $toolbar
+        set MToolButton([join [lrange [split $name .] 0 end-1] .]) $toolbar
     }
     
     array set aargs $args
@@ -514,14 +515,16 @@ body ::Tmw::Platform::deleteMenuEntry {name} {
     set mname [lindex [split $name . ] end]
     set path [string tolower $name]
     set parent [join [lrange [split $path .] 0 end-1] .]
-    set M [component mainmenu]
+    set M [expr {
+        $parent == "" ? [component mainmenu] : "[component mainmenu].$parent"
+    }]
     set si 0 ;# The index variable for separators
-    for {set i 0} {$i <= [$M.$parent index end]} {incr i} {
-        switch -- [$M.$parent type $i] {
+    for {set i 0} {$i <= [$M index end]} {incr i} {
+        switch -- [$M type $i] {
         command {
-            set enam [$M.$parent entrycget $i -label]
+            set enam [$M entrycget $i -label]
             if {[string match $enam $mname]} {
-                $M.$parent delete $i
+                $M delete $i
                 if {[info exists MToolButton($name)]} {
                     component mainframe toolbutton $name \
                         -toolbar $MToolButton($name) delete
@@ -531,15 +534,16 @@ body ::Tmw::Platform::deleteMenuEntry {name} {
             }
         }
         separator {
-            if {![info exists MSeparators($M.$parent)]} {
+            if {![info exists MSeparators($M)]} {
                 continue
             }
-            set pSep [lindex $MSeparators($M.$parent) $si]
+            set pSep [lindex $MSeparators($M) $si]
             if {[string match $mname $pSep]} {
-                $M.$parent delete $i
+                $M delete $i
                 if {[info exists MToolButton($name)]} {
                     component mainframe toolbutton $name \
                         -toolbar $MToolButton($name) delete
+                    set MSeparators($M) [lreplace $MSeparators($M) $si $si]
                     unset MToolButton($name)
                 }
                 break
@@ -547,9 +551,29 @@ body ::Tmw::Platform::deleteMenuEntry {name} {
             incr si
         }
         cascade {
+            set mm [$M entrycget $i -menu]
+            if {[string match [lindex [split $mm .] end] [string tolower $mname]]} {
+                $M delete $i
+                destroy $mm
+                puts $name,,
+                if {[info exists MToolButton($name)]} {
+                    puts huhhh
+                component mainframe deleteTbGroup $name $MToolButton($name)
+                }
+            }
         }
         }
-    }    
+    }
+    
+    # If the enclosing cascade is empty now, delete it
+    if {[string match [$M index end] none]} {
+        if {$parent == ""} {
+            # This was a toplevel mainmenu entry. Nothing more to do
+            return
+        }
+        deleteMenuEntry [join [lrange [split $name .] 0 end-1] .]
+    }
+    
 }
 
 body ::Tmw::Platform::configMenuEntry {name args} {

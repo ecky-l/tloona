@@ -103,6 +103,9 @@ class ::Tmw::ToolbarFrame {
         # @r the path of the newly created button
         method toolbutton {name args}
         
+        # @ Detele a toolbutton group
+        method deleteTbGroup {name tbar}
+        
         # @c This method creates a drop widget in the given toolbar.
         # @c A drop widget is a toplevel frame that can contain arbitrary
         # @c widgets. It is connected to a checkbutton style toolbutton.
@@ -322,7 +325,6 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     set stickto "front"
     set separate 1
     set position end
-    
     if {[string match [lindex $args end] delete]} {
         # the delete operation needs special treatment
         array set aa [lrange $args 0 end-1]
@@ -345,12 +347,14 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     # toolbar component name must be provided
     set T ""
     set path [regsub -all {\.} [string tolower $name] {_}]
-    set rName [string tolower [lindex [split $name .] 0]]
-    set tbm $T.$rName
+    set rName [string tolower [join [lrange [split $name .] 0 end-1] _]]
+    if {$rName == ""} {
+        set rName [string tolower [lindex [split $name .] 0]]
+    }
     if {$toolbar == "" || [catch {component $toolbar} T]} {
         error "-toolbar must be provided and valid! ($T)"
     }
-    
+    set tbm $T.$rName
     # if the widget path exists, configure or delete it
     if {[winfo exists $T.$path]} {
         if {[llength $nargs] == 1} {
@@ -434,6 +438,9 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
         }
         pack $Separators($tbm) {*}$pArgs
         
+        # Insert the separator at the requested position. Buttons will later
+        # be appended to the Buttons(toolbar) array after this, and added
+        # as windows before the separator
         set Buttons($toolbar) [linsert $Buttons($toolbar) $j \
             separator $Separators($tbm) $stickto]
         # adjust position so that the window is later inserted at the
@@ -515,6 +522,36 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
             $position $T.$path]
     }
     return $T.$path
+}
+
+body ::Tmw::ToolbarFrame::deleteTbGroup {name tbar} {
+    if {$tbar == "" || [catch {component $tbar} T]} {
+        error "-toolbar must be provided and valid! ($T)"
+    }
+    set rname $T.[regsub -all {\.} [string tolower $name] {_}]
+    if {![info exists Separators($rname)]} {
+        # no such toolbar group
+        return
+    }
+    set rpath $Separators($rname)
+    set inGroup no
+    set newl {}
+    foreach {ltype lpath lstickto} $Buttons($tbar) {
+        if {[string match $lpath $rpath]} {
+            set inGroup yes
+        } elseif {[string match $ltype separator]} {
+            set inGroup no
+        }
+        if {$inGroup} {
+            destroy $lpath
+        } else {
+            lappend newl $ltype $lpath $lstickto
+        }
+    }
+    set Buttons($tbar) $newl
+    # Remove the group separator from the object variables
+    unset Separators($rname)
+    unset Buttons($tbar,$rname)
 }
 
 body ::Tmw::ToolbarFrame::dropframe {name args} {
