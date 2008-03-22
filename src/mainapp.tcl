@@ -246,7 +246,9 @@ class Tloona::Mainapp {
         
         set idx [component textnb index $file]
         component textnb forget $idx
-        $file removeFromBrowser [component codebrowser]
+        if {[$file isa ::Tmw::BrowsableFile]} {
+            $file removeFromBrowser [component codebrowser]
+        }
         ::itcl::delete object $file
         
         
@@ -549,8 +551,6 @@ class Tloona::Mainapp {
         set _CurrFile [lindex $fs $idx]
         set fn [$_CurrFile cget -filename]
         configure -title "Tloona - $fn"
-        
-    
         focus -force [$_CurrFile component textwin].t
         
         # is the search toolbar showing in the new file?
@@ -558,21 +558,23 @@ class Tloona::Mainapp {
         onEditSearch
     
         # adjust code browser view
-        set fb [component codebrowser]
-        $fb remove all
-        if {[set tree [$_CurrFile getTree]] != ""} {
-            $fb add $tree 1 0
-            if {[$fb children ""] != {}} {
-                $fb see [lindex [$fb children ""] 0]
+        if {[$_CurrFile isa ::Tmw::BrowsableFile]} {
+            set fb [component codebrowser]
+            $fb remove all
+            if {[set tree [$_CurrFile getTree]] != ""} {
+                $fb add $tree 1 0
+                if {[$fb children ""] != {}} {
+                    $fb see [lindex [$fb children ""] 0]
+                }
             }
-        }
         
-        set fb [component kitbrowser]
-        set cTree [$_CurrFile getTree]
-        if {$cTree != "" && [$fb exists $cTree] 
-                && [$fb cget -syncronize]} {
-            $fb selection set $cTree
-            $fb see $cTree
+            set fb [component kitbrowser]
+            set cTree [$_CurrFile getTree]
+            if {$cTree != "" && [$fb exists $cTree] 
+                    && [$fb cget -syncronize]} {
+                $fb selection set $cTree
+                $fb see $cTree
+            }
         }
         
         return $_CurrFile
@@ -612,6 +614,9 @@ class Tloona::Mainapp {
         
         set toSelect ""
         foreach {fn cls hasFn} $_Files {
+            if {![$cls isa ::Tmw::BrowsableFile]} {
+                continue
+            }
             if {$sel == [$cls getTree]} {
                 set toSelect $cls
                 break
@@ -1156,7 +1161,7 @@ class Tloona::Mainapp {
         global UserOptions
         
         set T [component textnb]
-        set cls [::Tmw::browsablefile $T.file$_FileIdx \
+        set cls [::Tmw::visualfile $T.file$_FileIdx \
                 -filename $uri -font $filefont \
                 -tabsize $filetabsize \
                 -expandtab $filetabexpand \
@@ -1166,15 +1171,7 @@ class Tloona::Mainapp {
         set ttl [file tail $uri]
         component textnb add $cls -text $ttl
         
-        if {[catch {$cls openFile ""} msg]} {
-            set messg "can not open file $uri :\n\n"
-            append messg $msg
-            tk_messageBox -title "can not open file" \
-                -message $messg -type ok -icon error
-            itcl::delete object $cls
-            return
-        }
-        
+        $cls openFile ""        
         $cls modified 0
         $cls configure -modifiedcmd [code $this showModified $cls 1]
         

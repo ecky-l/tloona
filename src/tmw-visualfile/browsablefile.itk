@@ -36,6 +36,11 @@ class ::Tmw::BrowsableFile {
             return $BrowserTree
         }
         
+        # @c Reparse the tree. This is meant to be overwritten by
+        # @c deriving classes
+        method reparseTree {} {
+        }
+        
         # @r the browsers where the file is visible
         method getBrowsers {} {
             return $BrowserDisplays

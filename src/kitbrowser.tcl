@@ -279,9 +279,11 @@ class ::Tloona::KitBrowser {
             if {$cls == ""} {
                 return
             }
-            $cls setTree $file
             $cls updateHighlights
-            $cls reparseTree
+            if {[$cls isa ::Tmw::BrowsableFile]} {
+                $cls setTree $file
+                $cls reparseTree
+            }
             return
         }
         
@@ -292,9 +294,11 @@ class ::Tloona::KitBrowser {
         }
         if {![isOpen $parent]} {
         	    set cls [eval $itk_option(-openfilecmd) [$parent cget -name] 0]
-             $cls setTree $parent
              $cls updateHighlights
-             $cls reparseTree
+             if {[$cls isa ::Tmw::BrowsableFile]} {
+                 $cls setTree $parent
+                 $cls reparseTree
+             }
         }
         
         selectCode $x $y 0

@@ -240,6 +240,11 @@ class ::Tmw::VisualFile {
             return [lindex $WReplace 0]
         }
         
+        # @c update highlights dummy method. Meant to be overwritten by
+        # @c client classes
+        method updateHighlights {} {
+        }
+        
         # @c Displays a byte range in the file. If offset is < 0,
         # @c every display from before is cleared
         #
