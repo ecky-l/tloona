@@ -128,6 +128,7 @@ proc ::Tloona::initIcons {} {
                 private_variable $Icons(TclPrivateVar) \
                 package $Icons(TclPkg) \
                 constructor $Icons(TclConstructor) \
+                macro $Icons(TclConstructor) \
                 destructor $Icons(TclDestructor) \
                 itk_components $Icons(ItkComponents) \
                 public_component $Icons(PublicComponent) \

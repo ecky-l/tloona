@@ -1296,11 +1296,21 @@ proc ::parser::parse {node off content} {
                 }
             }
             
-            "proc" {
+            "proc" -
+            "::sugar::proc" -
+            "sugar::proc" -
+            "::sugar::macro" -
+            "sugar::macro" -
+            "macro" {
                 set defOff 0
                 set pn [tcl::parseProc $node $codeTree $content "" defOff]
                 
                 if {$pn != ""} {
+                    switch -glob -- $token {
+                        *macro {
+                        $pn configure -type macro
+                        }
+                    }
                     $pn configure -byterange $cmdRange
                     parse $pn [expr {$defOff + $off}] [$pn cget -definition]
                 }

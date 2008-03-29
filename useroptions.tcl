@@ -66,6 +66,7 @@ set ::UserOptions(File,Backup) 1
 # browser options
 set ::UserOptions(CodeBrowser,SortSeq) {
     package
+    macro
     variable
     class
     itk_components
@@ -89,6 +90,7 @@ set ::UserOptions(KitBrowser,SortSeq) {
     testfile
     file
     package
+    macro
     variable
     class
     itk_components

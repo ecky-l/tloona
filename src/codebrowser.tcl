@@ -176,6 +176,7 @@ class ::Tloona::CodeBrowser {
         set sseq [cget -sortsequence]
         if {$sseq == {}} {
             set sseq {package \
+                macro \
                 variable \
                 class \
                 itk_components \
