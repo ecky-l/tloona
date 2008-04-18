@@ -111,7 +111,9 @@ class ::Tmw::SlaveConsole {
         if {[llength $args] > 3} {
             error "invalid arguments"
         }
-        
+
+        # for real __puts__ below
+        set realArgs $args
         set newline "\n"
         if {[string match "-nonewline" [lindex $args 0]]} {
             set newline ""
@@ -133,7 +135,7 @@ class ::Tmw::SlaveConsole {
             $T see limit
             $T mark gravity limit left
         } else {
-            $interp eval __puts__ $args
+            $interp eval __puts__ $realArgs
         }
         
     }
