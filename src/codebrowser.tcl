@@ -29,6 +29,10 @@ class ::Tloona::CodeBrowser {
         
     public variable sortalpha 1
     
+    # @v getfilefromitemcmd: A piece of code to execute to get the file object
+    # @v getfilefromitemcmd: for the currently selected code definition
+    public variable getfilefromitemcmd {}
+    
     # @v ShowingNodes: Array with indicators for Code treenodes to show
     protected variable ShowingNodes
     array set ShowingNodes {}
@@ -104,7 +108,12 @@ class ::Tloona::CodeBrowser {
             sendCommDefinition $node $id
         }
         console {
-            set script [::Tloona::getNodeDefinition $node]
+            if {$getfilefromitemcmd == {}} {
+                set script [::Tloona::getNodeDefinition $node]
+            } else {
+                set script [::Tloona::getNodeDefinition $node \
+                    [eval $getfilefromitemcmd $node]]
+            }
             foreach {cmd} $SendCmds {
                 $cmd $script
             }
@@ -323,7 +332,13 @@ class ::Tloona::CodeBrowser {
             }
         }
         
-        set script [::Tloona::getNodeDefinition $node]
+        if {$getfilefromitemcmd == {}} {
+            set script [::Tloona::getNodeDefinition $node]
+        } else {
+            set script [::Tloona::getNodeDefinition $node \
+                [eval $getfilefromitemcmd $node]]
+        }
+        
         #puts $script
         if {[catch {comm::comm send $id $script} m]} {
             Tmw::message $mw "Error from $id" ok \
@@ -346,8 +361,12 @@ class ::Tloona::CodeOutline {
     
     constructor {args} {
         eval itk_initialize $args
-        bind [component treeview] <Button-3> \
-            [code $this contextMenu %X %Y %x %y]
+        if {[tk windowingsystem] eq "aqua"} {
+            # On Mac the right mouse button is Button-2
+            bind [component treeview] <Button-2> [code $this contextMenu %X %Y %x %y]
+        } else {
+            bind [component treeview] <Button-3> [code $this contextMenu %X %Y %x %y]
+        }
     }
     
     # @c Overrides remove in browser. Removes children of trees
@@ -430,16 +449,54 @@ class ::Tloona::CodeOutline {
 #
 # @a node: the node, a parser object
 # @r the script to be sent
-proc ::Tloona::getNodeDefinition {node} {
+proc ::Tloona::getNodeDefinition {node {file {}}} {
     set script ""
-    if {[string match *method [$node cget -type]]} {
-        append script "body "
-    } elseif {[string match proc [$node cget -type]]} {
-        append script "proc "
-    } else {
-        # not supported yet
-        return
+puts [$node cget -type],$file
+    switch -glob -- [$node cget -type] {
+        *method {
+            append script "body "
+        }
+        proc -
+        xo_* {
+            # this can be done directly from the file definition
+            # Get the definition of this node in the file and return
+            #append script "proc "
+            if {$file == {}} {
+                return
+            }
+            puts [$file flashCode $node]
+            return [$file flashCode $node]
+        }
+        class {
+            if {[$node isa ::parser::XotclClassNode]} {
+                # As with procs and xotcl instprocs, this can be done directly
+                # from the file definition.
+                if {$file == {}} {
+                    return
+                }
+                puts [$file flashCode $node]
+                return [$file flashCode $node]
+            } else {
+                # itcl classes do not work
+                return
+            }
+        }
+        default {
+            # not implemented
+            return
+        }
     }
+    
+    #if {[string match *method [$node cget -type]]} {
+    #    append script "body "
+    #} elseif {[string match proc [$node cget -type]]} {
+    #    append script "proc "
+    #} elseif {[string match xo_instproc [$node cget -type]]} {
+    #    return
+    #} else {
+    #    # not supported yet
+    #    return
+    #}
     
     # get fully qualified name
     set name [$node cget -name]

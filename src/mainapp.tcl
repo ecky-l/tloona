@@ -594,7 +594,26 @@ class Tloona::Mainapp {
             $TN tab $fileObj -text $ttl
         }
     }
+    
+    # @c returns the managed file object from the specified tree window at
+    # @c position x/y
+    public method getFileFromItem {item} {
+        set realSel $item
+        set sel [$realSel getTopnode ::parser::Script]
         
+        set toSelect ""
+        foreach {fn cls hasFn} $_Files {
+            if {![$cls isa ::Tmw::BrowsableFile]} {
+                continue
+            }
+            if {$sel == [$cls getTree]} {
+                set toSelect $cls
+                break
+            }
+        }
+        return $toSelect
+    }
+    
     # @c selects a fragment of code in a file
     public method selectCode {treewin x y definition} {
         set itm [$treewin identify $x $y]
@@ -610,22 +629,10 @@ class Tloona::Mainapp {
         }
         
         set realSel $sel
-        set sel [$realSel getTopnode ::parser::Script]
-        
-        set toSelect ""
-        foreach {fn cls hasFn} $_Files {
-            if {![$cls isa ::Tmw::BrowsableFile]} {
-                continue
-            }
-            if {$sel == [$cls getTree]} {
-                set toSelect $cls
-                break
-            }
-        }
-        if {$toSelect == ""} {
+        set toSelect [getFileFromItem $sel]
+        if {$toSelect == {}} {
             return
         }
-        
         component textnb select $toSelect
         if {[lindex [$realSel cget -byterange] 0] != -1} {
             $toSelect jumpTo $realSel $definition
@@ -996,6 +1003,7 @@ class Tloona::Mainapp {
                 -openfilecmd [code $this openFile] \
                 -isopencmd [code $this isOpen] \
                 -selectcodecmd [code $this selectCode] \
+                -getfilefromitemcmd [code $this getFileFromItem] \
                 -sortsequence $UserOptions(KitBrowser,SortSeq) \
                 -sortalpha $UserOptions(KitBrowser,SortAlpha) \
                 -mainwindow $itk_interior

@@ -342,6 +342,7 @@ class ::Tloona::TclFile {
         #append script "focus -force $T.t"
         after $::UserOptions(FlashTime) $script
         colorizeInsert
+        $T get $lc0 $lc1
     }
         
     # @c updates the highlighting for hclass. The corresponding
@@ -667,7 +668,7 @@ class ::Tloona::TclFile {
         if {$sendcmd == ""} {
             return
         }
-        $sendcmd [::Tloona::getNodeDefinition $CurrentNode]
+        $sendcmd [::Tloona::getNodeDefinition $CurrentNode $this]
     }
     
     # @c handles the character that was typed last. Invoked 
