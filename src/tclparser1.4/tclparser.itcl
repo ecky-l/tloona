@@ -339,7 +339,6 @@ proc ::parser::web::parseWebCmd {node cTree content defOffPtr} {
         $nnsp addChild $nns
         set nnsp $nns
     }
-    #puts #4,[$pn cget -definition],$defOff,$strt
     $nnsp addChild $pn
     return $pn
 }
@@ -1075,6 +1074,53 @@ proc ::parser::tcl::parseTest {node cTree content setupOffPtr bodyOffPtr cleanup
     return $testNode
 }
 
+proc ::parser::xotcl::configClassParams {parNode clsNode cTree content slotOffPtr} {
+    upvar $slotOffPtr slotOff
+    set slotOff -1
+    # parse the -superclass parameter and slots
+    set classes {}
+    set clsStr ""
+    for {set i 2} {$i < [llength $cTree]} {incr i} {
+        set param [::parse getstring $content [lindex [lindex $cTree $i] 1]]
+        switch -- $param {
+            -superclass {
+                set classes [::parse getstring $content [lindex [lindex $cTree [incr i]] 1]]
+            }
+            -slots {
+                incr i
+                set slotOff [lindex [lindex [lindex [lindex [lindex $cTree $i] 2] 0] 1] 0]
+                set slotEnd [lindex [lindex [lindex [lindex [lindex $cTree $i] 2] 0] 1] 1]
+                $clsNode configure -slotdefinition [::parse getstring $content \
+                    [list $slotOff $slotEnd]]
+            }
+        }
+    }
+    
+    if {$classes == {}} {
+        return $clsNode
+    }
+    
+    foreach {iCls} [lindex $classes 0] {
+        set nsAll [regsub -all {::} [string trimleft $iCls :] " "]
+        set iCls [lindex $nsAll end]
+        append clsStr ", [string trimleft $iCls :]"
+        if {[llength $nsAll] > 1} {
+            # parent class has namespace qualifiers
+            set tn [$parNode getTopnode]
+            set iNode [$tn lookup $iCls [lrange $nsAll 0 end-1]]
+        } else {
+            set tn [expr {([$parNode getParent] == "") ? $parNode : [$parNode getParent]}]
+            set iNode [$tn lookup $iCls]
+        }
+        
+        if {$iNode != ""} {
+            lappend classes $iNode
+        }
+    }
+    $clsNode configure -inherits $classes -inheritstring [string range $clsStr 2 end]
+    return $clsNode
+}
+
 proc ::parser::xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
     upvar $defOffPtr defOff
     upvar $slotOffPtr slotOff
@@ -1096,6 +1142,8 @@ proc ::parser::xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
             set ct [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
             $ct configure -isvalid 1
         }
+        configClassParams $node $clsNode $cTree $content sloto
+        set slotOff $sloto
         #$cNode configure -definition $clsDef -defbrange [list $defOff $defEnd]
         return $clsNode
     }
@@ -1133,47 +1181,8 @@ proc ::parser::xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
         $node addChild $clsNode
     }
     
-    # parse the -superclass parameter and slots
-    set classes {}
-    set clsStr ""
-    for {set i 2} {$i < [llength $cTree]} {incr i} {
-        set param [::parse getstring $content [lindex [lindex $cTree $i] 1]]
-        switch -- $param {
-            -superclass {
-                set classes [::parse getstring $content [lindex [lindex $cTree [incr i]] 1]]
-            }
-            -slots {
-                incr i
-                set slotOff [lindex [lindex [lindex [lindex [lindex $cTree $i] 2] 0] 1] 0]
-                set slotEnd [lindex [lindex [lindex [lindex [lindex $cTree $i] 2] 0] 1] 1]
-                $clsNode configure -slotdefinition [::parse getstring $content \
-                    [list $slotOff $slotEnd]]
-            }
-        }
-    }
-    
-    if {$classes == {}} {
-        return $clsNode
-    }
-    
-    foreach {iCls} [lindex $classes 0] {
-        set nsAll [regsub -all {::} [string trimleft $iCls :] " "]
-        set iCls [lindex $nsAll end]
-        append clsStr ", [string trimleft $iCls :]"
-        if {[llength $nsAll] > 1} {
-            # parent class has namespace qualifiers
-            set tn [$node getTopnode]
-            set iNode [$tn lookup $iCls [lrange $nsAll 0 end-1]]
-        } else {
-            set tn [expr {([$node getParent] == "") ? $node : [$node getParent]}]
-            set iNode [$tn lookup $iCls]
-        }
-        
-        if {$iNode != ""} {
-            lappend classes $iNode
-        }
-    }
-    $clsNode configure -inherits $classes -inheritstring [string range $clsStr 2 end]
+    configClassParams $node $clsNode $cTree $content sloto
+    set slotOff $sloto
     return $clsNode
 }
 
@@ -1188,7 +1197,15 @@ proc ::parser::xotcl::parseAttribute {node cTree content defOff} {
             }
         }
     }
-    set vNode [::parser::VarNode ::#auto -type "variable" -definition $vDef -name $vName]
+    
+    set vNode [$node lookup $vName]
+    if {$vNode != ""} {
+        $vNode configure -isvalid 1 -type variable -definition $vDef -name $vName
+        return $vNode
+    }
+    
+    set vNode [::parser::VarNode ::#auto -type "variable" -definition $vDef -name $vName \
+        -isvalid 1]
     $node addChild $vNode
 }
 
@@ -1618,11 +1635,11 @@ proc ::parser::reparse {node content newNodesPtr oldNodesPtr} {
         $child configure -isvalid 0
         $child removeVariables
     }
-    #bp
+    
     $node removeVariables
     $node configure -definition $content
     ::parser::parse $node 0 $content
-    #bp
+    
     foreach child [$node getChildren 1] {
         if {[$child cget -isvalid]} {
             if {![lcontain $aChBefore $child]} {
@@ -1890,7 +1907,6 @@ class ::parser::Script {
         set prtIsClass 0
         set prt [$procNode getParent]
         while {$prt != ""} {
-            #puts $prt,[$prt cget -name]
             if {[$prt cget -type] == "access" || \
                 [$prt cget -type] == "script"} {
                 set prt [$prt getParent]
@@ -1900,7 +1916,6 @@ class ::parser::Script {
             set prt [$prt getParent]
         }
             
-        #puts $type,$compName
         if {![lcontain $_Procedures $compName]} {
             lappend _Procedures $compName \
                 [$procNode cget -arglist] ""
