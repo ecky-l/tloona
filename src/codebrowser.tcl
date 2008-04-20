@@ -451,11 +451,12 @@ class ::Tloona::CodeOutline {
 # @r the script to be sent
 proc ::Tloona::getNodeDefinition {node {file {}}} {
     set script ""
-puts [$node cget -type],$file
     switch -glob -- [$node cget -type] {
         *method {
             append script "body "
         }
+        namespace -
+        variable -
         proc -
         xo_* {
             # this can be done directly from the file definition
@@ -464,7 +465,6 @@ puts [$node cget -type],$file
             if {$file == {}} {
                 return
             }
-            puts [$file flashCode $node]
             return [$file flashCode $node]
         }
         class {
@@ -474,7 +474,6 @@ puts [$node cget -type],$file
                 if {$file == {}} {
                     return
                 }
-                puts [$file flashCode $node]
                 return [$file flashCode $node]
             } else {
                 # itcl classes do not work
@@ -486,17 +485,6 @@ puts [$node cget -type],$file
             return
         }
     }
-    
-    #if {[string match *method [$node cget -type]]} {
-    #    append script "body "
-    #} elseif {[string match proc [$node cget -type]]} {
-    #    append script "proc "
-    #} elseif {[string match xo_instproc [$node cget -type]]} {
-    #    return
-    #} else {
-    #    # not supported yet
-    #    return
-    #}
     
     # get fully qualified name
     set name [$node cget -name]
