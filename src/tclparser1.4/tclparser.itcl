@@ -1569,9 +1569,13 @@ proc ::parser::parse {node off content} {
                     # This is our special handler for Xotcl meta classes. If their name ends
                     # on "Class", then we are able to parse them. Otherwise not!
                     set defOff 0
-                    set cnode [xotcl::parseClass $node $codeTree $content defOff]
+                    set slotOff -1
+                    set cnode [xotcl::parseClass $node $codeTree $content defOff slotOff]
                     if {$cnode != ""} {
                         $cnode configure -byterange $cmdRange
+                        if {$slotOff >= 0} {
+                            parse $cnode [expr {$off + $slotOff}] [$cnode cget -slotdefinition]
+                        }
                     }
                 } else {
                     # These could be xotcl classes. Try to parse instprocs, 
