@@ -55,6 +55,7 @@ class ::Tloona::TclFile {
         modified 0
         update
         reparseTree
+        updateHighlights
     }
     
     # @c Creates a code tree that represents this file.
@@ -990,6 +991,16 @@ class ::Tloona::WebFile {
         
         after 1 [list $T insert "insert" "</$tagName>"]
         after 2 [list $T mark set insert "$ci +1c"]
+    }
+    
+    # @c Overwritten for the moment because there is no real and 
+    # @c useful tree in web files currently
+    public method reparseTree {} {
+    }
+    
+    # @c Overwritten for the moment because there is no real and 
+    # @c useful tree in web files currently
+    public method updateCurrentNode {{x -1} {y -1}} {
     }
     
     protected method setBindings {} {

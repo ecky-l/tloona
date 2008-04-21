@@ -130,7 +130,7 @@ class Tloona::Mainapp {
                 -expandtab $filetabexpand \
                 -mainwindow [namespace tail $this] \
                 -backupfile $UserOptions(File,Backup)]
-        
+        $cls createTree
         set ttl "unnamed $_FileIdx"
         component textnb add $cls -text $ttl
         component textnb select $cls
