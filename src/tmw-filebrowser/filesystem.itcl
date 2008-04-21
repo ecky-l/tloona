@@ -1,8 +1,7 @@
 # filesystem.itcl
 package require Itcl 3.3
 package require Itree 1.0
-package require parser::tcl 1.4
-package require web::parser 1.0
+package require parser::parse 1.0
 package require Tclx 8.4
 
 if {[catch {load {} Thread}]} {
@@ -63,8 +62,19 @@ proc ::Tmw::Fs::build {rootObj ignoreBackup {pThread ""}} {
         puts "warning: dir is empty"
         return
     }
-    
-    foreach {file} [glob -nocomplain [file join $dir *]] {
+    set dirList [concat [glob -nocomplain [file join $dir *]] \
+        [glob -nocomplain [file join $dir .*]]]
+    foreach {file} $dirList {
+        # skip the following files
+        switch -- [file tail $file] {
+            . -
+            .. -
+            .svn -
+            .DS_Store {
+                continue
+            }
+        }
+        
         set thing ""
         regsub -all { } $file {\\ } file
         if {[file isdirectory $file]} {
@@ -129,10 +139,10 @@ proc ::Tmw::Fs::build {rootObj ignoreBackup {pThread ""}} {
                 switch -- $type {
                     tclfile -
                     testfile {
-                        $thing setTree [::parser::Script ::#auto \
+                        $thing setTree [::Parser::Script ::#auto \
                             -type "script" -file $file \
                             -displayformat {"%s (%s)" -name -dirname}]
-                        $thing addChild [::parser::Script ::#auto -name dummy \
+                        $thing addChild [::Parser::Script ::#auto -name dummy \
                             -displayformat {%s -name}]
                     }                
                 }

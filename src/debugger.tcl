@@ -201,7 +201,7 @@ class ::Tloona::VarInspector {
     # @c variables and a text window for displaying the content
     private method createComponents {} {
         # The browser
-        set par [ttk::paned [childsite].paned -orient vertical]
+        set par [ttk::panedwindow [childsite].paned -orient vertical]
         itk_component add browser {
             Tmw::browser $par.browser
         }

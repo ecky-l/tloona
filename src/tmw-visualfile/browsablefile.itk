@@ -1,7 +1,7 @@
 
 package require tmw::visualfile 1.0
 package require Tclx 8.4
-package require parser::structuredfile 1.4
+package require parser::script 1.0
 
 package provide tmw::browsablefile 1.0
 
@@ -103,7 +103,7 @@ body ::Tmw::BrowsableFile::createTree {} {
     if {[getTree] != ""} {
         return
     }
-    setTree [::parser::StructuredFile ::#auto -type "file"]
+    setTree [::Parser::StructuredFile ::#auto -type "file"]
 }
 
 body ::Tmw::BrowsableFile::openFile {{file ""}} {

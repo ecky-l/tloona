@@ -7,7 +7,7 @@ package require tmw::icons 1.0
 package require tmw::filesystem 1.0
 package require tloona::wrapwizzard 1.0
 package require tloona::codebrowser 1.0
-package require parser::structuredfile 1.4
+package require parser::script 1.0
 
 package provide tloona::kitbrowser 1.0
 
@@ -393,7 +393,7 @@ class ::Tloona::KitBrowser {
         set selOp [lindex $args 0]
         set items {}
         foreach {item} [lindex $args 1] {
-            lappend items [$item getTopnode ::parser::StructuredFile]
+            lappend items [$item getTopnode ::Parser::StructuredFile]
         }
         
         eval chain $selOp $items
@@ -403,7 +403,7 @@ class ::Tloona::KitBrowser {
     # @c never refer to inner code trees, it always refers to 
     # @c files or directories
     public method see {item} {
-        chain [$item getTopnode ::parser::StructuredFile]
+        chain [$item getTopnode ::Parser::StructuredFile]
     }
         
     # @c selects the code definition of Itcl methods. Essentially,

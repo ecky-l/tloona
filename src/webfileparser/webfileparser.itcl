@@ -1,6 +1,6 @@
 
 package require Itree 1.0
-package require parser::tcl 1.4
+package require parser::parse 1.0
 package require htmlparse 1.1.1
 
 package provide web::parser 1.0

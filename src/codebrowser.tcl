@@ -455,30 +455,26 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         *method {
             append script "body "
         }
-        namespace -
+        
         variable -
+        namespace -
         proc -
-        xo_* {
+        xo_* -
+        class {
             # this can be done directly from the file definition
             # Get the definition of this node in the file and return
             #append script "proc "
+            if {[$node isa ::Parser::XotclAttributeNode]} {
+                # If this is an attribute of XOTcl class, we will likely
+                # want to send the class definition itself, since Attributes
+                # can not be sent
+                set node [$node getParent]
+                
+            }
             if {$file == {}} {
                 return
             }
             return [$file flashCode $node]
-        }
-        class {
-            if {[$node isa ::parser::XotclClassNode]} {
-                # As with procs and xotcl instprocs, this can be done directly
-                # from the file definition.
-                if {$file == {}} {
-                    return
-                }
-                return [$file flashCode $node]
-            } else {
-                # itcl classes do not work
-                return
-            }
         }
         default {
             # not implemented
@@ -486,10 +482,15 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         }
     }
     
+    # flash the code for consistency
+    if {$file != {}} {
+        $file flashCode $node
+    }
+    
     # get fully qualified name
     set name [$node cget -name]
     set parent [$node getParent]
-    while {$parent != "" && [$parent isa ::parser::StructuredFile]} {
+    while {$parent != "" && [$parent isa ::Parser::StructuredFile]} {
         set name [$parent cget -name]::[set name]
         set parent [$parent getParent]
     }

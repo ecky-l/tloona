@@ -3,8 +3,7 @@
 #
 package require tmw::browsablefile 1.0
 package require Itree 1.0
-package require parser::tcl 1.4
-package require web::parser 1.0
+package require parser::parse 1.0
 package require tloona::codecompletion 1.0
 package require tloona::htmlparser 1.0
 
@@ -63,7 +62,7 @@ class ::Tloona::TclFile {
         if {[getTree] != ""} {
             return
         }
-        setTree [::parser::Script ::#auto -type "script"]
+        setTree [::Parser::Script ::#auto -type "script"]
         if {[cget -filename] != ""} {
             reparseTree
         }
@@ -88,7 +87,7 @@ class ::Tloona::TclFile {
         
         set newList {}
         set oldList {}
-        ::parser::reparse [getTree] $ctn newList oldList
+        ::Parser::reparse [getTree] $ctn newList oldList
         foreach {elem} $oldList {
             itcl::delete object $elem
         }
@@ -845,7 +844,7 @@ class ::Tloona::WebFile {
     inherit Tloona::TclFile
     
     constructor {args} {
-        #setTree [::parser::Webscript -ts ::#auto -type "webscript"]
+        #setTree [::Parser::Webscript -ts ::#auto -type "webscript"]
         eval itk_initialize $args
     }
     

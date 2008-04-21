@@ -9,7 +9,7 @@ package require tmw::slaveconsole 1.0
 package require tmw::backendconsole 1.0
 package require tloona::file 1.0
 package require fileutil 1.7
-package require parser::tcl 1.4
+package require parser::parse 1.0
 package require tloona::debugger 1.0
 package require comm 4.3
 
@@ -599,7 +599,7 @@ class Tloona::Mainapp {
     # @c position x/y
     public method getFileFromItem {item} {
         set realSel $item
-        set sel [$realSel getTopnode ::parser::Script]
+        set sel [$realSel getTopnode ::Parser::Script]
         
         set toSelect ""
         foreach {fn cls hasFn} $_Files {
@@ -738,7 +738,7 @@ class Tloona::Mainapp {
     # @a uri: file uri
     # @a createTree: create a tree?
     #
-    # @r The file object. Type at least ::parser::StructuredFile
+    # @r The file object. Type at least ::Parser::StructuredFile
     public method openFile {uri createTree} {
         global TloonaApplication
         
@@ -943,12 +943,12 @@ class Tloona::Mainapp {
     # @c creates the pane parts in the main window
     private method createPanes {} {
         itk_component add browsepw {
-            ::ttk::paned [mainframe].browsepw \
+            ::ttk::panedwindow [mainframe].browsepw \
                 -orient horizontal
         }
         
         itk_component add navigatepw {
-            ::ttk::paned [component browsepw].navigatepw \
+            ::ttk::panedwindow [component browsepw].navigatepw \
                 -orient vertical
         }
         
@@ -960,7 +960,7 @@ class Tloona::Mainapp {
         component navigatepw add [component browsenb] -weight 1
         
         itk_component add txtconpw {
-            ::ttk::paned [component browsepw].txtconpw \
+            ::ttk::panedwindow [component browsepw].txtconpw \
                 -orient vertical
         }
         

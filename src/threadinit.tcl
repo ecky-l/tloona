@@ -1,8 +1,7 @@
 # per thread initialization
 
 package require Thread 2.6.3
-package require parser::tcl 1.4
-package require web::parser 1.0
+package require parser::parse 1.0
 package require debug 1.0
 package require tmw::filesystem 1.0
 
