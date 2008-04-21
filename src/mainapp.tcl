@@ -760,23 +760,26 @@ class Tloona::Mainapp {
                     return
                 }
                 set fCls [openTclFile $uri 1]
+                set fileInPrj [isProjectPart $uri cTree]
                 if {$createTree} {
                     # the code tree does not exist yet. Create it, but
                     # only if this is a file that was not opened from
                     # an existing vfs project
-                    if {[isProjectPart $uri cTree]} {
+                    if {$fileInPrj} {
                         component kitbrowser refreshFile $cTree
                         $fCls setTree $cTree
                     } else {
                         $fCls createTree
                     }
-                } elseif {[isProjectPart $uri cTree]} {
+                } elseif {$fileInPrj} {
                     component kitbrowser refreshFile $cTree
                     $fCls setTree $cTree
                 }
                 $fCls updateHighlights
                 $fCls addToBrowser [component codebrowser]
-                $fCls addToBrowser [component kitbrowser]
+                if {$fileInPrj} {
+                    $fCls addToBrowser [component kitbrowser]
+                }
                 update
             }
             ".tml" -
