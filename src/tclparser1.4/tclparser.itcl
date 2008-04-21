@@ -1582,7 +1582,20 @@ proc ::parser::parse {node off content} {
                 set nm [::parse getstring $content [lindex [lindex $codeTree 0] 1]]
                 set nsAll [regsub -all {::} [string trimleft $nm :] " "]
                 set nm [lindex $nsAll end]
-                if {[regexp {Class$} $nm]} {
+                set tn [[$node getTopnode ::parser::Script] lookup $nm [lrange $nsAll 0 end-1]]
+                if {$tn != {} && [$tn isa ::parser::XotclClassNode]} {
+                    # These could be xotcl classes. Try to parse instprocs, procs etc.
+                    set defOff -1
+                    set preOff -1
+                    set postOff -1
+                    set iNode [xotcl::parseInstCmd $tn $codeTree $content defOff preOff postOff]
+                    if {$iNode != ""} {
+                        $iNode configure -byterange $cmdRange
+                        parse $iNode [expr {$off + $defOff}] [$iNode cget -definition]
+                        parse $iNode [expr {$off + $preOff}] [$iNode cget -preassertion]
+                        parse $iNode [expr {$off + $postOff}] [$iNode cget -postassertion]
+                    }
+                } elseif {[regexp {Class$} $nm]} {
                     # This is our special handler for Xotcl meta classes. If their name ends
                     # on "Class", then we are able to parse them. Otherwise not!
                     set defOff 0
@@ -1592,22 +1605,6 @@ proc ::parser::parse {node off content} {
                         $cnode configure -byterange $cmdRange
                         if {$slotOff >= 0} {
                             parse $cnode [expr {$off + $slotOff}] [$cnode cget -slotdefinition]
-                        }
-                    }
-                } else {
-                    # These could be xotcl classes. Try to parse instprocs, 
-                    # procs etc.
-                    set tn [[$node getTopnode ::parser::Script] lookup $nm [lrange $nsAll 0 end-1]]
-                    if {$tn != {} && [$tn isa ::parser::XotclClassNode]} {
-                        set defOff -1
-                        set preOff -1
-                        set postOff -1
-                        set iNode [xotcl::parseInstCmd $tn $codeTree $content defOff preOff postOff]
-                        if {$iNode != ""} {
-                            $iNode configure -byterange $cmdRange
-                            parse $iNode [expr {$off + $defOff}] [$iNode cget -definition]
-                            parse $iNode [expr {$off + $preOff}] [$iNode cget -preassertion]
-                            parse $iNode [expr {$off + $postOff}] [$iNode cget -postassertion]
                         }
                     }
                 }
