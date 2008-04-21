@@ -36,6 +36,11 @@ namespace eval ::Parser {
 class ::Parser::XotclAttributeNode {
     inherit ::Parser::VarNode
     
+    # @v getterproc: The getter method for this attribute
+    public variable getterproc {}
+    # @v getterproc: The getter method for this attribute
+    public variable setterproc {}
+    
     constructor {args} {
         eval configure $args
     }
@@ -245,7 +250,28 @@ proc ::Parser::Xotcl::parseInstCmd {node cTree content defOffPtr preOffPtr postO
         }
         # Lookup existing cmd definition
         set cmdNode [$node lookup $cmdName]
-        if {$cmdNode != "" && [string match [$cmdNode cget -type] $thisType]} {
+        if {$cmdNode == {}} {
+            set cmdNode [::Parser::XotclProcNode ::#auto -type $thisType \
+                -name $cmdName -arglist $cmdArgs -definition $cmdDef \
+                -defoffset [expr {$cmdDefOff - $strt}] -preassertion $preAss \
+                -postassertion $postAss -predefrange [list $preOff $postOff] \
+                -postdefrange [list $postOff $postEnd]]
+            $node addChild $cmdNode
+            
+            # add variables from class definition to the method
+            # as variables
+            foreach {v d} [$node getVariables] {
+                $cmdNode addVariable $v $d 1
+            }
+            
+            return $cmdNode
+        }
+        
+        # The node exists already. Check whether it is a (inst)proc or the 
+        # getter/setter for an Attribute. They need special treatment, since
+        # the attribute might be there anyway and just gets a proc in addition.
+        # This proc must be however child of the class as well.
+        if {[string eq [$cmdNode cget -type] $thisType]} {
             $cmdNode configure -arglist $cmdArgs -definition $cmdDef -isvalid 1 \
                 -defoffset [expr {$cmdDefOff - $strt}] -preassertion $preAss \
                 -postassertion $postAss -predefrange [list $preOff $postOff] \
@@ -256,22 +282,32 @@ proc ::Parser::Xotcl::parseInstCmd {node cTree content defOffPtr preOffPtr postO
             }
             
             return $cmdNode
+        } elseif {[$cmdNode isa Parser::XotclAttributeNode]} {
+            # This is a overwritten method for get/set attributes. We create a proc
+            # node as usual, but configure it as variable for the Attribute. If it
+            # exists already, we configure it as valid and return it.
+            
+            if {[set gs [$cmdNode cget -getterproc]] != {}} {
+                $gs configure -arglist $cmdArgs -definition $cmdDef -isvalid 1 \
+                    -defoffset [expr {$cmdDefOff - $strt}] -preassertion $preAss \
+                    -postassertion $postAss -predefrange [list $preOff $postOff] \
+                    -postdefrange [list $postOff $postEnd]
+                $cmdNode configure -isvalid yes
+                return $gs
+            }
+            
+            set gs [::Parser::XotclProcNode ::#auto -type $thisType -name $cmdName \
+                -arglist $cmdArgs -definition $cmdDef -defoffset [expr {$cmdDefOff - $strt}] \
+                -preassertion $preAss -postassertion $postAss -predefrange [list $preOff $postOff] \
+                -postdefrange [list $postOff $postEnd]]
+            $node addChild $gs
+            $cmdNode configure -getterproc $gs -setterproc $gs
+            foreach {v d} [$node getVariables] {
+                $gs addVariable $v $d 1
+            }
+            return $gs
+            
         }
-        
-        set cmdNode [::Parser::XotclProcNode ::#auto -type $thisType \
-            -name $cmdName -arglist $cmdArgs -definition $cmdDef \
-            -defoffset [expr {$cmdDefOff - $strt}] -preassertion $preAss \
-            -postassertion $postAss -predefrange [list $preOff $postOff] \
-            -postdefrange [list $postOff $postEnd]]
-        $node addChild $cmdNode
-        
-        # add variables from class definition to the method
-        # as variables
-        foreach {v d} [$node getVariables] {
-            $cmdNode addVariable $v $d 1
-        }
-        
-        return $cmdNode
         
     }
     }
