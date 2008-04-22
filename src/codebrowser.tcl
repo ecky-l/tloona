@@ -450,6 +450,10 @@ class ::Tloona::CodeOutline {
 # @a node: the node, a parser object
 # @r the script to be sent
 proc ::Tloona::getNodeDefinition {node {file {}}} {
+    if {$node == {}} {
+        return
+    }
+    
     set script ""
     switch -glob -- [$node cget -type] {
         *method {

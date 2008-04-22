@@ -124,12 +124,12 @@ class Tloona::Mainapp {
         global UserOptions
         
         set T [component textnb]
-        set cls [::Tloona::tclfile $T.file$_FileIdx \
-                -font $filefont \
-                -tabsize $filetabsize \
-                -expandtab $filetabexpand \
-                -mainwindow [namespace tail $this] \
-                -backupfile $UserOptions(File,Backup)]
+        set cls [::Tloona::tclfile $T.file$_FileIdx -font $filefont \
+            -sendcmd [code $this sendToConsole] -threadpool [cget -threadpool] \
+            -tabsize $filetabsize -expandtab $filetabexpand \
+            -mainwindow [namespace tail $this] \
+            -backupfile $UserOptions(File,Backup)]
+                
         $cls createTree
         set ttl "unnamed $_FileIdx"
         component textnb add $cls -text $ttl
@@ -1294,6 +1294,9 @@ class Tloona::Mainapp {
     
     # @c Send a script to the internal console
     private method sendToConsole {script} {
+        if {$script == {}} {
+            return
+        }
         component console eval $script 1
     }
     
