@@ -219,7 +219,6 @@ proc ::Parser::Xotcl::parseInstCmd {node cTree content defOffPtr preOffPtr postO
     upvar $defOffPtr cmdDefOff
     upvar $preOffPtr preOff
     upvar $postOffPtr postOff
-    
     set cmd [::parse getstring $content [lindex [lindex $cTree 1] 1]]
     switch -- $cmd {
     instproc -
@@ -229,8 +228,12 @@ proc ::Parser::Xotcl::parseInstCmd {node cTree content defOffPtr preOffPtr postO
         
         set cmdName [::parse getstring $content [lindex [lindex $cTree 2] 1]]
         set cmdArgs [lindex [::parse getstring $content [lindex [lindex $cTree 3] 1]] 0]
-        set cmdDef [string trim [::parse getstring $content [lindex [lindex $cTree 4] 1]] "\{\}"]
-        set cmdDefOff [lindex [lindex [lindex [lindex [lindex $cTree 4] 2] 0] 1] 0]
+        set cmdDef {}
+        if {[llength $cTree] > 4} {
+            set cmdDef [string trim [::parse getstring $content \
+                [lindex [lindex $cTree 4] 1]] "\{\}"]
+            set cmdDefOff [lindex [lindex [lindex [lindex [lindex $cTree 4] 2] 0] 1] 0]
+        }
         
         set preAss {}
         set preOff -1
