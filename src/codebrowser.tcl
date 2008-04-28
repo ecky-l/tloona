@@ -463,6 +463,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         variable -
         namespace -
         proc -
+        webcmd -
         xo_* -
         class {
             # this can be done directly from the file definition
