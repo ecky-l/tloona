@@ -40,6 +40,7 @@ proc ::Parser::Web::parseWebCmd {node cTree content defOffPtr} {
     if {[llength $cTree] != 3} {
         error "wrong number of args for web::command"
     }
+    
     # parse the name
     set cmdName [::parse getstring $content [lindex [lindex $cTree 1] 1]]
     set cmdBody [::parse getstring $content [lindex [lindex $cTree 2] 1]]
@@ -76,8 +77,7 @@ proc ::Parser::Web::parseWebCmd {node cTree content defOffPtr} {
     for {set i 0} {$i < [expr {[llength $nsAll]-1}]} {incr i} {
         set nns [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
         if {$nns == ""} {
-            set nns [::Parser::Script ::#auto -type "namespace" \
-                -name [lindex $nsAll $i]]
+            set nns [::Parser::Script ::#auto -type "namespace" -name [lindex $nsAll $i]]
         }
         $nnsp addChild $nns
         set nnsp $nns

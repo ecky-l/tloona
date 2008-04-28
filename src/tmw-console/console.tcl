@@ -162,7 +162,7 @@ class ::Tmw::Console {
     # @c creates the widgets and initializes the console
     protected method initialize {} {
         itk_component add textwin {
-            ctext $itk_interior.textwin -wrap word
+            ctext $itk_interior.textwin -wrap word -linemap 0
         }
         set T [component textwin]
         

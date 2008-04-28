@@ -4,6 +4,7 @@ package require parser::script 1.0
 package require parser::tcl 1.0
 package require parser::itcl 1.0
 package require parser::xotcl 1.0
+package require parser::web 1.0
 
 package provide parser::parse 1.0
 
@@ -70,7 +71,8 @@ proc ::Parser::parse {node off content} {
             "sugar::proc" -
             "::sugar::macro" -
             "sugar::macro" -
-            "macro" {
+            "macro" -
+            "<substproc>" {
                 set defOff 0
                 set pn [Tcl::parseProc $node $codeTree $content "" defOff]
                 
@@ -78,6 +80,9 @@ proc ::Parser::parse {node off content} {
                     switch -glob -- $token {
                         *macro {
                         $pn configure -type macro
+                        }
+                        <substproc> {
+                        $pn configure -type webcmd
                         }
                     }
                     $pn configure -byterange $cmdRange
