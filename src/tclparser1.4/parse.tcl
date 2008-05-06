@@ -48,7 +48,7 @@ proc ::Parser::parse {node off content} {
         # get the first token and decide further operation
         set fToken [lindex $codeTree 0]
         set token [::parse getstring $content [lindex $fToken 1]]
-        switch -- $token {
+        switch -glob -- $token {
             
             "package" {
                 set pkgNode [Tcl::parsePkg $node $codeTree $content]
@@ -129,13 +129,38 @@ proc ::Parser::parse {node off content} {
                 }
             }
             
-            "Attribute" -
+            "*Attribute" -
             "xotcl::Attribute" -
             "::xotcl::Attribute" {
                 set defOff 0
-                set anode [Xotcl::parseAttribute $node $codeTree $content defOff]
-                if {$anode != {}} {
-                    $anode configure -byterange $cmdRange
+                switch -- [$node cget -type] {
+                class {
+                    set anode [Xotcl::parseAttribute $node $codeTree $content defOff]
+                    if {$anode != {}} {
+                        $anode configure -byterange $cmdRange
+                    }
+                }
+                default {
+                    # These could be xotcl classes. Try to parse instprocs, procs etc.
+                    # inst/proc to a derived attribute
+                    set defOff -1
+                    set preOff -1
+                    set postOff -1
+                    
+                    set nm [::parse getstring $content [lindex [lindex $codeTree 0] 1]]
+                    set nsAll [regsub -all {::} [string trimleft $nm :] " "]
+                    set nm [lindex $nsAll end]
+                    set tn [[$node getTopnode ::Parser::Script] lookup $nm [lrange $nsAll 0 end-1]]
+                    set iNode [Xotcl::parseInstCmd $tn $codeTree $content defOff preOff postOff]
+                    puts $iNode,[$iNode cget -definition]
+                    if {$iNode != ""} {
+                        $iNode configure -byterange $cmdRange
+                        parse $iNode [expr {$off + $defOff}] [$iNode cget -definition]
+                        parse $iNode [expr {$off + $preOff}] [$iNode cget -preassertion]
+                        parse $iNode [expr {$off + $postOff}] [$iNode cget -postassertion]
+                    }
+                }
+                
                 }
             }
             
