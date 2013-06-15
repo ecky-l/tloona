@@ -460,9 +460,12 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script "body "
         }
         
+        proc {
+            append script "proc "
+        }
+        
         variable -
         namespace -
-        proc -
         webcmd -
         xo_* -
         class {

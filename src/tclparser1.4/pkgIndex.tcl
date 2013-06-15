@@ -8,7 +8,7 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded parser 1.4 [list load [file join $dir libtclparser1.4.dylib]]
+package ifneeded parser 1.4 [list load [file join $dir libtclparser1.4[info sharedlibext]]]
 package ifneeded parser::script 1.0 [list source [file join $dir script.tcl]]
 package ifneeded parser::web 1.0 [list source [file join $dir webparser.tcl]]
 package ifneeded parser::tcl 1.0 [list source [file join $dir tclparser.tcl]]

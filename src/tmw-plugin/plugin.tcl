@@ -114,11 +114,9 @@ proc Tmw::Plugin::load {name} {
     
     dict for {extPlug extLst} [dict get $pl extends] {
         set exts [dict get [dict get $Plugins $extPlug] extensionpoints]
-        dict for {extPnt loadProc} [dict get $extLst] {
+        dict for {extPnt argProc} [dict get $extLst] {
             # eval [dict get $exts $extPnt] [eval $argProg]
-            set extArgs [dict get $exts $extPnt]
-            #$loadProc [$extPntArgs]
-            puts [dict get $exts $extArgs],$loadProc
+            puts [dict get $exts $extPnt],$argProc
         }
     }
 }
