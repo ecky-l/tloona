@@ -14,6 +14,7 @@
 # Now you should be able to open Tloona by double click in the Applications
 # folder and to open .vfs directories and .tcl files with Tloona (right click)
 #
+
 proc ::tk::mac::OpenDocument {args} {
     # args will be a list of all the documents dropped on your app, 
     # or double-clicked
