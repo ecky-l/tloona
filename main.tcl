@@ -296,11 +296,16 @@ proc ::main {args} {
         }
         set fob [$TloonaApplication openFile $file 1]
     }
+    
+    # open droped files from argv
+    foreach {file} $args {
+	set fob [$TloonaApplication openFile $file 1]
+    }
     #update
     
     $TloonaApplication onCurrFile
 }
 
-::main
+eval ::main $argv
 
 
