@@ -503,10 +503,10 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         set parent [$parent getParent]
     }
     
-    append script :: "$name [list [$node cget -arglist]] {"
+    append script "$name [list [$node cget -arglist]] {"
     append script [string trim [$node cget -definition] "{}"]
     append script "}"
-    
+    puts $script
     return $script
 }
 

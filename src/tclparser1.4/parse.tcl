@@ -3,6 +3,7 @@ package re parser 1.4
 package require parser::script 1.0
 package require parser::tcl 1.0
 package require parser::itcl 1.0
+package require parser::snit 1.0
 package require parser::xotcl 1.0
 package require parser::web 1.0
 
@@ -116,7 +117,15 @@ proc ::Parser::parse {node off content} {
                 }
             }
             
-            "Class" {
+            "type" -
+            "snit::type" -
+            "::snit::type" {
+                # Parse snit::type
+            }
+            
+            "Class" -
+            "xotcl::Class" -
+            "::xotcl::Class" {
                 # XOTcl class
                 set defOff 0
                 set slotOff -1

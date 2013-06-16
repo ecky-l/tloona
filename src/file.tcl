@@ -365,16 +365,6 @@ class ::Tloona::TclFile {
                     $ctree getCommands cmds
                     ::ctext::addHighlightClass $T $hclass $color $cmds
                 }
-                #set cmds ""
-                #if {[catch {[getTree] getCommands cmds} msg]} {
-                    #set det "The info from my client interpreter was:\n\n"
-                    #append det "$msg \n\n"
-                    #append det "You might want to adjust the ::auto_path\n"
-                    #append det "variable for this script?"
-                    #ttk::dialog $mainwindow.dlg -type ok -message \
-                    #    "Cannot highlight and complete all commands" \
-                    #    -detail $det -title "Highlight & Completion info"
-                #}
             }
             "Braces" {
                 ::ctext::addHighlightClassForSpecialChars $T \
