@@ -26,7 +26,7 @@ class ::Tloona::CodeBrowser {
             setSortValues
         }
     }
-        
+    
     public variable sortalpha 1
     
     # @v getfilefromitemcmd: A piece of code to execute to get the file object

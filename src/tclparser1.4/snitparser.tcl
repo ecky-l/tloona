@@ -40,6 +40,8 @@ namespace eval ::Parser::Snit {
     class Type {
     }
     
-
+    proc ParseBody {} {
+    }
+    
 }
 

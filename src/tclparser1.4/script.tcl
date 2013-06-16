@@ -86,7 +86,7 @@ class ::Parser::Script {
         close $fh
         set name [file tail $filename]
         set type "script"
-        
+
         if {[catch {::Parser::parse $this 0 $definition} msg]} {
             ::log::log error "--------------------------------------"
             ::log::log error "::Parser::Script::parseFile "

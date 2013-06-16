@@ -200,7 +200,6 @@ class ::Tloona::KitBrowser {
     # @v extracted immediately
     public method addFileSystem {root} {
         global TloonaApplication
-        
         switch -- [file extension $root] {
             .kit {
                 set kf [file rootname $root].vfs

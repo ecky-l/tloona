@@ -228,9 +228,8 @@ proc ::Parser::Itcl::parseItkComponent {node cTree content off dBdPtr} {
 }
 
 # @c parse a class node and returns it as tree
-proc ::Parser::Itcl::parseClass {node cTree content defOffPtr} {
+proc ::Parser::Itcl::parseClass {node cTree content defOffPtr {type class}} {
     upvar $defOffPtr defOff
-    
     set nTk [llength $cTree]
     
     foreach {tkn idx} {clsName 1 clsDef 2} {
@@ -246,53 +245,18 @@ proc ::Parser::Itcl::parseClass {node cTree content defOffPtr} {
     set clsName [lindex $nsAll end]
     set clsDef [string trim $clsDef "\{\}"]
     
-    # if class already exists, return it
-    set clsNode [$node lookup $clsName [lrange $nsAll 0 end-1]]
+    set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+    #set clsNode [$node lookup $clsName $nsNode]
+    set clsNode [$nsNode lookup $clsName]
     if {$clsNode != ""} {
-        for {set i 0} {$i < [llength $nsAll]} {incr i} {
-            set ct [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
-            $ct configure -isvalid 1
-        }
-        
-        $clsNode configure -definition $clsDef -defbrange [list $defOff $defEnd]
-        return $clsNode
-    }
-    
-    if {[llength $nsAll] > 1} {
-        # lookup parent namespaces. Create them if they don't exist
-        set nsNode [$node lookup [lindex $nsAll 0]]
-        if {$nsNode == ""} {
-            set nsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
-                    -type "namespace" -name [lindex $nsAll 0]]
-            $node addChild $nsNode
-        }
-        
-        set lna [expr {[llength $nsAll] - 1}]
-        for {set i 1} {$i < $lna} {incr i} {
-            set nnsNode [$node lookup [lindex $nsAll $i] \
-                    [lrange $nsAll 0 [expr {$i - 1}]]]
-            if {$nnsNode == ""} {
-                set nnsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
-                        -type "namespace" -name [lindex $nsAll $i]]
-                $nsNode addChild $nnsNode
-            }
-            set nsNode $nnsNode
-        }
-        
-        set clsNode [::Parser::ClassNode ::#auto -type "class" \
-                -name $clsName -definition $clsDef -isvalid 1 -expanded 0 \
+        $clsNode configure -isvalid 1 -definition $clsDef \
+            -defbrange [list $defOff $defEnd]
+    } else {
+        set clsNode [::Parser::ClassNode ::#auto -type class -expanded 0 \
+                -name $clsName -isvalid 1 -definition $clsDef \
                 -defbrange [list $defOff $defEnd]]
         $nsNode addChild $clsNode
-    } else  {
-        if {[$node lookup $clsName] != ""} {
-            return -code error "class $clsName already exists"
-        }
-        
-        set clsNode [::Parser::ClassNode ::#auto -type "class" -expanded 0 \
-                -name $clsName -definition $clsDef -isvalid 1]
-        $node addChild $clsNode
     }
-    
     return $clsNode
 }
 

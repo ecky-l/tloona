@@ -25,11 +25,9 @@ namespace eval ::Parser {
 # @a content: the content to parse or ""
 proc ::Parser::parse {node off content} {
     variable CurrAccessLevel
-    
     if {$content == ""} {
         return
     }
-    
     set size [::parse getrange $content]
     
     while {1} {
@@ -119,7 +117,10 @@ proc ::Parser::parse {node off content} {
             
             "type" -
             "snit::type" -
-            "::snit::type" {
+            "::snit::type" -
+            "widget" -
+            "snit::widget" -
+            "::snit::widget" {
                 # Parse snit::type
             }
             
@@ -353,35 +354,27 @@ proc ::Parser::parse {node off content} {
             }
             
             default {
-                set nm [::parse getstring $content [lindex [lindex $codeTree 0] 1]]
-                set nsAll [regsub -all {::} [string trimleft $nm :] " "]
-                set nm [lindex $nsAll end]
-                set tn [[$node getTopnode ::Parser::Script] lookup $nm [lrange $nsAll 0 end-1]]
-                if {$tn != {} && [$tn isa ::Parser::XotclClassNode]} {
-                    # These could be xotcl classes. Try to parse instprocs, procs etc.
-                    set defOff -1
-                    set preOff -1
-                    set postOff -1
-                    set iNode [Xotcl::parseInstCmd $tn $codeTree $content defOff preOff postOff]
-                    if {$iNode != ""} {
-                        $iNode configure -byterange $cmdRange
-                        parse $iNode [expr {$off + $defOff}] [$iNode cget -definition]
-                        parse $iNode [expr {$off + $preOff}] [$iNode cget -preassertion]
-                        parse $iNode [expr {$off + $postOff}] [$iNode cget -postassertion]
-                    }
-                } elseif {[regexp {Class$} $nm]} {
-                    # This is our special handler for Xotcl meta classes. If their name ends
-                    # on "Class", then we are able to parse them. Otherwise not!
-                    set defOff 0
-                    set slotOff -1
-                    set cnode [Xotcl::parseClass $node $codeTree $content defOff slotOff]
-                    if {$cnode != ""} {
-                        $cnode configure -byterange $cmdRange
-                        if {$slotOff >= 0} {
-                            parse $cnode [expr {$off + $slotOff}] [$cnode cget -slotdefinition]
+                #puts $token
+                set nsAll [regsub -all {::} [string trimleft $token :] " "]
+                set ns [lrange $nsAll 0 end-1]
+                if {[Util::checkNamespace $node $ns]} {
+                    set lclNode [Util::getNamespace $node $ns]
+                    set tn [$lclNode lookup [lindex $nsAll end]]
+                    if {$tn != "" && [$tn isa ::Parser::ClassNode]} {
+                        puts yay,$token
+                        set defOff -1
+                        set preOff -1
+                        set postOff -1
+                        set iNode [Xotcl::parseInstCmd $tn $codeTree $content defOff preOff postOff]
+                        if {$iNode != ""} {
+                            $iNode configure -byterange $cmdRange
+                            parse $iNode [expr {$off + $defOff}] [$iNode cget -definition]
+                            parse $iNode [expr {$off + $preOff}] [$iNode cget -preassertion]
+                            parse $iNode [expr {$off + $postOff}] [$iNode cget -postassertion]
                         }
                     }
                 }
+                
             }
             
         }
@@ -406,7 +399,6 @@ proc ::Parser::reparse {node content newNodesPtr oldNodesPtr} {
         $child configure -isvalid 0
         $child removeVariables
     }
-    
     $node removeVariables
     $node configure -definition $content
     ::Parser::parse $node 0 $content

@@ -700,3 +700,39 @@ proc ::Parser::Tcl::parseTest {node cTree content setupOffPtr bodyOffPtr cleanup
     return $testNode
 }
 
+
+namespace eval ::Parser::Util {
+    # Returns the parent namespace in which a definition is to be created
+    # ns is a qualified namespace of the form ::a::b::c. It is split into
+    # a list of namespaces and for every part is checked, whether a namespace 
+    # node of that name already exists in "node". If not, these nodes are
+    # created. The node of the last identifier in ns is returned
+    proc getNamespace {node nsList} {
+        foreach {ns} $nsList {
+            set nsNode [$node lookup $ns]
+            if {$nsNode == ""} {
+                set nsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
+                        -type "namespace" -name [lindex $nsList 0]]
+                $node addChild $nsNode
+            }
+            $nsNode configure -isvalid 1
+            set node $nsNode
+        }
+        
+        return $node
+    }
+    
+    # Checks whether a fully qualified namespace with all elements in nsList
+    # exists inside node
+    proc checkNamespace {node nsList} {
+        foreach {ns} $nsList {
+            set nsNode [$node lookup $ns]
+            if {$nsNode == ""} {
+                return no
+            }
+            set node $nsNode
+        }
+        return yes
+    }
+}
+

@@ -141,55 +141,22 @@ proc ::Parser::Xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
     set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
     set clsName [lindex $nsAll end]
     
-    # if class already exists, return it
-    set clsNode [$node lookup $clsName [lrange $nsAll 0 end-1]]
+    set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+    #set clsNode [$node lookup $clsName $nsNode]
+    set clsNode [$nsNode lookup $clsName]
     if {$clsNode != ""} {
-        for {set i 0} {$i < [llength $nsAll]} {incr i} {
-            set ct [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
-            $ct configure -isvalid 1
-        }
-        configClassParams $node $clsNode $cTree $content sloto
-        set slotOff $sloto
-        #$cNode configure -definition $clsDef -defbrange [list $defOff $defEnd]
-        return $clsNode
-    }
-    
-    if {[llength $nsAll] > 1} {
-        # lookup parent namespaces. Create them if they don't exist
-        set nsNode [$node lookup [lindex $nsAll 0]]
-        if {$nsNode == ""} {
-            set nsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
-                    -type "namespace" -name [lindex $nsAll 0]]
-            $node addChild $nsNode
-        }
-        
-        set lna [expr {[llength $nsAll] - 1}]
-        for {set i 1} {$i < $lna} {incr i} {
-            set nnsNode [$node lookup [lindex $nsAll $i] [lrange $nsAll 0 [expr {$i - 1}]]]
-            if {$nnsNode == ""} {
-                set nnsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
-                        -type "namespace" -name [lindex $nsAll $i]]
-                $nsNode addChild $nnsNode
-            }
-            set nsNode $nnsNode
-        }
-        
-        set clsNode [::Parser::XotclClassNode ::#auto -type "class" \
-                -name $clsName -isvalid 1 -expanded 0]
-        $nsNode addChild $clsNode
-    } else  {
-        if {[$node lookup $clsName] != ""} {
-            return -code error "class $clsName already exists"
-        }
-        
-        set clsNode [::Parser::XotclClassNode ::#auto -type "class" -expanded 0 \
+        $clsNode configure -isvalid 1 -definition $clsDef \
+            -defbrange [list $defOff $defEnd]
+    } else {
+        set clsNode [::Parser::ClassNode ::#auto -type class -expanded 0 \
                 -name $clsName -isvalid 1]
-        $node addChild $clsNode
+        $nsNode addChild $clsNode
     }
     
     configClassParams $node $clsNode $cTree $content sloto
     set slotOff $sloto
     return $clsNode
+    
 }
 
 proc ::Parser::Xotcl::parseAttribute {node cTree content defOff} {
