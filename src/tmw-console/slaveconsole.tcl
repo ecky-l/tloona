@@ -104,6 +104,7 @@ class ::Tmw::SlaveConsole {
         interp alias $interp puts {} [code $this putsAlias $interp]
         interp alias $interp exit {} [code $this exitAlias $interp]
         interp alias $interp gets {} [code $this getsAlias $interp]
+        $interp eval {package require sugar ;}
     }
     
     # @c The puts alias for slave interpreters

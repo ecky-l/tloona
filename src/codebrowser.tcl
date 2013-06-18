@@ -460,8 +460,12 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script "body "
         }
         
+        macro {
+            append script "::sugar::macro "
+        }
+        
         proc {
-            append script "proc "
+            append script "::sugar::proc "
         }
         
         variable -
@@ -506,7 +510,6 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     append script "$name [list [$node cget -arglist]] {"
     append script [string trim [$node cget -definition] "{}"]
     append script "}"
-    puts $script
     return $script
 }
 

@@ -34,17 +34,17 @@ package provide parser::tcl 1.0
 
 ##
 # Gets the byterange of a definition in a parse tree at specified index
-::sugar::macro parse_defrange {cmd tree idx} {
+sugar::macro parse_defrange {cmd tree idx} {
     list list \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 0\] \
         \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 1\]
 }
 
-::sugar::macro parse_cmdrange {cmd tree offset} {
+sugar::macro parse_cmdrange {cmd tree offset} {
     list list \[expr \{\[lindex \[lindex $tree 1\] 0\] + $offset\}\] \
         \[expr \{\[lindex \[lindex $tree 1\] 1\] - 1\}\]
 }
 
-::sugar::macro getarg {cmd arg args} {
+sugar::macro getarg {cmd arg args} {
     if {[llength $args] == 1} {
         list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : \"$args\" \}
     } else {
@@ -359,7 +359,6 @@ namespace eval ::Parser::Tcl {
         ::Parser::parse $pn [expr {$defOff + $off}] $procBody
         
         $pn configure -isvalid 1
-        $topNode addProc $pn
         return $pn
     }
     

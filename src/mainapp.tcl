@@ -1096,6 +1096,7 @@ class Tloona::Mainapp {
         set _DefaultInterp [$C createInterp 1]
         $cnb add $C -text "Console"
         #$cnb add [component output] -text "Debug Process"
+        #component console eval "package require sugar"
     }
         
     # @c open a Tcl/Itcl file
