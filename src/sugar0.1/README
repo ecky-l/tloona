@@ -1,0 +1,14 @@
+Sugar is a macro system for the Tcl programming language, with a design
+very similar to Lisp macros. Basically it provides a new way to create
+Tcl procedures, using the [sugar::proc] command instead of the normal Tcl
+[proc] command, and a way to define macros that are expanded inline
+when the procedure is created.
+
+For a quick API description check the API.txt file in this directory.
+
+For more information in a tutorial form check http://mini.net/tcl/sugar
+
+For some example, check the 'example' directory.
+
+Enjoy,
+Salvatore Sanfilippo

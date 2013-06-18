@@ -1,5 +1,6 @@
 
-package re parser 1.4
+package require sugar 0.1
+package require parser 1.4
 package require parser::script 1.0
 package require parser::tcl 1.0
 package require parser::itcl 1.0
@@ -9,8 +10,10 @@ package require parser::web 1.0
 
 package provide parser::parse 1.0
 
+
 namespace eval ::Parser {
     variable CurrAccessLevel ""
+        
 }
 
 # @c build a tree. If not content is given (content = ""),
@@ -23,7 +26,7 @@ namespace eval ::Parser {
 # @a off: range variables, this is added to the range offsets
 # @a off: that come out of parsing
 # @a content: the content to parse or ""
-proc ::Parser::parse {node off content} {
+proc ::Parser::parse {node off content args} {
     variable CurrAccessLevel
     if {$content == ""} {
         return
@@ -50,10 +53,7 @@ proc ::Parser::parse {node off content} {
         switch -glob -- $token {
             
             "package" {
-                set pkgNode [Tcl::parsePkg $node $codeTree $content]
-                if {$pkgNode != ""} {
-                    $pkgNode configure -byterange $cmdRange
-                }
+                Tcl::parsePkg $node $codeTree $content $cmdRange $off
             }
             
             "namespace" {
@@ -72,21 +72,7 @@ proc ::Parser::parse {node off content} {
             "sugar::macro" -
             "macro" -
             "<substproc>" {
-                set defOff 0
-                set pn [Tcl::parseProc $node $codeTree $content "" defOff]
-                
-                if {$pn != ""} {
-                    switch -glob -- $token {
-                        *macro {
-                        $pn configure -type macro
-                        }
-                        <substproc> {
-                        $pn configure -type webcmd
-                        }
-                    }
-                    $pn configure -byterange $cmdRange
-                    parse $pn [expr {$defOff + $off}] [$pn cget -definition]
-                }
+                Tcl::parseProc $node $codeTree $content $cmdRange $off {*}$args
             }
             
             "command" -
