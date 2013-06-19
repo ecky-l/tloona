@@ -30,6 +30,7 @@ foreach pkg {comm Img Itcl Itk log htmlparse ctext fileutil tdom starkit vfs::mk
     puts [exec teacup install $pkg]
 }
 
+
 if {[catch package require sugar]} {
     puts {
 
