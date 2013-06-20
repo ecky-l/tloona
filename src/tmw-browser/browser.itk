@@ -292,8 +292,13 @@ body ::Tmw::Browser::displayTreeNode {node recursive args} {
         return
     }
     
-    if {![info exists aargs(-image)] && [info exists NodeIcons([$node cget -type])]} {
-        set aargs(-image) $NodeIcons([$node cget -type])
+    # handle special case of sugarized procs
+    set type [$node cget -type]
+    if {$type == "proc" && [$node cget -sugarized]} {
+        set type sugar_proc
+    }
+    if {![info exists aargs(-image)] && [info exists NodeIcons($type)]} {
+        set aargs(-image) $NodeIcons($type)
     }
     
     if {![info exists aargs(-text)]} {

@@ -11,8 +11,17 @@ package require parser::web 1.0
 package provide parser::parse 1.0
 
 
+sugar::macro getarg {cmd arg args} {
+    if {[llength $args] == 1} {
+        list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : \"$args\" \}
+    } else {
+        list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : [list $args] \}
+    }
+}
+
+
 namespace eval ::Parser {
-    variable CurrAccessLevel ""
+    variable CurrentAccess ""
         
 }
 
@@ -26,7 +35,7 @@ namespace eval ::Parser {
 # @a off: range variables, this is added to the range offsets
 # @a off: that come out of parsing
 # @a content: the content to parse or ""
-proc ::Parser::parse {node off content args} {
+sugar::proc ::Parser::parse {node off content args} {
     variable CurrAccessLevel
     if {$content == ""} {
         return
@@ -87,6 +96,8 @@ proc ::Parser::parse {node off content args} {
             
             "class" {
                 # Itcl class
+                variable CurrentAccess
+                set CurrentAccess public
                 set defOff 0
                 set cnode [Itcl::parseClass $node $codeTree $content defOff]
                 if {$cnode != ""} {
@@ -99,6 +110,7 @@ proc ::Parser::parse {node off content args} {
                     }
                     $cnode updatePTokens
                 }
+                set CurrentAccess ""
             }
             
             "type" -
@@ -148,7 +160,7 @@ proc ::Parser::parse {node off content args} {
                     set nm [lindex $nsAll end]
                     set tn [[$node getTopnode ::Parser::Script] lookup $nm [lrange $nsAll 0 end-1]]
                     set iNode [Xotcl::parseInstCmd $tn $codeTree $content defOff preOff postOff]
-                    puts $iNode,[$iNode cget -definition]
+                    #puts $iNode,[$iNode cget -definition]
                     if {$iNode != ""} {
                         $iNode configure -byterange $cmdRange
                         parse $iNode [expr {$off + $defOff}] [$iNode cget -definition]
@@ -163,66 +175,13 @@ proc ::Parser::parse {node off content args} {
             "public" -
             "protected" -
             "private" {
-                set secToken [lindex $codeTree 1]
-                set range [lindex $secToken 1]
-                set realToken [::parse getstring $content \
-                    [list [lindex $range 0] [lindex $range 1]]]
-                switch -- $realToken {
-                    "variable" {
-                        set dCfOff 0
-                        set dCgOff 0
-                        set vNode [Tcl::parseVar $node $codeTree $content \
-                                $token dCfOff dCgOff]
-                        if {$vNode != ""} {
-                            $vNode configure -byterange $cmdRange
-                            parse $vNode [expr {$dCfOff + $off}] [$vNode cget -configcode]
-                            parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
-                        }
-                    }
-                    "common" {
-                        set cnNode [Itcl::parseCommon $node $codeTree $content]
-                    }
-                    "method" {
-                        set mNode [Itcl::parseMethod $node $codeTree $content \
-                                $token]
-                        if {$mNode != ""} {
-                            $mNode configure -byterange $cmdRange
-                            parse $mNode $off [$mNode cget -definition]
-                            switch -- [$node cget -type] {
-                                "access" {
-                                    [$node getParent] addMethod $mNode
-                                }
-                                "class" {
-                                    $node addMethod $mNode
-                                }
-                            }
-                        }
-                    }
-                    "proc" {
-                        set pn [Tcl::parseProc $node $codeTree $content dummy]
-                        if {$pn != ""} {
-                            $pn configure -byterange $cmdRange
-                            parse $pn $off [$pn cget -definition]
-                        }
-                    }
-                    "default" {
-                        set CurrAccessLevel $token
-                        set defOff [lindex [lindex [lindex [lindex \
-                            [lindex $codeTree 1] 2] 0] 1] 0]
-                        set defEnd [lindex [lindex [lindex [lindex \
-                            [lindex $codeTree 1] 2] 0] 1] 1]
-                        set newCtn [::parse getstring $content \
-                            [lindex [lindex $codeTree 1] 1]]
-                        set newCtn [string trim $newCtn "\{\}"]
-                        parse $node [expr {$off + $defOff}] $newCtn
-                        set CurrAccessLevel ""
-                    }
-                }
+                Itcl::parseAccess $node $codeTree $content $cmdRange $off \
+                    -access $token {*}$args
             }
             
             "method" {
-                set mNode [Itcl::parseMethod $node $codeTree $content \
-                    $CurrAccessLevel]
+                set acc [getarg -access public]
+                set mNode [Itcl::parseMethod $node $codeTree $content $acc]
                 if {$mNode != ""} {
                     $mNode configure -byterange $cmdRange
                     parse $mNode $off [$mNode cget -definition]
@@ -255,19 +214,19 @@ proc ::Parser::parse {node off content args} {
                 }
             }
             
-            "variable" {
+            "variable" -
+            "common" {
                 set dCfOff 0
                 set dCgOff 0
-                set vNode [Tcl::parseVar $node $codeTree $content \
-                    $CurrAccessLevel dCgOff dCfOff]
+                #set acc [getarg -access]
+                variable CurrentAccess
+                set vNode [Tcl::parseVar $node $codeTree $content "" dCgOff dCfOff \
+                    -vardef $token -access $CurrentAccess]
                 if {$vNode != ""} {
                     $vNode configure -byterange $cmdRange
                     parse $vNode [expr {$dCfOff + $off}] [$vNode cget -configcode]
                     parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
                 }
-            }
-            
-            "common" {
             }
             
             "set" {
@@ -292,6 +251,10 @@ proc ::Parser::parse {node off content args} {
             
             "while" {
                 Tcl::parseWhile $node $codeTree $content $off
+            }
+            
+            "inherit" {
+                Itcl::parseInherit $node $codeTree $content
             }
             
             "inherit" {

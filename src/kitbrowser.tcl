@@ -13,6 +13,7 @@ package provide tloona::kitbrowser 1.0
 
 usual KitBrowser {}
 
+namespace eval ::Tloona::Fs {}
 # @c This class is used to represent starkits. They can be extracted 
 # @c and wrapped. Besides that, configuration of the -name attribute 
 # @c is special.

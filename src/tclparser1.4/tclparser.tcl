@@ -89,6 +89,12 @@ namespace eval ::Parser {
                 }
             }
         }
+        
+        # @v access: The access level. Public by default, but some
+        # @v access: redefinitions may set this otherwise (itcl)
+        public variable access "public"
+        # @v sugarized: indicates whether this is a sugar::proc (with macros)
+        public variable sugarized no
         # @v runtimens: the namespace where this proc is defined
         # @v runtimens: at runtime
         public variable runtimens ""
@@ -115,6 +121,7 @@ namespace eval ::Parser {
                     configure -shortdefinition $definition
                 }
             }
+            
             # @v shortdefinition: an abbreviation of the init definition
             variable shortdefinition ""
             # @v configcode: code that is associated with the
@@ -296,7 +303,7 @@ namespace eval ::Parser::Tcl {
     ::sugar::proc parseProc {node cTree content cmdRange off args} {
         #upvar $defOffPtr defOff
         set nTk [llength $cTree]
-        set accLev [getarg -acclev]
+        #set accLev [getarg -access]
         if {$nTk == 5} {
             # we are in a class and have access qualifier
             set aList {procDef 1 procName 2 argList 3 procBody 4}
@@ -304,12 +311,13 @@ namespace eval ::Parser::Tcl {
             # if this is a node of type class, it could be that
             # it is a proc definition with access token (public,
             # private, protected) We will check this later
-            if {$accLev != ""} {
-                set aList {procDef 1 procName 2 argList 3}
-                set procBody ""
-            } else  {
-                set aList {procDef 0 procName 1 argList 2 procBody 3}
-            }
+            set aList {procDef 0 procName 1 argList 2 procBody 3}
+            #if {$accLev != ""} {
+            #    set aList {procDef 1 procName 2 argList 3}
+            #    set procBody ""
+            #} else  {
+            #    set aList {procDef 0 procName 1 argList 2 procBody 3}
+            #}
         } elseif {$nTk == 3} {
             # only proc definition in a class
             set aList {procDef 0 procName 1 argList 2}
@@ -323,8 +331,10 @@ namespace eval ::Parser::Tcl {
             set $tkn [parse_token $content $cTree $idx]
         }
         
-        set defOff [lindex \
-            [parse_defrange $cTree [dict get $aList procBody]] 0]
+        if {[dict exist $aList procBody]} {
+            set defOff [lindex \
+                [parse_defrange $cTree [dict get $aList procBody]] 0]
+        }
         
         set rtns [namespace qualifiers $procName]
         set nsAll [regsub -all {::} [string trimleft $procName :] " "]
@@ -338,7 +348,7 @@ namespace eval ::Parser::Tcl {
         set topNode [$node getTopnode ::Parser::Script]
         
         set pn [$node lookup $procName]
-        if {$pn == ""} {
+        if {$pn == "" || [$pn cget -type] != "proc"} {
             set pn [::Parser::ProcNode ::#auto -name $procName -type proc \
                 -definition $procBody  -defoffset [expr {$defOff - $strt}] \
                 -runtimens $rtns -arglist $argList]
@@ -355,7 +365,13 @@ namespace eval ::Parser::Tcl {
             }
         }
         
-        $pn configure -byterange $cmdRange -isvalid 1
+        set sugarized no
+        if {[string eq [string trim $procDef :] sugar::proc]} {
+            set sugarized yes
+        }
+        
+        $pn configure -arglist $argList -byterange $cmdRange \
+            -isvalid 1 -sugarized $sugarized {*}$args
         ::Parser::parse $pn [expr {$defOff + $off}] $procBody
         
         $pn configure -isvalid 1
@@ -364,7 +380,7 @@ namespace eval ::Parser::Tcl {
     
     
     # @c parses a variable node
-    proc parseVar {node cTree content accLev dCfOffPtr dCgOffPtr} {
+    ::sugar::proc parseVar {node cTree content accLev dCfOffPtr dCgOffPtr args} {
         upvar $dCfOffPtr dCfOff
         upvar $dCgOffPtr dCgOff
         
@@ -429,23 +445,25 @@ namespace eval ::Parser::Tcl {
         
         switch -- [$node cget -type] {
             class {
+                set varDef [getarg -vardef variable]
+                set accLev [getarg -access protected]
                 if {$accLev == ""} {
                     set accLev protected
                 }
-                
+                puts hhhh,$accLev,[info level [expr [info level]-1]]
                 $node addVariable $vName 0 1
                 # if var already exists, return it
                 set vNode [$node lookup $vName]
-                if {$vNode != "" && [$vNode cget -type] == "[set accLev]_variable"} {
+                if {$vNode != "" && [$vNode cget -type] == "[set accLev]_[set varDef]"} {
                     $vNode configure -configcode $vConf -cgetcode $vCget \
                         -definition $vDef -configbrange [list $dCfOff $dCfEnd] \
                         -cgetbrange [list $dCgOff $dCgEnd] -isvalid 1 \
-                        -type [set accLev]_variable
+                        -type [set accLev]_[set varDef]
                     return $vNode
                 }
                 
                 set vNode [$node addChild [::Parser::VarNode ::#auto \
-                        -type [set accLev]_variable -name $vName -definition $vDef \
+                        -type [set accLev]_[set varDef] -name $vName -definition $vDef \
                         -configcode $vConf -cgetcode $vCget \
                         -configbrange [list $dCfOff $dCfEnd] \
                         -cgetbrange [list $dCgOff $dCgEnd]]]

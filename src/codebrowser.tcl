@@ -465,7 +465,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         }
         
         proc {
-            append script "::sugar::proc "
+            append script [expr {[$node cget -sugarized] ? "::sugar::proc " : "proc "}]
         }
         
         variable -

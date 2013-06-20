@@ -12,398 +12,400 @@ package provide tmw::filesystem 1.0
 
 catch {namespace import ::itcl::*}
 
-# @c This class represents a filesystem in wide sense
-# @c Filesystems can be elsewhere and can be represented
-# @c as tree structures.
-# @c Main purpose of this class is to build the tree of
-# @c files and directories that are childs/subnodes of
-# @c the system. It is also a base class for every other
-# @c filesystem class
-class ::Tmw::Fs::FileSystem {
-    inherit ::itree::Node
-    
-    constructor {args} {
-        eval configure $args
-    }
-    
-    public {
-        # @v name: overrides the name of itree::Node. Configure code
-        # @v name: assigns -tail and -path attributes
-        variable name "" {
-            configure -tail [file tail $name] -dirname [file dirname $name]
-        }
-        # @v tail: the basename of the file path, without directory
-        variable tail ""
-        # @v dirname: the directory where the file lives
-        variable dirname ""
-        # @v isvalid: whether the file is still valid. Used in rebuilding
-        # @v isvalid: the path
-        variable isvalid 1
+namespace eval ::Tmw::Fs {
+    # @c This class represents a filesystem in wide sense
+    # @c Filesystems can be elsewhere and can be represented
+    # @c as tree structures.
+    # @c Main purpose of this class is to build the tree of
+    # @c files and directories that are childs/subnodes of
+    # @c the system. It is also a base class for every other
+    # @c filesystem class
+    class FileSystem {
+        inherit ::itree::Node
         
-        # @v displayformat: overrides the default displayformat from itree::Node
-        variable displayformat {"%s (%s)" -tail -dirname}
-    }
-    
-}
-
-# r a Tmw::Fs::FileSystem object
-proc ::Tmw::Fs::filesystem {args} {
-    uplevel Tmw::Fs::FileSystem ::#auto $args
-}
-
-# @c Builds up a directory structure from rootObj file (filesystem)
-#
-# @a rootObj: the root object where to start
-# @a ignoreBackup: whether to ignore backup files
-# @a parseThread: a thread for parsing the files
-proc ::Tmw::Fs::build {rootObj ignoreBackup {pThread ""}} {
-    set dir [$rootObj cget -name]
-    if {$dir == ""} {
-        puts "warning: dir is empty"
-        return
-    }
-    set dirList [concat [glob -nocomplain [file join $dir *]] \
-        [glob -nocomplain [file join $dir .*]]]
-    foreach {file} $dirList {
-        # skip the following files
-        switch -- [file tail $file] {
-            . -
-            .. -
-            .svn -
-            .DS_Store {
-                continue
-            }
+        constructor {args} {
+            eval configure $args
         }
         
-        set thing ""
-        regsub -all { } $file {\\ } file
-        if {[file isdirectory $file]} {
-            set thing [$rootObj lookup $file]
-            if {$thing == "" || [$thing cget -type] != "directory"} {
-                set thing [::Tmw::Fs::Directory ::#auto -name $file \
-                    -type "directory" -expanded 0]
-                $rootObj addChild $thing
+        public {
+            # @v name: overrides the name of itree::Node. Configure code
+            # @v name: assigns -tail and -path attributes
+            variable name "" {
+                configure -tail [file tail $name] -dirname [file dirname $name]
             }
-            $thing configure -isvalid 1
-            build $thing $ignoreBackup
+            # @v tail: the basename of the file path, without directory
+            variable tail ""
+            # @v dirname: the directory where the file lives
+            variable dirname ""
+            # @v isvalid: whether the file is still valid. Used in rebuilding
+            # @v isvalid: the path
+            variable isvalid 1
             
-        } elseif {[file isfile $file]} {
-            if {[regexp {~|(?:\.bak)$} $file] && $ignoreBackup} {
-                # skip backup files
-                continue
-            }
-            
-            set type file
-            switch -- [file extension $file] {
-                .tcl -
-                .itcl -
-                .tk -
-                .itk -
-                .ws3 {
-                    set type tclfile
-                }
-                .test {
-                    set type testfile
-                }
-                .png -
-                .jpg -
-                .jpeg -
-                .ico -
-                .gif -
-                .bmp -
-                .xcf {
-                    set type image
-                }
-                .exe -
-                .bin {
-                    set type exefile
-                }
-                .kit -
-                .vfs {
-                    set type starkit
-                }
-                .htm -
-                .html -
-                .tml -
-                .adp {
-                    set type webscript
+            # @v displayformat: overrides the default displayformat from itree::Node
+            variable displayformat {"%s (%s)" -tail -dirname}
+        }
+        
+    }
+    
+    # r a Tmw::Fs::FileSystem object
+    proc filesystem {args} {
+        uplevel Tmw::Fs::FileSystem ::#auto $args
+    }
+    
+    # @c Builds up a directory structure from rootObj file (filesystem)
+    #
+    # @a rootObj: the root object where to start
+    # @a ignoreBackup: whether to ignore backup files
+    # @a parseThread: a thread for parsing the files
+    proc build {rootObj ignoreBackup {pThread ""}} {
+        set dir [$rootObj cget -name]
+        if {$dir == ""} {
+            puts "warning: dir is empty"
+            return
+        }
+        set dirList [concat [glob -nocomplain [file join $dir *]] \
+            [glob -nocomplain [file join $dir .*]]]
+        foreach {file} $dirList {
+            # skip the following files
+            switch -- [file tail $file] {
+                . -
+                .. -
+                .svn -
+                .DS_Store {
+                    continue
                 }
             }
             
-            set thing [$rootObj lookup $file]
-            if {$thing == "" || ![$thing isa ::Tmw::Fs::File]} {
-                set thing [::Tmw::Fs::File ::#auto -name $file \
-                    -type $type -expanded 0]
+            set thing ""
+            regsub -all { } $file {\\ } file
+            if {[file isdirectory $file]} {
+                set thing [$rootObj lookup $file]
+                if {$thing == "" || [$thing cget -type] != "directory"} {
+                    set thing [::Tmw::Fs::Directory ::#auto -name $file \
+                        -type "directory" -expanded 0]
+                    $rootObj addChild $thing
+                }
+                $thing configure -isvalid 1
+                build $thing $ignoreBackup
                 
-                # create an empty code tree and set it for the thing
-                switch -- $type {
-                    tclfile -
-                    testfile {
-                        $thing setTree [::Parser::Script ::#auto \
-                            -type "script" -file $file \
-                            -displayformat {"%s (%s)" -name -dirname}]
-                        $thing addChild [::Parser::Script ::#auto -name dummy \
-                            -displayformat {%s -name}]
-                    }                
+            } elseif {[file isfile $file]} {
+                if {[regexp {~|(?:\.bak)$} $file] && $ignoreBackup} {
+                    # skip backup files
+                    continue
                 }
-                $rootObj addChild $thing
+                
+                set type file
+                switch -- [file extension $file] {
+                    .tcl -
+                    .itcl -
+                    .tk -
+                    .itk -
+                    .ws3 {
+                        set type tclfile
+                    }
+                    .test {
+                        set type testfile
+                    }
+                    .png -
+                    .jpg -
+                    .jpeg -
+                    .ico -
+                    .gif -
+                    .bmp -
+                    .xcf {
+                        set type image
+                    }
+                    .exe -
+                    .bin {
+                        set type exefile
+                    }
+                    .kit -
+                    .vfs {
+                        set type starkit
+                    }
+                    .htm -
+                    .html -
+                    .tml -
+                    .adp {
+                        set type webscript
+                    }
+                }
+                
+                set thing [$rootObj lookup $file]
+                if {$thing == "" || ![$thing isa ::Tmw::Fs::File]} {
+                    set thing [::Tmw::Fs::File ::#auto -name $file \
+                        -type $type -expanded 0]
+                    
+                    # create an empty code tree and set it for the thing
+                    switch -- $type {
+                        tclfile -
+                        testfile {
+                            $thing setTree [::Parser::Script ::#auto \
+                                -type "script" -file $file \
+                                -displayformat {"%s (%s)" -name -dirname}]
+                            $thing addChild [::Parser::Script ::#auto -name dummy \
+                                -displayformat {%s -name}]
+                        }                
+                    }
+                    $rootObj addChild $thing
+                }
+                $thing configure -isvalid 1
             }
-            $thing configure -isvalid 1
+            
+        }
+    }
+    
+    # @c rebuilds a file system to include new files and invalidate old
+    # @c files
+    #
+    # @a rootObj: root directory / file system object
+    # @a ignorebackup: whether to ignore backup files or not
+    # @a newFilesPtr: pointer to a list with new files in the system
+    # @a oldFilesPtr: pointer to a list with old, invalid files
+    proc rebuild {rootObj ignorebackup newFilesPtr oldFilesPtr} {
+        upvar $newFilesPtr newFiles
+        upvar $oldFilesPtr oldFiles
+        
+        set chBefore [$rootObj getChildren 1]
+        foreach {child} $chBefore {
+            # if a file contains a parsed code tree, ignore it. We only
+            # want to have files and directories here. Code trees are 
+            # subject to be managed by other parties
+            if {[$child isa ::Tmw::Fs::FileSystem] || 
+                    [$child isa ::Tmw::Fs::FSContent]} {
+                $child configure -isvalid 0
+            }
+        }
+        
+        build $rootObj $ignorebackup
+        
+        foreach {child} [$rootObj getChildren 1] {
+            if {[$child cget -isvalid]} {
+                if {![lcontain $chBefore $child]} {
+                    lappend newFiles $child
+                }
+                continue
+            }
+            set par [$child getParent]
+            if {$par != ""} {
+                $par removeChild $child
+                lappend oldFiles $child
+            }
+            
+        }
+    }
+    
+    # @c Looks up the full name of a token (procedure, class, method etc.)
+    # @c and returns the file and the appropriate node. If type is not "",
+    # @c the lookup process is constrained to files of this type
+    #
+    # @a fsObj: a file system object or fsContent object
+    # @a token: full name of the token to look up
+    # @a type: the constraint type
+    # @a filePtr: returns the file name where the token is defined
+    # @a nodePtr: returns the defining node
+    #
+    # @r 0/1 whether the node has been found
+    proc lookupToken {fsObj token types filePtr nodePtr} {
+        
+    }
+    
+    # @c Method stub to parse the file. The default implementation
+    # @c does nothing but subclasses may override.
+    # @c The method is called during construction
+    proc parseFile {fileObj} {
+    }
+    
+    # @c Base class for file system content. Files and directories of
+    # @c every kind (that come into mind for me at least now ;-) can be
+    # @c derived from this class
+    class FSContent {
+        inherit ::itree::Node
+        
+        constructor {args} {
+            eval configure $args
+        }
+        
+        public {
+            # @v name: override for name. Configures tail
+            variable name "" {
+                configure -tail [file tail $name]
+            }
+            # @v filesystem: file system where this content belongs to
+            variable filesystem ""
+            # @v tail: the last part of the file name
+            variable tail ""
+            # @v isvalid: indicates that the node is valid
+            variable isvalid 1
+        }
+    }
+    
+    # @c This class represents an ordinary file. It is a base class
+    # @c for all file types that can occur in a file system.
+    class File {
+        inherit ::Tmw::Fs::FSContent
+        
+        constructor {args} {
+            eval configure $args
+        }
+        
+        public {
+            # @v program: path to the program with which the file is
+            # @v program: opened.
+            variable program ""
+            # @v open: indicates whether the file is opened
+            variable open 0
+            
+            # @v definition: delegate variable to definition
+            variable definition "" {
+                if {$CodeTree == ""} {
+                    return
+                }
+                $CodeTree configure -definition $definition
+            }
+            
+            # @c set the code tree
+            method setTree {tree} {
+                set CodeTree $tree
+            }
+            
+            # @r the code tree
+            method getTree {} {
+                return $CodeTree
+            }
+            
+            # @c Overrides addChild in itree::Node. Adds child to the
+            # @c CodeTree
+            method addChild {node} {
+                if {$CodeTree != ""} {
+                    $CodeTree addChild $node
+                }
+                chain $node
+            }
+            
+            # @c Overrides addChild in itree::Node. Removes child from
+            # @c the CodeTree
+            method removeChild {node} {
+                chain $node
+                if {$CodeTree != ""} {
+                    $CodeTree removeChild $node
+                }
+            }
+            
+            # @c Delegate to CodeTree
+            method lookupRange {range} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree lookupRange $range]
+            }
+            # @c Delegate to CodeTree
+            method setCommands {cmds} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree setCommands $cmds]
+            }
+            # @c Delegate to CodeTree
+            method getCommands {cmdsPtr {deep 0}} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                upvar $cmdsPtr cmds
+                return [$CodeTree getCommands cmds $deep]
+            }
+            
+            # @c Delegate to CodeTree
+            method addVariable {var value {deep 0}} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree addVariable $var $value $deep]
+            }
+            
+            # @c Delegate to CodeTree
+            method getVariables {{deep 0}} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree getVariables $deep]
+            }
+            
+            # @c Delegate to CodeTree
+            method removeVariables {} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                $CodeTree removeVariables
+            }
+            
+            # @c Delegate to CodeTree
+            method parseFile {filename} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                set res [$CodeTree parseFile $filename]
+                addChildren [$CodeTree getChildren]
+                return $res
+            }
+            
+            # @c Delegate to CodeTree
+            method appendError {range error} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree appendError $range $error]
+            }
+            
+            # @c Delegate to CodeTree
+            method getErrors {} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree getErrors]
+            }
+            
+            # @c Delegate to CodeTree
+            method addProc {procNode} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree addProc $procNode]
+            }
+            
+            # @c Delegate to CodeTree
+            method getProcs {} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree getProcs]
+            }
+            
+            # @c Delegate to CodeTree
+            method addMethod {methNode} {
+                if {$CodeTree == ""} {
+                    return
+                }
+                return [$CodeTree addMethod $methNode]
+            }
+            
+        }
+        
+        protected {
+            # @v CodeTree: a parsed code tree
+            variable CodeTree ""
         }
         
     }
+    
+    
+    # @c This class represents directories in file systems
+    class Directory {
+        inherit ::Tmw::Fs::FSContent
+        constructor {args} {
+            eval configure $args
+        }
+        
+    }
+    
 }
-
-# @c rebuilds a file system to include new files and invalidate old
-# @c files
-#
-# @a rootObj: root directory / file system object
-# @a ignorebackup: whether to ignore backup files or not
-# @a newFilesPtr: pointer to a list with new files in the system
-# @a oldFilesPtr: pointer to a list with old, invalid files
-proc ::Tmw::Fs::rebuild {rootObj ignorebackup newFilesPtr oldFilesPtr} {
-    upvar $newFilesPtr newFiles
-    upvar $oldFilesPtr oldFiles
-    
-    set chBefore [$rootObj getChildren 1]
-    foreach {child} $chBefore {
-        # if a file contains a parsed code tree, ignore it. We only
-        # want to have files and directories here. Code trees are 
-        # subject to be managed by other parties
-        if {[$child isa ::Tmw::Fs::FileSystem] || 
-                [$child isa ::Tmw::Fs::FSContent]} {
-            $child configure -isvalid 0
-        }
-    }
-    
-    build $rootObj $ignorebackup
-    
-    foreach {child} [$rootObj getChildren 1] {
-        if {[$child cget -isvalid]} {
-            if {![lcontain $chBefore $child]} {
-                lappend newFiles $child
-            }
-            continue
-        }
-        set par [$child getParent]
-        if {$par != ""} {
-            $par removeChild $child
-            lappend oldFiles $child
-        }
-        
-    }
-}
-
-# @c Looks up the full name of a token (procedure, class, method etc.)
-# @c and returns the file and the appropriate node. If type is not "",
-# @c the lookup process is constrained to files of this type
-#
-# @a fsObj: a file system object or fsContent object
-# @a token: full name of the token to look up
-# @a type: the constraint type
-# @a filePtr: returns the file name where the token is defined
-# @a nodePtr: returns the defining node
-#
-# @r 0/1 whether the node has been found
-proc ::Tmw::Fs::lookupToken {fsObj token types filePtr nodePtr} {
-    
-}
-
-# @c Method stub to parse the file. The default implementation
-# @c does nothing but subclasses may override.
-# @c The method is called during construction
-proc ::Tmw::Fs::parseFile {fileObj} {
-}
-
-# @c Base class for file system content. Files and directories of
-# @c every kind (that come into mind for me at least now ;-) can be
-# @c derived from this class
-class ::Tmw::Fs::FSContent {
-    inherit ::itree::Node
-    
-    constructor {args} {
-        eval configure $args
-    }
-    
-    public {
-        # @v name: override for name. Configures tail
-        variable name "" {
-            configure -tail [file tail $name]
-        }
-        # @v filesystem: file system where this content belongs to
-        variable filesystem ""
-        # @v tail: the last part of the file name
-        variable tail ""
-        # @v isvalid: indicates that the node is valid
-        variable isvalid 1
-    }
-}
-
-# @c This class represents an ordinary file. It is a base class
-# @c for all file types that can occur in a file system.
-class ::Tmw::Fs::File {
-    inherit ::Tmw::Fs::FSContent
-    
-    constructor {args} {
-        eval configure $args
-    }
-    
-    public {
-        # @v program: path to the program with which the file is
-        # @v program: opened.
-        variable program ""
-        # @v open: indicates whether the file is opened
-        variable open 0
-        
-        # @v definition: delegate variable to definition
-        variable definition "" {
-            if {$CodeTree == ""} {
-                return
-            }
-            $CodeTree configure -definition $definition
-        }
-        
-        # @c set the code tree
-        method setTree {tree} {
-            set CodeTree $tree
-        }
-        
-        # @r the code tree
-        method getTree {} {
-            return $CodeTree
-        }
-        
-        # @c Overrides addChild in itree::Node. Adds child to the
-        # @c CodeTree
-        method addChild {node} {
-            if {$CodeTree != ""} {
-                $CodeTree addChild $node
-            }
-            chain $node
-        }
-        
-        # @c Overrides addChild in itree::Node. Removes child from
-        # @c the CodeTree
-        method removeChild {node} {
-            chain $node
-            if {$CodeTree != ""} {
-                $CodeTree removeChild $node
-            }
-        }
-        
-        # @c Delegate to CodeTree
-        method lookupRange {range} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree lookupRange $range]
-        }
-        # @c Delegate to CodeTree
-        method setCommands {cmds} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree setCommands $cmds]
-        }
-        # @c Delegate to CodeTree
-        method getCommands {cmdsPtr {deep 0}} {
-            if {$CodeTree == ""} {
-                return
-            }
-            upvar $cmdsPtr cmds
-            return [$CodeTree getCommands cmds $deep]
-        }
-        
-        # @c Delegate to CodeTree
-        method addVariable {var value {deep 0}} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree addVariable $var $value $deep]
-        }
-        
-        # @c Delegate to CodeTree
-        method getVariables {{deep 0}} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree getVariables $deep]
-        }
-        
-        # @c Delegate to CodeTree
-        method removeVariables {} {
-            if {$CodeTree == ""} {
-                return
-            }
-            $CodeTree removeVariables
-        }
-        
-        # @c Delegate to CodeTree
-        method parseFile {filename} {
-            if {$CodeTree == ""} {
-                return
-            }
-            set res [$CodeTree parseFile $filename]
-            addChildren [$CodeTree getChildren]
-            return $res
-        }
-        
-        # @c Delegate to CodeTree
-        method appendError {range error} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree appendError $range $error]
-        }
-        
-        # @c Delegate to CodeTree
-        method getErrors {} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree getErrors]
-        }
-        
-        # @c Delegate to CodeTree
-        method addProc {procNode} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree addProc $procNode]
-        }
-        
-        # @c Delegate to CodeTree
-        method getProcs {} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree getProcs]
-        }
-        
-        # @c Delegate to CodeTree
-        method addMethod {methNode} {
-            if {$CodeTree == ""} {
-                return
-            }
-            return [$CodeTree addMethod $methNode]
-        }
-        
-    }
-    
-    protected {
-        # @v CodeTree: a parsed code tree
-        variable CodeTree ""
-    }
-    
-}
-
-
-# @c This class represents directories in file systems
-class ::Tmw::Fs::Directory {
-    inherit ::Tmw::Fs::FSContent
-    constructor {args} {
-        eval configure $args
-    }
-    
-}
-

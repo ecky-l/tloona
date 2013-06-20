@@ -28,8 +28,8 @@ if {$tcl_platform(platform) == "windows"} {
     
 } else  {
     set ::UserOptions(Theme) "clam"
-    set ::UserOptions(FileFont) {Fixed 14}
-    set ::UserOptions(ConsoleFont) {Fixed 14}
+    set ::UserOptions(FileFont) {{Lucida Sans Typewriter} 13}
+    set ::UserOptions(ConsoleFont) {{Lucida Sans Typewriter} 13}
     
     # syntax colors for Tcl files
     set ::UserOptions(TclSyntax) { \
@@ -69,6 +69,9 @@ set ::UserOptions(CodeBrowser,SortSeq) {
     macro
     variable
     class
+    public_common
+    protected_common
+    private_common
     itk_components
     public_component
     private_component
@@ -93,6 +96,9 @@ set ::UserOptions(KitBrowser,SortSeq) {
     macro
     variable
     class
+    public_common
+    protected_common
+    private_common
     itk_components
     public_component
     private_component

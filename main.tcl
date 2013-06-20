@@ -91,6 +91,7 @@ proc ::Tloona::initIcons {} {
     set Icons(TclNs) [image create photo -file [file join $IconPath namespace.png]]
     set Icons(TclClass) [image create photo -file [file join $IconPath appboxes18.png]]
     set Icons(TclProc) [image create photo -file [file join $IconPath proc.png]]
+    set Icons(TclSugarProc) [image create photo -file [file join $IconPath sugar_proc.png]]
     set Icons(TclConstructor) [image create photo -file [file join $IconPath constructor.png]]
     set Icons(TclDestructor) [image create photo -file [file join $IconPath destructor.png]]
     set Icons(TclMethod) [image create photo -file [file join $IconPath method.png]]
@@ -101,6 +102,9 @@ proc ::Tloona::initIcons {} {
     set Icons(TclPublicVar) [image create photo -file [file join $IconPath public_variable.png]]
     set Icons(TclProtectedVar) [image create photo -file [file join $IconPath protected_variable.png]]
     set Icons(TclPrivateVar) [image create photo -file [file join $IconPath private_variable.png]]
+    set Icons(TclPublicCommon) [image create photo -file [file join $IconPath public_common.png]]
+    set Icons(TclProtectedCommon) [image create photo -file [file join $IconPath protected_common.png]]
+    set Icons(TclPrivateCommon) [image create photo -file [file join $IconPath private_common.png]]
     set Icons(TclPkg) [image create photo -file [file join $IconPath package.png]]
     set Icons(TclTest) [image create photo -file [file join $IconPath tcltest.png]]
     set Icons(ItkComponents) [image create photo -file [file join $IconPath itk_components.png]]
@@ -117,6 +121,7 @@ proc ::Tloona::initIcons {} {
                 namespace $Icons(TclNs) \
                 class $Icons(TclClass) \
                 proc $Icons(TclProc) \
+                sugar_proc $Icons(TclSugarProc) \
                 method $Icons(TclMethod) \
                 public_method $Icons(TclPublicMethod) \
                 protected_method $Icons(TclProtectedMethod) \
@@ -127,6 +132,9 @@ proc ::Tloona::initIcons {} {
                 public_variable $Icons(TclPublicVar) \
                 protected_variable $Icons(TclProtectedVar) \
                 private_variable $Icons(TclPrivateVar) \
+                public_common $Icons(TclPublicCommon) \
+                protected_common $Icons(TclProtectedCommon) \
+                private_common $Icons(TclPrivateCommon) \
                 package $Icons(TclPkg) \
                 constructor $Icons(TclConstructor) \
                 macro $Icons(TclConstructor) \
