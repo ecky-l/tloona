@@ -67,6 +67,7 @@ class ::Parser::Script {
     public variable name ""
         # @v defbrange: byte range for the definition
     public variable defbrange {}
+    
         # @v definition: the text that makes up the code definition
     public variable definition ""
         # @v isvalid: used for reparsing. Indicates, whether the

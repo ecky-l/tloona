@@ -444,6 +444,17 @@ class ::Tloona::CodeOutline {
     
 }
 
+proc ::Tloona::getNSQ {node} {
+    # get fully qualified name
+    set name [$node cget -name]
+    set parent [$node getParent]
+    while {$parent != "" && [$parent isa ::Parser::StructuredFile]} {
+        set name [$parent cget -name]::[set name]
+        set parent [$parent getParent]
+    }
+    set name ::[string trim $name :]
+}
+
 # @c Gets the node definition of a proc or class item and constructs
 # @c a script to be send to other interpreters
 #
@@ -457,7 +468,28 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     set script ""
     switch -glob -- [$node cget -type] {
         *method {
-            append script "body "
+            set clNode [$node getParent]
+            switch -glob -- [$clNode cget -token] {
+                *type -
+                *widget* {
+                    # obviously a snit type. handle appropriately
+                    append script ::snit::method " " 
+                    append script [getNSQ $clNode] " " [$node cget -name] " " 
+                    append script [$node cget -arglist] " " \{
+                    append script \{ [string trim [$node cget -definition] "{}"] \}
+                    return $script
+                }
+            }
+            append script "::itcl::body "
+        }
+        
+        constructor -
+        destructor {
+            set clNode [$node getParent]
+            append script ::itcl::body " " [getNSQ $clNode] :: [$node cget -type] " "
+            append script [list [$node cget -arglist]] " " 
+            append script \{ [string trim [$node cget -definition] "{}"] \}
+            return $script
         }
         
         macro {
@@ -471,8 +503,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         variable -
         namespace -
         webcmd -
-        xo_* -
-        class {
+        xo_* {
             # this can be done directly from the file definition
             # Get the definition of this node in the file and return
             #append script "proc "
@@ -487,6 +518,26 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
                 return
             }
             return [$file flashCode $node]
+        }
+        
+        class {
+            # build up the node definition
+            # get fully qualified name
+            set name [$node cget -name]
+            set parent [$node getParent]
+            while {$parent != "" && [$parent isa ::Parser::StructuredFile]} {
+                set name [$parent cget -name]::[set name]
+                set parent [$parent getParent]
+            }
+            
+            if {$file != {}} {
+                $file flashCode $node
+            }
+            append script [$node cget -token] " " $name " " \{ 
+            append script [string trim [$node cget -definition] "{}"]
+            append script \}
+            #puts $script
+            return $script
         }
         default {
             # not implemented
@@ -507,7 +558,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         set parent [$parent getParent]
     }
     
-    append script "$name [list [$node cget -arglist]] {"
+    append script :: "$name [list [$node cget -arglist]] {"
     append script [string trim [$node cget -definition] "{}"]
     append script "}"
     return $script

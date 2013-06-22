@@ -29,6 +29,18 @@ sugar::macro getarg {cmd arg args} {
     }
 }
 
+##
+# Gets the byterange of a definition in a parse tree at specified index
+sugar::macro parse_defrange {cmd tree idx} {
+    list list \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 0\] \
+        \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 1\]
+}
+
+sugar::macro parse_cmdrange {cmd tree offset} {
+    list list \[expr \{\[lindex \[lindex $tree 1\] 0\] + $offset\}\] \
+        \[expr \{\[lindex \[lindex $tree 1\] 1\] - 1\}\]
+}
+
 
 namespace eval ::Parser {
     namespace eval Itcl {}
@@ -49,6 +61,9 @@ namespace eval ::Parser {
         constructor {args} {
             eval configure $args
         }
+        
+        # The token that defines the script (e.g. eval, namespace, type, class...)
+        public variable token ""
         
         public variable inherits {}
         public variable isitk 0
@@ -82,6 +97,18 @@ namespace eval ::Parser {
                 }
             }
         }
+    }
+    
+    class ConstructorNode {
+    inherit ::Parser::ProcNode
+    public {
+        variable initdefinition ""
+        variable initbrange {}
+        
+        constructor {args} {
+            eval configure $args
+        }
+    }
     }
     
     class ItkComponentNode {
@@ -130,6 +157,14 @@ namespace eval ::Parser::Itcl {
                     ::Parser::parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
                 }
             }
+            "constructor" {
+                set defOff 0
+                set csNode [parseConstructor $node $codeTree $content defOff]
+                if {$csNode != ""} {
+                    $csNode configure -byterange $cmdRange
+                    ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
+                }
+            }
             "method" {
                 set mNode [parseMethod $node $codeTree $content $accLev]
                 if {$mNode != ""} {
@@ -145,6 +180,7 @@ namespace eval ::Parser::Itcl {
                     }
                 }
             }
+            
             "proc" {
                 set pn [::Parser::Tcl::parseProc $node $codeTree $content dummy]
                 if {$pn != ""} {
@@ -314,7 +350,7 @@ namespace eval ::Parser::Itcl {
         upvar $defOffPtr defOff
         set nTk [llength $cTree]
         
-        foreach {tkn idx} {clsName 1 clsDef 2} {
+        foreach {tkn idx} {clsTkn 0 clsName 1 clsDef 2} {
             set range [lindex [lindex $cTree $idx] 1]
             set $tkn [::parse getstring $content [list [lindex $range 0] [lindex $range 1]]]
         }
@@ -332,13 +368,14 @@ namespace eval ::Parser::Itcl {
         set clsNode [$nsNode lookup $clsName]
         if {$clsNode != ""} {
             $clsNode configure -isvalid 1 -definition $clsDef \
-                -defbrange [list $defOff $defEnd]
+                -defbrange [list $defOff $defEnd] -token $clsTkn
         } else {
             set clsNode [::Parser::ClassNode ::#auto -type class -expanded 0 \
                     -name $clsName -isvalid 1 -definition $clsDef \
-                    -defbrange [list $defOff $defEnd]]
+                    -defbrange [list $defOff $defEnd] -token $clsTkn]
             $nsNode addChild $clsNode
         }
+        
         return $clsNode
     }
     
@@ -346,55 +383,62 @@ namespace eval ::Parser::Itcl {
     proc parseCommon {node cTree content} {
     }
     
-    proc parseConstructor {node cTree content defOffPtr} {
+    ::sugar::proc parseConstructor {node cTree content defOffPtr} {
         upvar $defOffPtr defOff
         set defEnd 0
         
         set nTk [llength $cTree]
+        set firstTkn [parse_token $content $cTree 0]
+        set argList ""
+        set initDef ""
+        set initBr {}
+        set constDef ""
+        set defIdx 2
         if {$nTk == 3} {
-            # without access level
-            set aList {argList 1 constDef 2}
-            set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
-            set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
+            # constructor without access level
+            set argList [parse_token $content $cTree 1]
+            set constDef [parse_token $content $cTree 2]
+            set defIdx 2
         } elseif {$nTk == 4} {
-            # has access level, but this doesn't matter
-            set aList {accLev 0 argList 2 constDef 3}
-            set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
-            set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 1]
+            if {$firstTkn == "constructor"} {
+                # Constructor with init Code
+                set argList [parse_token $content $cTree 1]
+                set initDef [parse_token $content $cTree 2]
+                set initBr [parse_defrange $cTree 2]
+            } else {
+                # access level definition
+                set argList [parse_token $content $cTree 2]
+            }
+            set constDef [parse_token $content $cTree 3]
+            set defIdx 3
+        } elseif {$nTk == 5} {
+            # Constructor with access and init code
+            set argList [parse_token $content $cTree 2]
+            set initDef [parse_token $content $cTree 3]
+            set initBr [parse_defrange $cTree 3]
+            set constDef [parse_token $content $cTree 4]
+            set defIdx 4
         } else {
             return ""
         }
         
-        foreach {tkn idx} $aList {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content $range]
-        }
-        
+        set defRange [parse_defrange $cTree $defIdx]
+        set defOff [lindex $defRange 0]
+
         set argList [lindex $argList 0]
         set constDef [string trim $constDef \{\}]
-        
-        if {[$node cget -type] == "access"} {
-            set csNode [[$node getParent] lookup "constructor"]
-            if {$csNode == "" || [$csNode cget -type] != "constructor"} {
-                set csNode [::Parser::ProcNode ::#auto \
-                    -type "constructor" -name "constructor" \
-                    -arglist $argList -definition $constDef]
-                [$node getParent] addChild $csNode
-            }
-            $csNode configure -isvalid 1 -arglist $argList -definition $constDef
-            
-            return $csNode
-        }
         
         # return existing method node if already present
         set csNode [$node lookup "constructor"]
         if {$csNode != "" && [$csNode cget -type] == "constructor"} {
-            $csNode configure -arglist $argList -definition $constDef -isvalid 1
+            $csNode configure -arglist $argList -definition $constDef -isvalid 1 \
+                -initdefinition $initDef -initbrange $initBr
             return $csNode
         }
         
-        set csNode [::Parser::ProcNode ::#auto -type "constructor" \
-            -name "constructor" -arglist $argList -definition $constDef]
+        set csNode [::Parser::ConstructorNode ::#auto -type "constructor" \
+            -name "constructor" -arglist $argList -definition $constDef \
+                -initdefinition $initDef -initbrange $initBr]
         $node addChild $csNode
         
         return $csNode

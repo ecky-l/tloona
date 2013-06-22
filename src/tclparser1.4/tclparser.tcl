@@ -312,12 +312,6 @@ namespace eval ::Parser::Tcl {
             # it is a proc definition with access token (public,
             # private, protected) We will check this later
             set aList {procDef 0 procName 1 argList 2 procBody 3}
-            #if {$accLev != ""} {
-            #    set aList {procDef 1 procName 2 argList 3}
-            #    set procBody ""
-            #} else  {
-            #    set aList {procDef 0 procName 1 argList 2 procBody 3}
-            #}
         } elseif {$nTk == 3} {
             # only proc definition in a class
             set aList {procDef 0 procName 1 argList 2}
@@ -349,12 +343,22 @@ namespace eval ::Parser::Tcl {
         
         set pn [$node lookup $procName]
         if {$pn == "" || [$pn cget -type] != "proc"} {
-            set pn [::Parser::ProcNode ::#auto -name $procName -type proc \
-                -definition $procBody  -defoffset [expr {$defOff - $strt}] \
-                -runtimens $rtns -arglist $argList]
+            set pn [::Parser::ProcNode ::#auto -name $procName -type proc]
+            #set pn [::Parser::ProcNode ::#auto -name $procName -type proc \
+            #    -definition $procBody  -defoffset [expr {$defOff - $strt}] \
+            #    -runtimens $rtns -arglist $argList]
             $node addChild $pn
         }
         
+        set sugarized no
+        if {[string eq [string trim $procDef :] sugar::proc]} {
+            set sugarized yes
+        }
+        
+        $pn configure -name $procName -type proc -sugarized $sugarized \
+            -definition $procBody -defoffset [expr {$defOff - $strt}] \
+            -runtimens $rtns -arglist $argList -isvalid 1 \
+            -byterange $cmdRange {*}$args
         # Set proc type
         switch -glob -- $procDef {
             *macro {
@@ -365,13 +369,8 @@ namespace eval ::Parser::Tcl {
             }
         }
         
-        set sugarized no
-        if {[string eq [string trim $procDef :] sugar::proc]} {
-            set sugarized yes
-        }
-        
-        $pn configure -arglist $argList -byterange $cmdRange \
-            -isvalid 1 -sugarized $sugarized {*}$args
+        #$pn configure -arglist $argList -byterange $cmdRange \
+        #    -isvalid 1 -sugarized $sugarized {*}$args
         ::Parser::parse $pn [expr {$defOff + $off}] $procBody
         
         $pn configure -isvalid 1
@@ -450,7 +449,6 @@ namespace eval ::Parser::Tcl {
                 if {$accLev == ""} {
                     set accLev protected
                 }
-                puts hhhh,$accLev,[info level [expr [info level]-1]]
                 $node addVariable $vName 0 1
                 # if var already exists, return it
                 set vNode [$node lookup $vName]

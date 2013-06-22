@@ -94,7 +94,15 @@ sugar::proc ::Parser::parse {node off content args} {
                 }
             }
             
-            "class" {
+            "type" -
+            "snit::type" -
+            "::snit::type" -
+            "widget" -
+            "snit::widget" -
+            "::snit::widget" -
+            "class" -
+            "itcl::class" -
+            "::itcl::class" {
                 # Itcl class
                 variable CurrentAccess
                 set CurrentAccess public
