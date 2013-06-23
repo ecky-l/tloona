@@ -1,12 +1,8 @@
 # filesystem.itcl
-package require Itcl 3.3
+
 package require Itree 1.0
 package require parser::parse 1.0
 package require Tclx 8.4
-
-if {[catch {load {} Thread}]} {
-    package require Thread 2.6.2
-}
 
 package provide tmw::filesystem 1.0
 

@@ -2,8 +2,13 @@
 
 package provide tmw::console 1.0
 
-package require Itcl 3.3
-package require Itk 3.3
+if {$tcl_version <= 8.5} {
+    package require Itcl 3.3
+    package require Itk 3.3
+} else {
+    package require itcl 4.0.0
+    package require itk 4.0.0
+}
 
 package provide tmw::console 1.0
 

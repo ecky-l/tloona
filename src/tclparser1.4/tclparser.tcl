@@ -6,9 +6,7 @@
 set dir [file dirname [info script]]
 #set auto_path [concat [file join $dir ..] $auto_path]
 
-package re parser 1.4
-
-package require Itcl 3.3
+package require parser 1.4
 package require Itree 1.0
 package require Tclx 8.4
 package require log 1.2

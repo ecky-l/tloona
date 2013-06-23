@@ -1004,7 +1004,7 @@ class Tloona::Mainapp {
             ::Tloona::kitbrowser $bnb.kitbrowser \
                 -closefilecmd [code $this onFileClose] \
                 -openfilecmd [code $this openFile] \
-                -isopencmd [code $this isOpen] \
+                -isopencmd [list {file} [concat [code $this isOpen] {$file}]] \
                 -selectcodecmd [code $this selectCode] \
                 -getfilefromitemcmd [code $this getFileFromItem] \
                 -sortsequence $UserOptions(KitBrowser,SortSeq) \

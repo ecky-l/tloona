@@ -9,7 +9,7 @@ set ::TloonaApplication .tloona
 # adjust auto_path
 lappend auto_path $::TloonaRoot [file join $::TloonaRoot src]
 
-package require Thread 2.6.3
+#package require Thread 2.6.3
 package require comm 4.3
 package require img::png 1.3
 package require tmw::dialog 1.0
@@ -38,43 +38,10 @@ namespace eval ::tk::dialog::file {
 
 }
 
-
 namespace eval ::Tloona {
     variable RcFile [file join $::env(HOME) .tloonarc]
 }
 
-# @c creates worker thread(s)
-proc ::Tloona::createThreadPool {} {
-    global TloonaRoot auto_path
-    
-    set initScript "set ::auto_path [list $auto_path]\n"
-    append initScript "set ::TloonaRoot $TloonaRoot \n"
-    append initScript "package require vfs::mk4\n"
-    
-    # This is a silly workaround for problems with ActiveTcl on windows.
-    # If Tloona is loaded from ActiveTcl as starkit, the root directory
-    # of this starkit must be mounted for some reason.
-    # In contrast, if it is loaded as starkit from tclkick (or tclkit),
-    # there are ugly crashes at shutdown if the starkit was mounted.
-    # This is probably related to some vfs/threading bug. While this is
-    # not (reported and) fixed, check how we are running...
-    set me [info nameofexe]
-    if {[string equal [starkit::startup] starkit] 
-            && !([string match *kick* $me] || [string match *kit* $me])} {
-        append initScript "vfs::mk4::Mount $TloonaRoot $TloonaRoot \n"
-        append initScript "source \[file join \$TloonaRoot threadinit.tcl\]\n"
-        append initScript "vfs::filesystem unmount $TloonaRoot \n"
-    } else {
-        append initScript "source \[file join \$TloonaRoot threadinit.tcl\]\n"
-    }
-    
-    
-    set tPool [tpool::create -minworkers 5 -maxworkers 5 -initcmd $initScript]
-    # set the main thread id in the shared memory area, so that we can refer
-    # to it later on
-    tsv::set Threads Main [thread::id]
-    return $tPool
-}
 
 # @c initializes the platform icons
 proc ::Tloona::initIcons {} {

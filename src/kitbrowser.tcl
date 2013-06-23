@@ -426,7 +426,7 @@ class ::Tloona::KitBrowser {
                 if {![$file isa ::Tmw::Fs::File]} {
                     continue
                 }
-                set fCls [eval $itk_option(-isopencmd) [$file cget -name]]
+                set fCls [apply $itk_option(-isopencmd) [$file cget -name]]
                 if {$fCls == ""} {
                     continue
                 }
@@ -581,7 +581,8 @@ class ::Tloona::KitBrowser {
             set file [selection]
         }
         set fname [$file cget -name]
-        return [expr {[eval $itk_option(-isopencmd) $fname] != ""}]
+        
+        return [expr {[apply $itk_option(-isopencmd) $fname] != ""}]
     }
     
 }

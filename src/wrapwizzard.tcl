@@ -1,7 +1,4 @@
 # tide::ui::WrapWizzard
-
-package require Itcl 3.3
-package require Itk 3.3
 package require tmw::icons 1.0
 
 package require tmw::wizzard 1.0

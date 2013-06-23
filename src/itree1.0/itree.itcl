@@ -3,12 +3,16 @@
 #
 # visual tree implementation. Object oriented and better than iwidget
 ################################################################################
-package require Itcl 3.3
+
+if {$tcl_version <= 8.5} {
+    package require Itcl 3.3
+} else {
+    package require itcl 4.0.0
+}
 package require Tclx 8.4
 
 catch {
     namespace import ::itcl::*
-    namespace import ::itk::*
 }
 
 namespace eval ::itree {

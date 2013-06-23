@@ -1,5 +1,4 @@
 
-package require Itcl 3.3
 package require Itree 1.0
 
 package provide parser::structuredfile 1.4
