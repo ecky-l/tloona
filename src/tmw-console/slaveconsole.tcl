@@ -40,7 +40,6 @@ class ::Tmw::SlaveConsole {
             }
             $T fastinsert insert $result result
         }
-        
         if {[lindex $cmd 0] == "cd"} {
             # update prompt
             configure -prompt "([file tail [pwd]]) % "

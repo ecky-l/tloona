@@ -1077,12 +1077,6 @@ class Tloona::Mainapp {
         
         # disable this for now... just overhead
         set cnb [component consolenb]
-        #itk_component add output {
-        #    Tmw::backendconsole $cnb.output \
-        #        -colors $UserOptions(TclSyntax) \
-        #        -font $UserOptions(ConsoleFont)
-        #}
-        #component output createBackend [info nameofexecutable] yes
         
         itk_component add console {
             Tmw::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
@@ -1095,8 +1089,6 @@ class Tloona::Mainapp {
         bind [$C component textwin].t <Control-Tab> "[code $this switchWidgets];break"
         set _DefaultInterp [$C createInterp 1]
         $cnb add $C -text "Console"
-        #$cnb add [component output] -text "Debug Process"
-        #component console eval "package require sugar"
     }
         
     # @c open a Tcl/Itcl file

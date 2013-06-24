@@ -359,7 +359,13 @@ class ::Tloona::KitBrowser {
         
         delete object .wrapwizz
     }
-        
+    
+    ##
+    # Change directory in the slave console that is configured
+    public method onCdConsoleThere {item} {
+        $mainwindow component console eval [list cd [$item cget -name]] 1
+    }
+    
     # @c Callback for collapse the tree view
     public method onSyncronize {} {
         configure -syncronize $syncronize
@@ -492,6 +498,8 @@ class ::Tloona::KitBrowser {
             # it's a topnode (extracted) starkit
             
             if {[$realItem extracted]} {
+                .kitcmenu add command -label "CD Console There" -image $Tmw::Icons(FileOpen) \
+                    -command [code $this onCdConsoleThere $realItem] -compound left
                 .kitcmenu add command -label "Refresh" -image $Tmw::Icons(ActReload) \
                     -command [code $this refresh] -compound left
                 .kitcmenu add command -label "Deploy..." -image $Tmw::Icons(KitFile) \
