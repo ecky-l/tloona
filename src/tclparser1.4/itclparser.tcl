@@ -130,12 +130,7 @@ namespace eval ::Parser {
 
 namespace eval ::Parser::Itcl {
     
-            #"common" {
-            #    set cnNode [parseCommon $node $codeTree $content]
-            #}
-    
-    ##
-    # Parse the Access level of a proc, variable or method
+    ## \brief Parse the Access level of a proc, variable or method.
     ::sugar::proc parseAccess {node codeTree content cmdRange off args} {
         set secToken [lindex $codeTree 1]
         set range [lindex $secToken 1]
@@ -164,7 +159,7 @@ namespace eval ::Parser::Itcl {
                 }
             }
             "method" {
-                set mNode [parseMethod $node $codeTree $content $accLev]
+                set mNode [parseMethod $node $codeTree $content $off $accLev]
                 if {$mNode != ""} {
                     $mNode configure -byterange $cmdRange {*}$args
                     ::Parser::parse $mNode $off [$mNode cget -definition]
@@ -203,16 +198,21 @@ namespace eval ::Parser::Itcl {
         
     }
     
-    # @c parses a method body command. The result is
-    # @c set as the method/proc definition in the
-    # @c corresponding class
+    ## \brief Parses a method body command. 
     #
-    # @a node: The node object to which the new node belongs (e.g. Script)
-    # @a cTree: The code tree, as returned by ::parse command
-    # @a content: The content of the definition, as string
-    # @a defOffPtr: Pointer to the definition offset. Is returned
+    # The result is set as the method/proc definition in the corresponding 
+    # class
     #
-    # @r The newly created proc/method body node
+    # \param[in] node
+    #    The node object to which the new node belongs (e.g. Script)
+    # \param[in] cTree 
+    #    The code tree, as returned by ::parse command
+    # \param[in] content
+    #    The content of the definition, as string
+    # \param[in] defOffPtr 
+    #    Pointer to the definition offset. Is returned
+    #
+    # \return The newly created proc/method body node
     proc parseBody {node cTree content defOffPtr} {
         upvar $defOffPtr defOff
         set nTk [llength $cTree]
@@ -506,8 +506,33 @@ namespace eval ::Parser::Itcl {
     }
     
     
-    # @c parses a method node
-    proc parseMethod {node cTree content accLev} {
+    ## \brief Parses a method node inside Itcl classes.
+    #
+    # Given a token list, the method node can be one of the following:
+    # <ul>
+    # <li>(public|protected|private) method bla {args} {def}</li>
+    # <li>(public|protected|private) method bla {args}</li>
+    # <li>method bla {args} {def}</li>
+    # <li>method bla {args}</li>
+    # </ul>
+    # When no definition is given, the definition is outside via the itcl::body
+    # command or the method is virtual (needs to be overridden by derived classes).
+    # This method tries to grasp all posibilities and creates a Parser::ProcNode
+    # describing the method found in the source. It then parses the Node and sets
+    # all variables found in the class definition to the body, so that code
+    # completion will find them.
+    #
+    # \param[in] node
+    #    The parent class node
+    # \param[in] cTree
+    #    The code tree where the method definition is at first place
+    # \param[in] content
+    #    The content string with the definition
+    # \param[in] offset
+    #    Byte offset in the current file. Important for definition parsing
+    # \param[in] accLev
+    #    The access level, one of public, protected or private
+    proc parseMethod {node cTree content offset accLev} {
         set nTk [llength $cTree]
         set dOff 0
         
@@ -557,27 +582,21 @@ namespace eval ::Parser::Itcl {
         
         # return existing method node if already present
         set mNode [$node lookup $methName]
-        if {$mNode != "" && [$mNode cget -type] == "[set accLev]_method"} {
-            $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
-                -defoffset [expr {$dOff - $strt}]
-            
-            foreach {v d} [$node getVariables] {
-                $mNode addVariable $v $d 1
-            }
-            
-            return $mNode
+        if {$mNode == "" || [$mNode cget -type] != "[set accLev]_method"} {
+            set mNode [::Parser::ProcNode ::#auto -type "[set accLev]_method" \
+                -name $methName -arglist $argList -definition $methBody \
+                -defoffset [expr {$dOff - $strt}]]
+            $node addChild $mNode
         }
         
-        set mNode [::Parser::ProcNode ::#auto -type "[set accLev]_method" \
-            -name $methName -arglist $argList -definition $methBody \
-            -defoffset [expr {$dOff - $strt}]]
-        $node addChild $mNode
-        
-        # add variables from class definition to the method
-        # as variables
-        foreach {v d} [$node getVariables] {
-            $mNode addVariable $v $d 1
-        }
+        $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
+            -defoffset [expr {$dOff - $strt}]
+        ::Parser::parse $mNode [expr $dOff + $offset] [string trim $methBody "{}"]
+#        # add variables from class definition to the method
+#        # as variables
+#        foreach {v d} [$node getVariables] {
+#            $mNode addVariable $v $d 1
+#        }
         
         return $mNode
     }

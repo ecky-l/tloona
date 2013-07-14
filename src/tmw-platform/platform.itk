@@ -501,7 +501,8 @@ body ::Tmw::Platform::addStatusLine {} {
 body ::Tmw::Platform::addMainframe {} {
     
     itk_component add mainframe {
-        Tmw::toolbarframe $itk_interior.mainframe
+        #Tmw::toolbarframe $itk_interior.mainframe
+        Tmw::toolbarframe [component hull].mainframe
     } {
         usual
         rename -relief -mainrelief mainRelief Relief

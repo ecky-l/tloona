@@ -121,15 +121,6 @@ sugar::proc ::Parser::parse {node off content args} {
                 set CurrentAccess ""
             }
             
-            "type" -
-            "snit::type" -
-            "::snit::type" -
-            "widget" -
-            "snit::widget" -
-            "::snit::widget" {
-                # Parse snit::type
-            }
-            
             "Class" -
             "xotcl::Class" -
             "::xotcl::Class" {
@@ -189,7 +180,7 @@ sugar::proc ::Parser::parse {node off content args} {
             
             "method" {
                 set acc [getarg -access public]
-                set mNode [Itcl::parseMethod $node $codeTree $content $acc]
+                set mNode [Itcl::parseMethod $node $codeTree $content $off $acc]
                 if {$mNode != ""} {
                     $mNode configure -byterange $cmdRange
                     parse $mNode $off [$mNode cget -definition]

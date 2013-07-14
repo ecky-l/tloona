@@ -97,7 +97,7 @@ class ::itree::Node {
     
     public method setParent {node} {
         set _Parent $node
-        $node addChild $this
+        #$node addChild $this
     }
     
     # @r the children of this node. If deep is true, a list of

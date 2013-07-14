@@ -323,9 +323,7 @@ class ::Parser::Script {
         }
     }
         
-    ##
-    # virtual method for adding method. Only implemented
-    # in class/access, currently
+    ## \brief virtual method for adding method. 
     public method addMethod {methNode} {
         set mname [$methNode cget -name]
         set alist [$methNode cget -arglist]
