@@ -66,12 +66,15 @@ sugar::proc ::Parser::parse {node off content args} {
             }
             
             "namespace" {
+                variable CurrentAccess
+                set CurrentAccess public
                 set defOff 0
                 set nsn [Tcl::parseNs $node $codeTree $content defOff]
                 if {$nsn != ""} {
                     $nsn configure -byterange $cmdRange
                     parse $nsn [expr {$off + $defOff}] [$nsn cget -definition]
                 }
+                set CurrentAccess ""
             }
             
             "proc" -

@@ -441,12 +441,15 @@ namespace eval ::Parser::Tcl {
         set vCget [string trim $vCget "\{\}"]
         
         switch -- [$node cget -type] {
-            class {
+            class -
+            namespace {
                 set varDef [getarg -vardef variable]
                 set accLev [getarg -access protected]
-                if {$accLev == ""} {
-                    set accLev protected
-                }
+                #if {$accLev == ""} {
+                #    set accLev protected
+                #} elseif {[$node cget -type] == "namespace"} {
+                #    set accLev public
+                #}
                 $node addVariable $vName 0 1
                 # if var already exists, return it
                 set vNode [$node lookup $vName]
