@@ -94,6 +94,7 @@ namespace eval ::Tmw::Fs {
                 switch -- [file extension $file] {
                     .tcl -
                     .itcl -
+                    .xotcl -
                     .tk -
                     .itk -
                     .ws3 {

@@ -312,7 +312,6 @@ sugar::proc ::Parser::parse {node off content args} {
                     set lclNode [Util::getNamespace $node $ns]
                     set tn [$lclNode lookup [lindex $nsAll end]]
                     if {$tn != "" && [$tn isa ::Parser::ClassNode]} {
-                        puts yay,$token
                         set defOff -1
                         set preOff -1
                         set postOff -1

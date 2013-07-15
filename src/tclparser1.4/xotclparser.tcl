@@ -143,8 +143,7 @@ proc ::Parser::Xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
     #set clsNode [$node lookup $clsName $nsNode]
     set clsNode [$nsNode lookup $clsName]
     if {$clsNode != ""} {
-        $clsNode configure -isvalid 1 -definition $clsDef \
-            -defbrange [list $defOff $defEnd]
+        $clsNode configure -isvalid 1
     } else {
         set clsNode [::Parser::ClassNode ::#auto -type class -expanded 0 \
                 -name $clsName -isvalid 1]
