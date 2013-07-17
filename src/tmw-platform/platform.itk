@@ -1,11 +1,6 @@
 # a main application
-if {$tcl_version <= 8.5} {
-    package require Itcl 3.3
-    package require Itk 3.3
-} else {
-    package require itcl 4.0.0
-    package require itk 4.0.0
-}
+package require -exact Itcl 3.4
+package require -exact Itk 3.4
 package require tile 0.7.5
 package require Tclx 8.4
 
