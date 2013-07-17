@@ -4,7 +4,7 @@
 # code place.
 # All this info is printed to stdout in a defined protocol and can
 # be read from there
-package require atkdebugger 0.21
+#package require atkdebugger 0.21
 
 package provide tmw::debugger 1.0
 
