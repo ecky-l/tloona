@@ -1,11 +1,13 @@
 
 package require parser 1.4
+package require parser::macros 1.0
+package require parser::script 1.0
+package require parser::tcloo 1.0
 package require Itree 1.0
 package require Tclx 8.4
 package require log 1.2
 package require sugar 0.1
 
-package require parser::script 1.0
 
 package provide parser::itcl 1.0
 
@@ -13,12 +15,12 @@ catch {
     namespace import ::itcl::*
 }
 
-##
+#
 # Gets the token of a parse tree at specified index
-::sugar::macro parse_token {cmd content tree idx} {
-    list ::parse getstring $content \[lindex \[lindex $tree $idx\] 1\]
-}
-
+#::sugar::macro parse_token {cmd content tree idx} {
+#    list ::parse getstring $content \[lindex \[lindex $tree $idx\] 1\]
+#}
+#
 sugar::macro getarg {cmd arg args} {
     if {[llength $args] == 1} {
         list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : \"$args\" \}
@@ -27,17 +29,12 @@ sugar::macro getarg {cmd arg args} {
     }
 }
 
-##
+#
 # Gets the byterange of a definition in a parse tree at specified index
-sugar::macro parse_defrange {cmd tree idx} {
-    list list \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 0\] \
-        \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 1\]
-}
-
-sugar::macro parse_cmdrange {cmd tree offset} {
-    list list \[expr \{\[lindex \[lindex $tree 1\] 0\] + $offset\}\] \
-        \[expr \{\[lindex \[lindex $tree 1\] 1\] - 1\}\]
-}
+#sugar::macro parse_defrange {cmd tree idx} {
+#    list list \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 0\] \
+#        \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 1\]
+#}
 
 
 namespace eval ::Parser {
@@ -53,48 +50,10 @@ namespace eval ::Parser {
                 usual component itk_component itk_option
     }
     
-    class ClassNode {
-        inherit ::Parser::Script
+    class ItclClassNode {
+        inherit ::Parser::ClassNode
         
-        constructor {args} {
-            eval configure $args
-        }
-        
-        # The token that defines the script (e.g. eval, namespace, type, class...)
-        public variable token ""
-        
-        public variable inherits {}
-        public variable isitk 0
-        
-        # @v inheritstring: A string containing the base classes of this
-        # @v inheritstring: class comma separated. Used for displayformat
-        public variable inheritstring ""
-        # @v displayformat: overrides the display format for tests
-        public variable displayformat {"%s : %s" -name -inheritstring}
-            
-        # @c insert the public and protected identifiers
-        # @c (methods and variables) to this class
-        public method updatePTokens {} {
-            foreach {cls} $inherits {
-                foreach {al} {public protected} {
-                    set aln [$cls lookup $al]
-                    if {$aln == ""} {
-                        continue
-                    }
-                    foreach {chd} [$aln getChildren] {
-                        switch -- [$chd cget -type] {
-                            "method" {
-                                addMethod $chd
-                            }
-                            "variable" {
-                                set vName [$chd cget -name]
-                                addVariable $vName 0 1
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        constructor {args} {eval chain $args} {}
     }
     
     class ConstructorNode {
@@ -343,8 +302,31 @@ namespace eval ::Parser::Itcl {
         return $compNode
     }
     
-    # @c parse a class node and returns it as tree
-    proc parseClass {node cTree content defOffPtr {type class}} {
+    ## \brief Create a class from previously parsed tokens
+    ::sugar::proc createClass {node clsName clsDef defRange} {
+        set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
+        set clsName [lindex $nsAll end]
+        set clsDef [string trim $clsDef "\{\}"]
+        
+        set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+        #set clsNode [$node lookup $clsName $nsNode]
+        set clsNode [$nsNode lookup $clsName]
+        if {$clsNode != ""} {
+            $clsNode configure -isvalid 1 -definition $clsDef \
+                -defbrange $defRange -token class
+        } else {
+            set clsNode [::Parser::ItclClassNode ::#auto -expanded 0 \
+                    -name $clsName -isvalid 1 -definition $clsDef \
+                    -defbrange $defRange -token class]
+            $nsNode addChild $clsNode
+        }
+        
+        return $clsNode
+        
+    }
+    
+    ## \brief Parse a class node and returns it as tree
+    ::sugar::proc parseClass {node cTree content defOffPtr {type class}} {
         upvar $defOffPtr defOff
         set nTk [llength $cTree]
         
@@ -354,8 +336,9 @@ namespace eval ::Parser::Itcl {
         }
         
         # get class definition offset
-        set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
-        set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
+        lassign [m-parse-defrange $cTree 2] defOff defEnd
+        #set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
+        #set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
         
         set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
         set clsName [lindex $nsAll end]
@@ -368,7 +351,7 @@ namespace eval ::Parser::Itcl {
             $clsNode configure -isvalid 1 -definition $clsDef \
                 -defbrange [list $defOff $defEnd] -token $clsTkn
         } else {
-            set clsNode [::Parser::ClassNode ::#auto -type class -expanded 0 \
+            set clsNode [::Parser::ItclClassNode ::#auto -expanded 0 \
                     -name $clsName -isvalid 1 -definition $clsDef \
                     -defbrange [list $defOff $defEnd] -token $clsTkn]
             $nsNode addChild $clsNode
@@ -386,7 +369,7 @@ namespace eval ::Parser::Itcl {
         set defEnd 0
         
         set nTk [llength $cTree]
-        set firstTkn [parse_token $content $cTree 0]
+        set firstTkn [m-parse-token $content $cTree 0]
         set argList ""
         set initDef ""
         set initBr {}
@@ -394,33 +377,33 @@ namespace eval ::Parser::Itcl {
         set defIdx 2
         if {$nTk == 3} {
             # constructor without access level
-            set argList [parse_token $content $cTree 1]
-            set constDef [parse_token $content $cTree 2]
+            set argList [m-parse-token $content $cTree 1]
+            set constDef [m-parse-token $content $cTree 2]
             set defIdx 2
         } elseif {$nTk == 4} {
             if {$firstTkn == "constructor"} {
                 # Constructor with init Code
-                set argList [parse_token $content $cTree 1]
-                set initDef [parse_token $content $cTree 2]
-                set initBr [parse_defrange $cTree 2]
+                set argList [m-parse-token $content $cTree 1]
+                set initDef [m-parse-token $content $cTree 2]
+                set initBr [m-parse-defrange $cTree 2]
             } else {
                 # access level definition
-                set argList [parse_token $content $cTree 2]
+                set argList [m-parse-token $content $cTree 2]
             }
-            set constDef [parse_token $content $cTree 3]
+            set constDef [m-parse-token $content $cTree 3]
             set defIdx 3
         } elseif {$nTk == 5} {
             # Constructor with access and init code
-            set argList [parse_token $content $cTree 2]
-            set initDef [parse_token $content $cTree 3]
-            set initBr [parse_defrange $cTree 3]
-            set constDef [parse_token $content $cTree 4]
+            set argList [m-parse-token $content $cTree 2]
+            set initDef [m-parse-token $content $cTree 3]
+            set initBr [m-parse-defrange $cTree 3]
+            set constDef [m-parse-token $content $cTree 4]
             set defIdx 4
         } else {
             return ""
         }
         
-        set defRange [parse_defrange $cTree $defIdx]
+        set defRange [m-parse-defrange $cTree $defIdx]
         set defOff [lindex $defRange 0]
 
         set argList [lindex $argList 0]
@@ -443,7 +426,7 @@ namespace eval ::Parser::Itcl {
         
     }
     
-    proc parseDestructor {node cTree content defOffPtr} {
+    ::sugar::proc parseDestructor {node cTree content defOffPtr} {
         upvar $defOffPtr defOff
         set defEnd 0
         set dDef ""
@@ -451,8 +434,7 @@ namespace eval ::Parser::Itcl {
         if {[llength $cTree] == 2} {
             set range [lindex [lindex $cTree 1] 1]
             set dDef [::parse getstring $content $range]
-            set defOff [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 0]
-            set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 1]
+            lassign [m-parse-defrange $cTree 1] defOff defEnd
         } else {
             # TODO: for access level
             return

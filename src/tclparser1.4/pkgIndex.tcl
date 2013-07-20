@@ -9,9 +9,12 @@
 # full path name of this file's directory.
 
 package ifneeded parser 1.4 [list load [file join $dir libtclparser1.4[info sharedlibext]]]
+package ifneeded parser::macros 1.0 [list source [file join $dir parser_macros.tcl]]
 package ifneeded parser::script 1.0 [list source [file join $dir script.tcl]]
 package ifneeded parser::web 1.0 [list source [file join $dir webparser.tcl]]
 package ifneeded parser::tcl 1.0 [list source [file join $dir tclparser.tcl]]
+package ifneeded parser::nx 1.0 [list source [file join $dir nxparser.tcl]]
+package ifneeded parser::tcloo 1.0 [list source [file join $dir tclooparser.tcl]]
 package ifneeded parser::xotcl 1.0 [list source [file join $dir xotclparser.tcl]]
 package ifneeded parser::itcl 1.0 [list source [file join $dir itclparser.tcl]]
 package ifneeded parser::snit 1.0 [list source [file join $dir snitparser.tcl]]

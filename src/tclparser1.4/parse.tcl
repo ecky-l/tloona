@@ -1,16 +1,18 @@
 
-package require sugar 0.1
+
+
 package require parser 1.4
+package require parser::macros 1.0
 package require parser::script 1.0
 package require parser::tcl 1.0
 package require parser::itcl 1.0
 package require parser::snit 1.0
+package require parser::tcloo 1.0
+package require parser::nx 1.0
 package require parser::xotcl 1.0
 package require parser::web 1.0
 
-package provide parser::parse 1.0
-
-
+package require sugar 0.1
 sugar::macro getarg {cmd arg args} {
     if {[llength $args] == 1} {
         list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : \"$args\" \}
@@ -97,20 +99,22 @@ sugar::proc ::Parser::parse {node off content args} {
                 }
             }
             
-            "type" -
-            "snit::type" -
-            "::snit::type" -
-            "widget" -
-            "snit::widget" -
-            "::snit::widget" -
-            "class" -
-            "itcl::class" -
-            "::itcl::class" {
+            type -
+            snit::type -
+            ::snit::type -
+            widget -
+            snit::widget -
+            ::snit::widget -
+            class -
+            itcl::class -
+            ::itcl::class -
+            *Class {
                 # Itcl class
                 variable CurrentAccess
                 set CurrentAccess public
                 set defOff 0
-                set cnode [Itcl::parseClass $node $codeTree $content defOff]
+                #set cnode [Itcl::parseClass $node $codeTree $content defOff]
+                set cnode [Tcl::parseClass $node $codeTree $content $cmdRange $off defOff]
                 if {$cnode != ""} {
                     $cnode configure -byterange $cmdRange
                     parse $cnode [expr {$off + $defOff}] [$cnode cget -definition]
@@ -119,24 +123,9 @@ sugar::proc ::Parser::parse {node off content args} {
                         $cnode addVariable itk_interior 0 1
                         $cnode addVariable itk_option 0 1
                     }
-                    $cnode updatePTokens
+                    #$cnode updatePTokens
                 }
                 set CurrentAccess ""
-            }
-            
-            "Class" -
-            "xotcl::Class" -
-            "::xotcl::Class" {
-                # XOTcl class
-                set defOff 0
-                set slotOff -1
-                set cnode [Xotcl::parseClass $node $codeTree $content defOff slotOff]
-                if {$cnode != ""} {
-                    $cnode configure -byterange $cmdRange
-                    if {$slotOff >= 0} {
-                        parse $cnode [expr {$off + $slotOff}] [$cnode cget -slotdefinition]
-                    }
-                }
             }
             
             "*Attribute" -
@@ -255,7 +244,8 @@ sugar::proc ::Parser::parse {node off content args} {
                 Tcl::parseWhile $node $codeTree $content $off
             }
             
-            "inherit" {
+            "inherit" -
+            superclass {
                 Itcl::parseInherit $node $codeTree $content
             }
             
@@ -367,4 +357,7 @@ proc ::Parser::reparse {node content newNodesPtr oldNodesPtr} {
         }
     }
 }
+
+
+package provide parser::parse 1.0
 

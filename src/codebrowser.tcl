@@ -464,7 +464,6 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     if {$node == {}} {
         return
     }
-    
     set script ""
     switch -glob -- [$node cget -type] {
         *method {
@@ -477,10 +476,14 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
                     append script [getNSQ $clNode] " " [$node cget -name] " " 
                     append script [$node cget -arglist] " " \{
                     append script \{ [string trim [$node cget -definition] "{}"] \}
-                    return $script
+                }
+                default {
+                    append script "::itcl::body "
+                    append script [getNSQ $node] " [list [$node cget -arglist]] {"
+                    append script [string trim [$node cget -definition] "{}"]
+                    append script "}"
                 }
             }
-            append script "::itcl::body "
         }
         
         constructor -
@@ -489,18 +492,41 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script ::itcl::body " " [getNSQ $clNode] :: [$node cget -type] " "
             append script [list [$node cget -arglist]] " " 
             append script \{ [string trim [$node cget -definition] "{}"] \}
-            return $script
         }
         
         macro {
-            append script "::sugar::macro "
+            append script "::sugar::macro [$node cget -name] [list [$node cget -arglist]] {"
+            append script [string trim [$node cget -definition] "{}"]
+            append script "}"
         }
         
         proc {
             append script [expr {[$node cget -sugarized] ? "::sugar::proc " : "proc "}]
+            append script [getNSQ $node] " [list [$node cget -arglist]] {"
+            append script [string trim [$node cget -definition] "{}"]
+            append script "}"
         }
         
-        variable -
+        *variable {
+            # this can be done directly from the file definition
+            # Get the definition of this node in the file and return
+            #append script "proc "
+            if {[$node isa ::Parser::XotclAttributeNode]} {
+                # If this is an attribute of XOTcl class, we will likely
+                # want to send the class definition itself, since Attributes
+                # can not be sent
+                set node [$node getParent]
+            }
+            append script "variable " [getNSQ $node] " " \{
+            append script [string trim [$node cget -definition] "{}"] \}
+            if {[$node cget -configcode] != ""} {
+                append script " " \{ [string trim [$node cget -configcode] "{}"] \}
+            }
+            if {[$node cget -cgetcode] != ""} {
+                append script " " \{ [string trim [$node cget -cgetcode] "{}"] \}
+            }
+        }
+        
         namespace -
         webcmd -
         xo_* {
@@ -536,8 +562,6 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script [$node cget -token] " " $name " " \{ 
             append script [string trim [$node cget -definition] "{}"]
             append script \}
-            #puts $script
-            return $script
         }
         default {
             # not implemented
@@ -550,17 +574,6 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         $file flashCode $node
     }
     
-    # get fully qualified name
-    set name [$node cget -name]
-    set parent [$node getParent]
-    while {$parent != "" && [$parent isa ::Parser::StructuredFile]} {
-        set name [$parent cget -name]::[set name]
-        set parent [$parent getParent]
-    }
-    
-    append script :: "$name [list [$node cget -arglist]] {"
-    append script [string trim [$node cget -definition] "{}"]
-    append script "}"
     return $script
 }
 

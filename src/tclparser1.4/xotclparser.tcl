@@ -71,9 +71,7 @@ class ::Parser::XotclClassNode {
     # @v slotdefinition: Used for parsing the attributes
     public variable slotdefinition ""
     
-    constructor {args} {
-        eval configure $args
-    }
+    constructor {args} {eval chain $args} {}
     
 }
 
@@ -135,7 +133,7 @@ proc ::Parser::Xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
         incr idx
         set clsName [::parse getstring $content [lindex [lindex $cTree $idx] 1]]
     }
-        
+    puts $clsName
     set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
     set clsName [lindex $nsAll end]
     
@@ -145,7 +143,7 @@ proc ::Parser::Xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
     if {$clsNode != ""} {
         $clsNode configure -isvalid 1
     } else {
-        set clsNode [::Parser::ClassNode ::#auto -type class -expanded 0 \
+        set clsNode [::Parser::XotclClassNode ::#auto -expanded 0 \
                 -name $clsName -isvalid 1]
         $nsNode addChild $clsNode
     }

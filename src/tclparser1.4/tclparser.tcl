@@ -6,14 +6,11 @@
 set dir [file dirname [info script]]
 #set auto_path [concat [file join $dir ..] $auto_path]
 
-package require parser 1.4
 package require Itree 1.0
 package require Tclx 8.4
 package require log 1.2
 
-#package require parser::parse 1.0
-#package require parser::script 1.0
-
+package require parser::macros 1.0
 package provide parser::tcl 1.0
 
 ##
@@ -24,23 +21,6 @@ package provide parser::tcl 1.0
         \[set $lv \[lrange \[set $lv\] 0 end-1\]\]\] 0
 }
 
-##
-# Gets the token of a parse tree at specified index
-::sugar::macro parse_token {cmd content tree idx} {
-    list ::parse getstring $content \[lindex \[lindex $tree $idx\] 1\]
-}
-
-##
-# Gets the byterange of a definition in a parse tree at specified index
-sugar::macro parse_defrange {cmd tree idx} {
-    list list \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 0\] \
-        \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 1\]
-}
-
-sugar::macro parse_cmdrange {cmd tree offset} {
-    list list \[expr \{\[lindex \[lindex $tree 1\] 0\] + $offset\}\] \
-        \[expr \{\[lindex \[lindex $tree 1\] 1\] - 1\}\]
-}
 
 sugar::macro getarg {cmd arg args} {
     if {[llength $args] == 1} {
@@ -49,6 +29,7 @@ sugar::macro getarg {cmd arg args} {
         list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : [list $args] \}
     }
 }
+
 
 namespace eval ::Parser {
     namespace eval Tcl {}
@@ -186,6 +167,53 @@ namespace eval ::Parser {
         
     }
 
+    class ClassNode {
+        inherit ::Parser::Script
+        constructor {args} {
+            eval configure $args
+        }
+        
+        ## \brief The type is always "class"
+        public variable type class
+        
+        # The token that defines the script (e.g. eval, namespace, type, class...)
+        public variable token ""
+        
+        public variable inherits {}
+        public variable isitk 0
+        
+        # @v inheritstring: A string containing the base classes of this
+        # @v inheritstring: class comma separated. Used for displayformat
+        public variable inheritstring ""
+        # @v displayformat: overrides the display format for tests
+        public variable displayformat {"%s : %s" -name -inheritstring}
+            
+        # @c insert the public and protected identifiers
+        # @c (methods and variables) to this class
+        public method updatePTokens {} {
+            foreach {cls} $inherits {
+                foreach {al} {public protected} {
+                    set aln [$cls lookup $al]
+                    if {$aln == ""} {
+                        continue
+                    }
+                    foreach {chd} [$aln getChildren] {
+                        switch -- [$chd cget -type] {
+                            "method" {
+                                addMethod $chd
+                            }
+                            "variable" {
+                                set vName [$chd cget -name]
+                                addVariable $vName 0 1
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+
 }
 
 namespace eval ::Parser::Tcl {
@@ -234,8 +262,8 @@ namespace eval ::Parser::Tcl {
         return $pkgNode
     }
     
-    # @c parses a namespace node
-    proc parseNs {node cTree content defOffPtr} {
+    ## \brief Parses a namespace node
+    ::sugar::proc parseNs {node cTree content defOffPtr} {
         upvar $defOffPtr defOff
         
         set nTk [llength $cTree]
@@ -252,9 +280,8 @@ namespace eval ::Parser::Tcl {
             return ""
         }
         
-        # get class definition offset
-        set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
-        set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 1]
+        # get definition range
+        lassign [m-parse-defrange $cTree 3] defOff defEnd
         
         set nsAll [regsub -all {::} [string trimleft $nsName :] " "]
         set nsName [lindex $nsAll end]
@@ -290,14 +317,17 @@ namespace eval ::Parser::Tcl {
         return $pnode
     }
     
-    # @c parses a proc node. This method is called from [parse]
-    # @c when proc nodes are encountered
-    #
-    # @a cTree: code tree, the list returned from the [::parse]
-    # @a cTree: command
-    # @a nTk: number of tokens in the code tree
-    # @a content: string content. The content to parse as the 
-    # @a content: proc is at the offsets in the code tree 
+    ## \brief Parses a proc node. 
+    # 
+    # This method is called from [parse] when proc nodes are encountered
+    # 
+    # \paran[in] cTree
+    #    code tree, the list returned from the [::parse] command
+    # \param[in] nTk
+    #    number of tokens in the code tree
+    # \param[in] content
+    #    String content. The content to parse as the proc. Proc is at offsets
+    #    in the code tree
     ::sugar::proc parseProc {node cTree content cmdRange off args} {
         #upvar $defOffPtr defOff
         set nTk [llength $cTree]
@@ -320,12 +350,12 @@ namespace eval ::Parser::Tcl {
         set defEnd 0
         set strt [lindex [lindex [lindex $cTree 0] 1] 0]
         foreach {tkn idx} $aList {
-            set $tkn [parse_token $content $cTree $idx]
+            set $tkn [m-parse-token $content $cTree $idx]
         }
         
         if {[dict exist $aList procBody]} {
             set defOff [lindex \
-                [parse_defrange $cTree [dict get $aList procBody]] 0]
+                [m-parse-defrange $cTree [dict get $aList procBody]] 0]
         }
         
         set rtns [namespace qualifiers $procName]
@@ -375,6 +405,116 @@ namespace eval ::Parser::Tcl {
         return $pn
     }
     
+    ## \brief Parse a class node and returns it as tree.
+    #
+    # This method creates class nodes depending on the definition
+    ::sugar::proc parseClass {node cTree content byteRange off defOffPtr {type class}} {
+        upvar $defOffPtr defOff
+        set nTk [llength $cTree]
+        
+        if {[llength $cTree] == 3} {
+            # either an Itcl class or a TclOO/XOTcl class without definition
+            # We try to find out:
+            foreach {tkn idx} {clsTkn 0 clsName 1 clsDef 2} {
+                set range [lindex [lindex $cTree $idx] 1]
+                set $tkn [::parse getstring $content \
+                    [list [lindex $range 0] [lindex $range 1]]]
+            }
+            # depending on the token length of clsDef, it is a name or Itcl 
+            # definition.
+            # We cannot rely on the second token be "create", because it might
+            # be a class that is named "create"
+            if {[llength [string trim $clsDef "{}"]] > 1} {
+                lassign [m-parse-defrange $cTree 2] defOff defEnd
+                switch -glob -- $clsTkn {
+                    *class {
+                        return [::Parser::Itcl::createClass $node $clsName \
+                            $clsDef [list $defOff $defEnd]]
+                    }
+                    *type -
+                    *widget {
+                        return [::Parser::Snit::createType $node $clsName \
+                            $clsDef $clsTkn [list $defOff $defEnd]]
+                    }
+                }
+            } elseif {[string match *class $clsTkn] && [string eq $clsName create]} {
+                return [::Parser::TclOO::createClass $node $clsDef {} {}]
+            } elseif {[string match *Class $clsTkn]} {
+                # XOTcl
+                set cnode [Xotcl::parseClass $node $cTree $content defOff slotOff]
+                if {$cnode != ""} {
+                    #$cnode configure -byterange $cmdRange
+                    if {$slotOff >= 0} {
+                        parse $cnode [expr {$off + $slotOff}] [$cnode cget -slotdefinition]
+                    }
+                }
+                return $cnode
+            } else {
+                # some funny guy has invented yet another OO system that
+                # we don't know and don't support as of now
+                return
+            }
+        } elseif {[llength $cTree] == 4} {
+            # Scrape out TclOO class with definition.
+            foreach {tkn idx} {clsTkn 0 clsCreate 1 clsName 2 clsDef 3} {
+                set range [lindex [lindex $cTree $idx] 1]
+                set $tkn [::parse getstring $content \
+                    [list [lindex $range 0] [lindex $range 1]]]
+            }
+            
+            # if this condition holds true, we have a TclOO class with
+            # definition. Otherwise we fall through and parse NX classes
+            # or XOTcl classes
+            if {[string eq $clsCreate create] && [string match *class $clsTkn]} {
+               lassign [m-parse-defrange $cTree 3] defOff defEnd
+               return [::Parser::TclOO::createClass $node $clsName \
+                   $clsDef [list $defOff $defEnd]]
+            }
+        }
+        
+        # XOTcl or NX. The only half way reliable method is to check whether
+        # the first subcommand after Class is "create". This means, that XOTcl
+        # classes with the name "create" will be threated as NX classes and will
+        # not be correctly parsed.
+        # We could also check for nx::Class in the clsTkn, but if people do
+        # namespace import nx::* and use Class instead of nx::Class, that will
+        # fail. It's more likely that users will import namespace than naming 
+        # their class "create"
+        foreach {tkn idx} {clsTkn 0 clsCreate 1} {
+            set range [lindex [lindex $cTree $idx] 1]
+            set $tkn [::parse getstring $content \
+                [list [lindex $range 0] [lindex $range 1]]]
+        }
+        
+        if {[string match *nx:: $clsTkn] || [string eq $clsCreate create]} {
+            set defOff 0
+            set slotOff -1
+            set cnode [::Parser::Nx::parseClass $node $cTree $content defOff slotOff]
+            if {$cnode ne ""} {
+                $cnode configure -byterange $byteRange
+                if {$slotOff >= 0} {
+                    ::Parser::parse $cnode [expr {$off + $slotOff}] \
+                        [$cnode cget -slotdefinition]
+                }
+                set def [$cnode cget -definition]
+                #puts defbrange=[$cnode cget -defbrange]
+                ::Parser::Nx::parseScriptedBody $cnode [expr {$off + $defOff}] $def
+            }
+            return $cnode                       
+        }
+
+        # Finally, an XOTcl class
+        set defOff 0
+        set slotOff -1
+        set cnode [::Parser::Xotcl::parseClass $node $cTree $content defOff slotOff]
+        if {$cnode != ""} {
+            $cnode configure -byterange $byteRange
+            if {$slotOff >= 0} {
+                parse $cnode [expr {$off + $slotOff}] [$cnode cget -slotdefinition]
+            }
+        }
+        return $cnode
+    }
     
     # @c parses a variable node
     ::sugar::proc parseVar {node cTree content accLev dCfOffPtr dCgOffPtr args} {
