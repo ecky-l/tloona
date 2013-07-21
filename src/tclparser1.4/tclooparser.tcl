@@ -10,7 +10,55 @@ package require parser::tcl 1.0
 
 
 namespace eval ::Parser {
-    class ::Parser::OOClassNode {
+    
+    ## \brief The base class for all OO systems.
+    class ClassNode {
+        inherit ::Parser::Script
+        constructor {args} {
+            eval configure $args
+        }
+        
+        ## \brief The type is always "class"
+        public variable type class
+        
+        # The token that defines the script (e.g. eval, namespace, type, class...)
+        public variable token ""
+        
+        public variable inherits {}
+        public variable isitk 0
+        
+        # @v inheritstring: A string containing the base classes of this
+        # @v inheritstring: class comma separated. Used for displayformat
+        public variable inheritstring ""
+        # @v displayformat: overrides the display format for tests
+        public variable displayformat {"%s : %s" -name -inheritstring}
+            
+        # @c insert the public and protected identifiers
+        # @c (methods and variables) to this class
+        public method updatePTokens {} {
+            foreach {cls} $inherits {
+                foreach {al} {public protected} {
+                    set aln [$cls lookup $al]
+                    if {$aln == ""} {
+                        continue
+                    }
+                    foreach {chd} [$aln getChildren] {
+                        switch -- [$chd cget -type] {
+                            "method" {
+                                addMethod $chd
+                            }
+                            "variable" {
+                                set vName [$chd cget -name]
+                                addVariable $vName 0 1
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    class OOClassNode {
         inherit ClassNode
         constructor {args} {eval chain $args} {}
     }

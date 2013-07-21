@@ -6,7 +6,7 @@ package require Itree 1.0
 package require Tclx 8.4
 package require log 1.2
 package require parser::script 1.0
-package require parser::itcl 1.0
+package require parser::tcloo 1.0
 
 package provide parser::snit 1.0
 

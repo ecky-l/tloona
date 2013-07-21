@@ -5,7 +5,7 @@ package require log 1.2
 
 package require parser::script 1.0
 package require parser::tcl 1.0
-package require parser::itcl 1.0
+package require parser::tcloo 1.0
 
 package provide parser::xotcl 1.0
 
