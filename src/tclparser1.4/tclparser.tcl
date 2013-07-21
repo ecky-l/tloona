@@ -226,8 +226,9 @@ namespace eval ::Parser::Tcl {
         }
         
         foreach {tkn idx} {subCmd 1 nsName 2 nsDef 3} {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content [list [lindex $range 0] [lindex $range 1]]]
+            set $tkn [m-parse-token $content $cTree $idx]
+            #set range [lindex [lindex $cTree $idx] 1]
+            #set $tkn [::parse getstring $content [list [lindex $range 0] [lindex $range 1]]]
         }
         
         if {$subCmd != "eval"} {
@@ -240,35 +241,10 @@ namespace eval ::Parser::Tcl {
         set nsAll [regsub -all {::} [string trimleft $nsName :] " "]
         set nsName [lindex $nsAll end]
         
-        # add the namespace to this node.
-        # First, look if it already exists
-        set pnode [$node lookup [lindex $nsAll 0]]
-        if {$pnode == ""} {
-            # namespace does not exist yet
-            set pnode [::Parser::Script ::#auto -name [lindex $nsAll 0] \
-                    -type "namespace" -expanded 0]
-            $node addChild $pnode
-        }
-        $pnode configure -isvalid 1
-        
-        for {set j 1} {$j < [llength $nsAll]} {incr j} {
-            # add subsequent namespaces, if they don't exist
-            set newnode [$node lookup [lindex $nsAll $j] \
-                [lrange $nsAll 0 [expr {$j - 1}]]]
-            if {$newnode == ""} {
-                set newnode [::Parser::Script ::#auto -type "namespace" \
-                    -name [lindex $nsAll $j] -defbrange [list $defOff $defEnd] \
-                    -expanded 0]
-                $pnode addChild $newnode
-            }
-            
-            $newnode configure -isvalid 1
-            set pnode $newnode
-        }
-        
-        set nsDef [string trim $nsDef "\{\}"]
-        $pnode configure -definition $nsDef -type "namespace"    
-        return $pnode
+        set nsNode [::Parser::Util::getNamespace $node $nsAll]
+        $nsNode configure -isvalid 1 -definition [string trim $nsDef "{}"] \
+            -defbrange [list $defOff $defEnd]
+        return $nsNode
     }
     
     ## \brief Parses a proc node. 
@@ -359,159 +335,49 @@ namespace eval ::Parser::Tcl {
         return $pn
     }
     
-    # @c parses a variable node
-    ::sugar::proc parseVar {node cTree content accLev dCfOffPtr dCgOffPtr args} {
-        upvar $dCfOffPtr dCfOff
-        upvar $dCgOffPtr dCgOff
-        
-        set nTk [llength $cTree]
-        set alev2 ""
-        set vDef ""
-        set vConf ""
-        set vCget ""
-        if {$nTk == 6} {
-            set aList {vName 2 vDef 3 vConf 4 vCget 5}
-        } elseif {$nTk == 5} {
-            #set aList {vName 1 vDef 2 vConf 3 vCget 4}
-            set aList {alev2 0 vName 1 vDef 2 vConf 3 vCget 4}
-        } elseif {$nTk == 4} {
-            #set aList {vName 1 vDef 2 vConf 3}
-            set aList {alev2 0 vName 1 vDef 2 vConf 3}
-        } elseif {$nTk == 3} {
-            #set aList {vName 1 vDef 2}
-            set aList {alev2 0 vName 1 vDef 2}
-        } elseif {$nTk == 2} {
-            set aList {vName 1}
-            set aList {alev2 0 vName 1}
+    ## \brief Parses a Tcl namespace variable
+    ::sugar::proc parseVar {node cTree content} {
+        if {[$node isa ::Parser::ProcNode]} {
+            # we don't want to show variable definitions in procs
+            return
         }
         
-        set dCfOff 0
-        set dCfEnd 0
-        set dCgOff 0
-        set dCgEnd 0
-        foreach {tkn idx} $aList {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content [list [lindex $range 0] [lindex $range 1]]]
-            
-            # get config/cget definition range
-            if {$tkn == "vConf"} {
-                set dCfOff [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 0]
-                set dCfEnd [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 1]
-                
-            } elseif {$tkn == "vCget"} {
-                set dCgOff [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 0]
-                set dCgEnd [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 1]
+        lassign {variable "" ""} varDef vName vDef
+        set tokens {varDef 0 vName 1 vDef 2}
+        foreach {tkn idx} $tokens {
+            if {$idx >= [llength $cTree]} {
+                break
             }
+            set $tkn [m-parse-token $content $cTree $idx]
         }
         
-        switch -- $alev2 {
-            public -
-            protected -
-            private {
-                # definition contained access level. Move other
-                # attributes one behind
-                set accLev $alev2
-                set vName $vDef
-                set vDef $vConf
-                set vConf $vCget
-                set vCget ""
-            }
-        }
-        
-        set nsAll [regsub -all {::} [string trimleft $vName :] " "]
-        set vName [lindex $nsAll end]
-        set vConf [string trim $vConf "\{\}"]
-        set vCget [string trim $vCget "\{\}"]
-        
-        switch -- [$node cget -type] {
-            class -
-            namespace {
-                set varDef [getarg -vardef variable]
-                set accLev [getarg -access protected]
-                #if {$accLev == ""} {
-                #    set accLev protected
-                #} elseif {[$node cget -type] == "namespace"} {
-                #    set accLev public
-                #}
-                $node addVariable $vName 0 1
-                # if var already exists, return it
-                set vNode [$node lookup $vName]
-                if {$vNode != "" && [$vNode cget -type] == "[set accLev]_[set varDef]"} {
-                    $vNode configure -configcode $vConf -cgetcode $vCget \
-                        -definition $vDef -configbrange [list $dCfOff $dCfEnd] \
-                        -cgetbrange [list $dCgOff $dCgEnd] -isvalid 1 \
-                        -type [set accLev]_[set varDef]
-                    return $vNode
-                }
-                
-                set vNode [$node addChild [::Parser::VarNode ::#auto \
-                        -type [set accLev]_[set varDef] -name $vName -definition $vDef \
-                        -configcode $vConf -cgetcode $vCget \
-                        -configbrange [list $dCfOff $dCfEnd] \
-                        -cgetbrange [list $dCgOff $dCgEnd]]]
-                return $vNode
-            }
-            proc -
-            method {
-                # TODO: handle when a variable definition is inside proc or method
-                $node addVariable $vName $vDef 1
-                return ""
-            }
-        }
-    
-        # not a class variable
-        set vNode [$node lookup $vName [lrange $nsAll 0 end-1]]
-        if {$vNode != ""} {
-            for {set i 0} {$i < [llength $nsAll]} {incr i} {
-                set ct [$node lookup [lindex $nsAll $i] \
-                    [lrange $nsAll 0 [expr {$i - 1}]]]
-                $ct configure -isvalid 1
-            }
-            return $vNode
-        }
-        
-        set vNode [::Parser::VarNode ::#auto -type "variable" -definition $vDef -name $vName]
-        
-        if {[llength $nsAll] > 1} {
-            set lastQual [lindex $nsAll end-1]
-            set paren [$node lookup $lastQual [lrange $nsAll 0 end-2]]
-            if {$paren == ""} {
-                # parent namespace does not exist
-                set retNs [join [lrange $nsAll 0 end-1] ::]
-                return -code error "namespace $retNs not found"
-            }
-            $paren addChild $vNode
-            #$paren addVariable $vName $vDef 1
-        } else  {
+        set vNode [$node lookup $vName]
+        if {$vNode == ""} {
+            set vNode [::Parser::VarNode ::#auto -type "variable" \
+                -definition $vDef -name $vName -isvalid 1]
             $node addChild $vNode
-            #addVariable $vName $vDef 1
         }
-        
+        $vNode configure -definition $vDef -name $vName -isvalid 1
         return $vNode
     }
     
-    
-    proc parseLclVar {node cTree content off} {
+    ::sugar::proc parseLclVar {node cTree content off} {
         foreach {tkn idx} {varName 1 varDef 2} {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content $range]
+            set $tkn [m-parse-token $content $cTree $idx]
         }
         
-        set doff [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 0]
+        lassign [m-parse-defrange $cTree 1] doff
         $node addVariable $varName [expr {$doff + $off}]
     }
     
-    proc parseForeach {node cTree content off} {
+    ::sugar::proc parseForeach {node cTree content off} {
         foreach {tkn idx} {varSect 1 fDef 3} {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content \
-                    [list [lindex $range 0] [lindex $range 1]]]
+            set $tkn [m-parse-token $content $cTree $idx]
         }
         
-        # offset in variable def section of foreach
-        set do0 [lindex [lindex [lindex [lindex [lindex $cTree 1] 2] 0] 1] 0]
-        # offset in definition section
-        set defOff [lindex [lindex [lindex [lindex [lindex $cTree 3] 2] 0] 1] 0]
+        # offset in variable def section of foreach and definition
+        lassign [m-parse-defrange $cTree 1] do0
+        lassign [m-parse-defrange $cTree 3] defOff
         
         foreach {var} [lindex $varSect 0] {
             $node addVariable $var [expr {$off + $do0}]
@@ -532,7 +398,6 @@ namespace eval ::Parser::Tcl {
             set $doff [lindex [lindex [lindex [lindex \
                 [lindex $cTree $idx] 2] 0] 1] 0]
         }
-        
         set lst [list [lindex $v1 0] $v1o [lindex $v2 0] $v2o \
             [lindex $v3 0] $v3o [lindex $forDef 0] $forDefo]
         
@@ -703,7 +568,7 @@ namespace eval ::Parser::Util {
             set nsNode [$node lookup $ns]
             if {$nsNode == ""} {
                 set nsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
-                        -type "namespace" -name [lindex $nsList 0]]
+                        -type "namespace" -name $ns]
                 $node addChild $nsNode
             }
             $nsNode configure -isvalid 1

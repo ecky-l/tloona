@@ -15,12 +15,6 @@ catch {
     namespace import ::itcl::*
 }
 
-#
-# Gets the token of a parse tree at specified index
-#::sugar::macro parse_token {cmd content tree idx} {
-#    list ::parse getstring $content \[lindex \[lindex $tree $idx\] 1\]
-#}
-#
 sugar::macro getarg {cmd arg args} {
     if {[llength $args] == 1} {
         list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : \"$args\" \}
@@ -28,13 +22,6 @@ sugar::macro getarg {cmd arg args} {
         list expr \{ \[dict exist \$args $arg\] ? \[dict get \$args $arg\] : [list $args] \}
     }
 }
-
-#
-# Gets the byterange of a definition in a parse tree at specified index
-#sugar::macro parse_defrange {cmd tree idx} {
-#    list list \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 0\] \
-#        \[lindex \[lindex \[lindex \[lindex \[lindex $tree $idx\] 2\] 0\] 1\] 1\]
-#}
 
 
 namespace eval ::Parser {
@@ -89,27 +76,28 @@ namespace eval ::Parser {
 
 namespace eval ::Parser::Itcl {
     
+    ## \brief The current access level. 
+    #
+    # This variable is set during the parsing to determine the current
+    # access level.
+    variable CurrentAccess ""
+    
     ## \brief Parse the Access level of a proc, variable or method.
-    ::sugar::proc parseAccess {node codeTree content cmdRange off args} {
-        set secToken [lindex $codeTree 1]
-        set range [lindex $secToken 1]
-        set realToken [::parse getstring $content \
-            [list [lindex $range 0] [lindex $range 1]]]
-        set accLev [getarg -access public]
+    ::sugar::proc parseAccess {node codeTree content cmdRange off accLev} {
+        set realToken [m-parse-token $content $codeTree 1]
         switch -- $realToken {
-            "variable" -
-            "common" {
+            variable -
+            common {
                 set dCfOff 0
                 set dCgOff 0
-                set vNode [::Parser::Tcl::parseVar $node $codeTree $content \
-                        $accLev dCfOff dCgOff -vardef $realToken {*}$args]
+                set vNode [parseVar $node $codeTree $content dCfOff dCgOff]
                 if {$vNode != ""} {
                     $vNode configure -byterange $cmdRange -type [set accLev]_[set realToken]
                     ::Parser::parse $vNode [expr {$dCfOff + $off}] [$vNode cget -configcode]
                     ::Parser::parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
                 }
             }
-            "constructor" {
+            constructor {
                 set defOff 0
                 set csNode [parseConstructor $node $codeTree $content defOff]
                 if {$csNode != ""} {
@@ -117,41 +105,21 @@ namespace eval ::Parser::Itcl {
                     ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
                 }
             }
-            "method" {
+            method {
                 set mNode [parseMethod $node $codeTree $content $off $accLev]
                 if {$mNode != ""} {
-                    $mNode configure -byterange $cmdRange {*}$args
+                    $mNode configure -byterange $cmdRange -access $accLev
                     ::Parser::parse $mNode $off [$mNode cget -definition]
-                    switch -- [$node cget -type] {
-                        "access" {
-                            [$node getParent] addMethod $mNode
-                        }
-                        "class" {
-                            $node addMethod $mNode
-                        }
-                    }
+                    $node addMethod $mNode
                 }
             }
             
-            "proc" {
+            proc {
                 set pn [::Parser::Tcl::parseProc $node $codeTree $content dummy]
                 if {$pn != ""} {
                     $pn configure -byterange $cmdRange
                     ::Parser::parse $pn $off [$pn cget -definition]
                 }
-            }
-            "default" {
-                namespace upvar ::Parser CurrentAccess currAccess
-                set currAccess $accLev
-                set defOff [lindex [lindex [lindex [lindex \
-                    [lindex $codeTree 1] 2] 0] 1] 0]
-                set defEnd [lindex [lindex [lindex [lindex \
-                    [lindex $codeTree 1] 2] 0] 1] 1]
-                set newCtn [::parse getstring $content \
-                    [lindex [lindex $codeTree 1] 1]]
-                set newCtn [string trim $newCtn "\{\}"]
-                ::Parser::parse $node [expr {$off + $defOff}] $newCtn {*}$args
-                set currAccess ""
             }
         }
         
@@ -326,40 +294,108 @@ namespace eval ::Parser::Itcl {
     }
     
     ## \brief Parse a class node and returns it as tree
-    ::sugar::proc parseClass {node cTree content defOffPtr {type class}} {
-        upvar $defOffPtr defOff
-        set nTk [llength $cTree]
+    ::sugar::proc parseClassDef {node off content} {
+        variable CurrentAccess
         
-        foreach {tkn idx} {clsTkn 0 clsName 1 clsDef 2} {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content [list [lindex $range 0] [lindex $range 1]]]
+        if {$content == ""} {
+            return
+        }
+        set size [::parse getrange $content]
+        
+        while {1} {
+            # if this step fails, we must not proceed
+            if {[catch {::parse command $content {0 end}} res]} {
+                return
+            }
+            set codeTree [lindex $res 3]
+            if {$codeTree == ""} {
+                return
+            }
+            # get and adjust offset and line
+            set cmdRange [lindex $res 1]
+            lset cmdRange 0 [expr {[lindex $cmdRange 0] + $off}]
+            lset cmdRange 1 [expr {[lindex $cmdRange 1] - 1}]
+            
+            # get the first token and decide further operation
+            set token [m-parse-token $content $codeTree 0]
+            switch -glob -- $token {
+                inherit {
+                    parseInherit $node $codeTree $content
+                }
+                
+                public -
+                protected -
+                private {
+                    set CurrentAccess $token
+                    if {[llength $codeTree] == 2} {
+                        # access definition for a script of methods etc.
+                        lassign [m-parse-defrange $codeTree 1] do de
+                        set accDef [string trim [m-parse-token $content $codeTree 1] "{}"]
+                        parseClassDef $node [expr {$off + $do}] $accDef
+                    } else {
+                        # access qualified method, variable etc.
+                        parseAccess $node $codeTree $content $cmdRange $off $token
+                    }
+                    set CurrentAccess ""
+                }
+                
+                method {
+                    set tmpAcc $CurrentAccess
+                    if {$CurrentAccess == ""} {
+                        set CurrentAccess public
+                    }
+                    set mNode [parseMethod $node $codeTree $content $off $CurrentAccess]
+                    $mNode configure -byterange $cmdRange
+                    ::Parser::parse $mNode $off [$mNode cget -definition]
+                    $node addMethod $mNode
+                    set CurrentAccess $tmpAcc
+                }
+                
+                constructor {
+                    set defOff 0
+                    set csNode [parseConstructor $node $codeTree $content defOff]
+                    $csNode configure -byterange $cmdRange
+                    ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
+                }
+                
+                destructor {
+                    set defOff 0
+                    set dNode [parseDestructor $node $codeTree $content defOff]
+                    $dNode configure -byterange $cmdRange
+                    ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
+                }
+                
+                variable -
+                common {
+                    set tmpAcc $CurrentAccess
+                    if {$CurrentAccess == ""} {
+                        set CurrentAccess protected
+                    }
+                    set dCfOff 0
+                    set dCgOff 0
+                    set vNode [parseVar $node $codeTree $content dCgOff dCfOff]
+                    $vNode configure -byterange $cmdRange
+                    ::Parser::parse $vNode [expr {$dCfOff + $off}] [$vNode cget -configcode]
+                    ::Parser::parse $vNode [expr {$dCgOff + $off}] [$vNode cget -cgetcode]
+                    set CurrentAccess $tmpAcc
+                }
+                
+            }
+            
+            # step forward in the content
+            set idx [lindex [lindex $res 2] 0]
+            incr off $idx
+            set content [::parse getstring $content [list $idx end]]
         }
         
-        # get class definition offset
-        lassign [m-parse-defrange $cTree 2] defOff defEnd
-        #set defOff [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 0]
-        #set defEnd [lindex [lindex [lindex [lindex [lindex $cTree 2] 2] 0] 1] 1]
-        
-        set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
-        set clsName [lindex $nsAll end]
-        set clsDef [string trim $clsDef "\{\}"]
-        
-        set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
-        #set clsNode [$node lookup $clsName $nsNode]
-        set clsNode [$nsNode lookup $clsName]
-        if {$clsNode != ""} {
-            $clsNode configure -isvalid 1 -definition $clsDef \
-                -defbrange [list $defOff $defEnd] -token $clsTkn
-        } else {
-            set clsNode [::Parser::ItclClassNode ::#auto -expanded 0 \
-                    -name $clsName -isvalid 1 -definition $clsDef \
-                    -defbrange [list $defOff $defEnd] -token $clsTkn]
-            $nsNode addChild $clsNode
+        $node updateVariables
+        if {[$node cget -isitk]} {
+            $node addVariable itk_interior 0 1
+            $node addVariable itk_option 0 1
         }
-        
-        return $clsNode
+        $node updatePTokens
+        $node addVariable this 0 1
     }
-    
     
     proc parseCommon {node cTree content} {
     }
@@ -573,14 +609,66 @@ namespace eval ::Parser::Itcl {
         
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
             -defoffset [expr {$dOff - $strt}]
-        ::Parser::parse $mNode [expr $dOff + $offset] [string trim $methBody "{}"]
-#        # add variables from class definition to the method
-#        # as variables
-#        foreach {v d} [$node getVariables] {
-#            $mNode addVariable $v $d 1
-#        }
         
         return $mNode
+    }
+    
+    ## \brief Parses a variable node.
+    #
+    # Itcl variables can contain access qualifier (which is previously set by 
+    # parseClassDef when found) and in addition code fragments that are executed
+    # on configure and cget. This makes them different from normal Tcl namespace
+    # variables
+    #
+    # \param[in] node The class node
+    # \param[in] cTree The parsed code tree as returned py ::parse
+    # \param[in] content The content to parse and get tokens from 
+    # \param[out] cfOffPtr Pointer to the byte offset of config code
+    # \param[out] cgOffPtr Pointer to the byte offset of cget code
+    ::sugar::proc parseVar {node cTree content cfOffPtr cgOffPtr} {
+        variable CurrentAccess
+        upvar $cfOffPtr cfOff
+        upvar $cgOffPtr cgOff
+        
+        lassign {variable "" "" "" "" {} {}} varDef vName vDef vConf vCget confRange cgetRange
+        set ftok [m-parse-token $content $cTree 0]
+        set tokens {varDef 0 vName 1 vDef 2 vConf 3 confRange 3 vCget 4 cgetRange 4}
+        switch -- $ftok {
+            public - protected - private {
+                set tokens {varDef 1 vName 2 vDef 3 vConf 4 confRange 4 vCget 5 cgetRange 5}
+            }
+        }
+        foreach {tkn idx} $tokens {
+            if {$idx >= [llength $cTree]} {
+                break
+            }
+            switch -- $tkn {
+                confRange - cgetRange {
+                    set $tkn [m-parse-defrange $cTree $idx]
+                }
+                default {
+                    set $tkn [m-parse-token $content $cTree $idx]
+                }
+            }
+        }
+        
+        set vConf [string trim $vConf "\{\}"]
+        set vCget [string trim $vCget "\{\}"]
+        set cfOff [expr {$confRange != {} ? [lindex $confRange 0] : 0}]
+        set cgOff [expr {$cgetRange != {} ? [lindex $cgetRange 0] : 0}]
+        
+        $node addVariable $vName 0 1
+        # if var already exists, return it
+        set vNode [$node lookup $vName]
+        if {$vNode == "" || [$vNode cget -type] != "[set CurrentAccess]_[set varDef]"} {
+            set vNode [$node addChild [::Parser::VarNode ::#auto \
+                    -type [set CurrentAccess]_[set varDef] -name $vName
+        }
+        
+        $vNode configure -definition $vDef -configcode $vConf -cgetcode $vCget \
+                    -configbrange $confRange -cgetbrange $cgetRange -isvalid 1
+        return $vNode
+        
     }
 
 }
