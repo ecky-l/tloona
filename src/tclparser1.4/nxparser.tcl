@@ -198,10 +198,13 @@ proc ::Parser::Nx::parseClass {node cTree content defOffPtr slotOffPtr} {
 	set clsName [getString $cTree $content $idx]
     }
 
-    set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
-    set clsName [lindex $nsAll end]
+    #set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
+    #set clsName [lindex $nsAll end]
 
-    set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+    set nsNode [::Parser::Util::getNamespace $node \
+        [lrange [split [regsub -all {::} $clsName ,] ,] 0 end-1]]
+    set clsName [namespace tail $clsName]
+    #set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
     set clsNode [$nsNode lookup $clsName]
 
     # let us assume for the time being, that we have just definitions

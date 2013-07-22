@@ -18,7 +18,7 @@ class ::itree::Node {
     
     # @v name: the node name, which is also displayed
     public variable name ""
-    # @v image: an image to display in front of the name. If "", no image is
+    # @v image: an image to display in front of the name. If, no image is
     # @v image: displayed. The image consists of data
     public variable image ""
     # @v level: the depth of this tree
@@ -178,6 +178,15 @@ class ::itree::Node {
     # @a context: list of context tokens
     public method lookup {token {context {}}}
     
+    public method lookupAll {token} {
+        set res {}
+        foreach child $_Children {
+            if {[$child cget -name] eq $token} {
+                lappend res $child
+            }
+        }
+        return $res
+    }
 }
 
 body ::itree::Node::lookup {token {context {}}} {
@@ -189,9 +198,9 @@ body ::itree::Node::lookup {token {context {}}} {
         } else  {
             if {[$child cget -name] eq $token} {
                 return $child
+                #return $child
             }
         }
-        
     }
 }
 

@@ -29,8 +29,8 @@ namespace eval ::Parser {
     ## \brief Parse a class node and returns it as tree.
     #
     # This method creates class nodes depending on the definition
-    ::sugar::proc parseClass {node cTree content byteRange off defOffPtr {type class}} {
-        upvar $defOffPtr defOff
+    ::sugar::proc parseClass {node cTree content byteRange off} {
+        #upvar $defOffPtr defOff
         set nTk [llength $cTree]
         
         if {[llength $cTree] == 3} {
@@ -45,7 +45,7 @@ namespace eval ::Parser {
             # definition.
             # We cannot rely on the second token be "create", because it might
             # be a class that is named "create"
-            if {[llength [string trim $clsDef "{}"]] > 1} {
+            if {[llength [split $clsDef]] > 1} {
                 lassign [m-parse-defrange $cTree 2] defOff defEnd
                 switch -glob -- $clsTkn {
                     *class {
@@ -225,22 +225,24 @@ namespace eval ::Parser {
             }
             
             type -
-            snit::type -
-            ::snit::type -
+            *snit::type -
             widget -
-            snit::widget -
-            ::snit::widget -
+            *snit::widget -
             class -
-            itcl::class -
-            ::itcl::class -
-            *Class {
-                set defOff 0
-                set cnode [parseClass $node $codeTree $content $cmdRange $off defOff]
+            *itcl::class -
+            Class -
+            *xotcl::Class - 
+            *nx::Class {
+                parseClass $node $codeTree $content $cmdRange $off
             }
             
-            "*Attribute" -
-            "xotcl::Attribute" -
-            "::xotcl::Attribute" {
+            define - oo::define {
+                TclOO::parseDefine $node $codeTree $content $cmdRange $off
+            }
+            
+            Attribute -
+            xotcl::Attribute -
+            ::xotcl::Attribute {
                 set defOff 0
                 switch -- [$node cget -type] {
                 class {
@@ -273,35 +275,15 @@ namespace eval ::Parser {
                 }
             }
             
-            "variable" {
+            variable {
                 set vNode [Tcl::parseVar $node $codeTree $content]
                 if {$vNode != ""} {
                     $vNode configure -byterange $cmdRange
                 }
             }
             
-            "set" {
-                Tcl::parseLclVar $node $codeTree $content $off
-            }
-            
-            "foreach" {
-                Tcl::parseForeach $node $codeTree $content $off
-            }
-            
-            "for" {
-                Tcl::parseFor $node $codeTree $content $off
-            }
-            
-            "if" {
-                Tcl::parseIf $node $codeTree $content $off
-            }
-            
-            "switch" {
-                Tcl::parseSwitch $node $codeTree $content $off
-            }
-            
-            "while" {
-                Tcl::parseWhile $node $codeTree $content $off
+            set - foreach - for - if - switch - while - lassign {
+                Tcl::ParseLocal::_$token $node $codeTree $content $off
             }
             
             "body" -
@@ -346,9 +328,10 @@ namespace eval ::Parser {
             }
             
             default {
-                #puts $token
                 set nsAll [regsub -all {::} [string trimleft $token :] " "]
                 set ns [lrange $nsAll 0 end-1]
+                #set ns [lrange [split [regsub -all {::} $token ,] ,] 0 end-1]]
+                
                 if {[Util::checkNamespace $node $ns]} {
                     set lclNode [Util::getNamespace $node $ns]
                     set tn [$lclNode lookup [lindex $nsAll end]]

@@ -51,11 +51,14 @@ namespace eval ::Parser::Snit {
     
     ## \brief Create a Snit type or widget from predefined 
     proc createType {node clsName clsDef token defRange} {
-        set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
-        set clsName [lindex $nsAll end]
+        #set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
+        #set clsName [lindex $nsAll end]
         set clsDef [string trim $clsDef "\{\}"]
         
-        set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+        set nsNode [::Parser::Util::getNamespace $node \
+            [lrange [split [regsub -all {::} $clsName ,] ,] 0 end-1]]
+        set clsName [namespace tail $clsName]
+        #set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
         #set clsNode [$node lookup $clsName $nsNode]
         set clsNode [$nsNode lookup $clsName]
         if {$clsNode != ""} {

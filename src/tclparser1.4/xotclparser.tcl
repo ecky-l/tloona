@@ -133,10 +133,13 @@ proc ::Parser::Xotcl::parseClass {node cTree content defOffPtr slotOffPtr} {
         incr idx
         set clsName [::parse getstring $content [lindex [lindex $cTree $idx] 1]]
     }
-    set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
-    set clsName [lindex $nsAll end]
+    #set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
+    #set clsName [lindex $nsAll end]
     
-    set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+    set nsNode [::Parser::Util::getNamespace $node \
+        [lrange [split [regsub -all {::} $clsName ,] ,] 0 end-1]]
+    set clsName [namespace tail $clsName]
+    #set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
     #set clsNode [$node lookup $clsName $nsNode]
     set clsNode [$nsNode lookup $clsName]
     if {$clsNode != ""} {

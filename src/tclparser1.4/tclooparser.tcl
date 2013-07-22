@@ -81,9 +81,12 @@ namespace eval ::Parser::TclOO {
     
     ## \brief Create a class from previously parsed name and definition
     proc createClass {node clsName clsDef defRange} {
-        set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
-        set clsName [lindex $nsAll end]
-        set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
+        #set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
+        #set clsName [lindex $nsAll end]
+        set nsNode [::Parser::Util::getNamespace $node \
+            [lrange [split [regsub -all {::} $clsName ,] ,] 0 end-1]]
+        set clsName [namespace tail $clsName]
+        #set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
         set clsNode [$nsNode lookup $clsName]
         if {$clsNode == ""} {
             set clsNode [::Parser::OOClassNode ::#auto -expanded 0 \
@@ -270,7 +273,16 @@ namespace eval ::Parser::TclOO {
         
         return $mNode
     }
-
+    
+    ## \brief Parse variables
+    ::sugar::proc parseVar {node cTree content} {
+        set vNode [::Parser::Tcl::parseVar $node $cTree $content]
+        if {$vNode ne ""} {
+            $vNode configure -type protected_variable
+        }
+        return $vNode
+    }
+    
     ## \brief Parse a class node and returns it as tree
     ::sugar::proc parseClassDef {node off content} {
         
@@ -322,7 +334,7 @@ namespace eval ::Parser::TclOO {
                 }
                 
                 variable {
-                    set vNode [::Parser::Tcl::parseVar $node $codeTree $content]
+                    set vNode [parseVar $node $codeTree $content]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
                     }
@@ -345,7 +357,13 @@ namespace eval ::Parser::TclOO {
         $node addVariable this 0 1
     }
     
-    
+    ## \brief Parses the oo::define command to alter class definitions.
+    ::sugar::proc parseDefine {node cTree content cmdRange off} {
+        puts $cTree
+        set cls [m-parse-token $content $cTree 1]
+        set nsNode [::Parser::Util::getNamespace $node \
+            [lrange [split [regsub -all {::} $cls ,] ,] 0 end-1]]
+    }
 }
 
 package provide parser::tcloo 1.0

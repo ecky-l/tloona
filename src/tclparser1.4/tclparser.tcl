@@ -34,19 +34,17 @@ sugar::macro getarg {cmd arg args} {
 namespace eval ::Parser {
     namespace eval Tcl {}
     
-    variable CoreCommands {after append array auto_execok auto_import auto_load \
-                auto_load_index auto_qualify binary break case \
-                catch cd clock close concat continue dict encoding \
-                eof error eval exec exit expr fblocked fconfigure \
-                fcopy file fileevent flush for foreach format gets \
-                glob global history if incr info interp join lappend \
-                librarypath lindex linsert list llength load lrange \
-                lreplace lsearch lset lsort namespace open package \
-                pid proc puts pwd read rechan regexp regsub rename \
-                return scan seek set socket source split string \
-                subst switch tclLog tell time trace unknown unset \
-                update uplevel upvar variable vwait while else elseif \
-                test
+    variable CoreCommands {
+        after append apply array auto_execok auto_import auto_load auto_load_index 
+        auto_qualify binary break case catch cd chan clock close concat continue 
+        coroutine countlines dict encoding eof error eval exec exit expr fblocked 
+        fconfigure fcopy file fileevent flush for foreach format getNsCmd gets glob 
+        global if incr info interp join lappend lassign lindex linsert list llength 
+        lmap load lrange lrepeat lreplace lreverse lsearch lset lsort namespace open 
+        package pid pkg_mkIndex proc puts pwd read regexp regsub rename return scan 
+        seek set socket source split string subst switch tailcall tclLog tclPkgSetup 
+        tclPkgUnknown tell throw time trace try unknown unload unset update uplevel 
+        upvar variable vwait while yield yieldto zlib
     }
             
     class ProcNode {
@@ -238,10 +236,13 @@ namespace eval ::Parser::Tcl {
         # get definition range
         lassign [m-parse-defrange $cTree 3] defOff defEnd
         
-        set nsAll [regsub -all {::} [string trimleft $nsName :] " "]
-        set nsName [lindex $nsAll end]
+        #set nsAll [regsub -all {::} [string trimleft $nsName :] " "]
+        #set nsName [lindex $nsAll end]
         
-        set nsNode [::Parser::Util::getNamespace $node $nsAll]
+        set nsNode [::Parser::Util::getNamespace $node \
+            [split [regsub -all {::} $nsName ,] ,]]
+        #set nsName [namespace tail $nsName]
+        #set nsNode [::Parser::Util::getNamespace $node $nsAll]
         $nsNode configure -isvalid 1 -definition [string trim $nsDef "{}"] \
             -defbrange [list $defOff $defEnd]
         return $nsNode
@@ -289,23 +290,23 @@ namespace eval ::Parser::Tcl {
         }
         
         set rtns [namespace qualifiers $procName]
-        set nsAll [regsub -all {::} [string trimleft $procName :] " "]
-        set procName [lpop nsAll]
+        #set nsAll [regsub -all {::} [string trimleft $procName :] " "]
+        #set procName [lpop nsAll]
         set procBody [string trim $procBody "\{\}"]
         set argList [lindex $argList 0]
-        set node [::Parser::Util::getNamespace $node $nsAll]
+        #set node [::Parser::Util::getNamespace $node $nsAll]
         
+        set nsNode [::Parser::Util::getNamespace $node \
+            [lrange [split [regsub -all {::} $procName ,] ,] 0 end-1]]
+        set procName [namespace tail $procName]
         # add the procedure name to the top node, so that
         # it is accessible from there
-        set topNode [$node getTopnode ::Parser::Script]
+        #set topNode [$node getTopnode ::Parser::Script]
         
-        set pn [$node lookup $procName]
+        set pn [$nsNode lookup $procName]
         if {$pn == "" || [$pn cget -type] != "proc"} {
             set pn [::Parser::ProcNode ::#auto -name $procName -type proc]
-            #set pn [::Parser::ProcNode ::#auto -name $procName -type proc \
-            #    -definition $procBody  -defoffset [expr {$defOff - $strt}] \
-            #    -runtimens $rtns -arglist $argList]
-            $node addChild $pn
+            $nsNode addChild $pn
         }
         
         set sugarized no
@@ -351,137 +352,18 @@ namespace eval ::Parser::Tcl {
             set $tkn [m-parse-token $content $cTree $idx]
         }
         
-        set vNode [$node lookup $vName]
+        set nsNode [::Parser::Util::getNamespace $node \
+            [lrange [split [regsub -all {::} $vName ,] ,] 0 end-1]]
+        set vName [namespace tail $vName]
+        set vNode [$nsNode lookup $vName]
         if {$vNode == ""} {
             set vNode [::Parser::VarNode ::#auto -type "variable" \
                 -definition $vDef -name $vName -isvalid 1]
-            $node addChild $vNode
+            $nsNode addChild $vNode
         }
         $vNode configure -definition $vDef -name $vName -isvalid 1
         return $vNode
     }
-    
-    ::sugar::proc parseLclVar {node cTree content off} {
-        foreach {tkn idx} {varName 1 varDef 2} {
-            set $tkn [m-parse-token $content $cTree $idx]
-        }
-        
-        lassign [m-parse-defrange $cTree 1] doff
-        $node addVariable $varName [expr {$doff + $off}]
-    }
-    
-    ::sugar::proc parseForeach {node cTree content off} {
-        foreach {tkn idx} {varSect 1 fDef 3} {
-            set $tkn [m-parse-token $content $cTree $idx]
-        }
-        
-        # offset in variable def section of foreach and definition
-        lassign [m-parse-defrange $cTree 1] do0
-        lassign [m-parse-defrange $cTree 3] defOff
-        
-        foreach {var} [lindex $varSect 0] {
-            $node addVariable $var [expr {$off + $do0}]
-        }
-        set fDef [string trim $fDef "\{\}"]
-        if {$fDef == ""} {
-            return
-        }
-        ::Parser::parse $node [expr {$off + $defOff}] $fDef
-    }
-    
-    proc parseFor {node cTree content off} {
-        foreach {tkn doff idx} {v1 v1o 1 v2 v2o 2 v3 v3o 3 forDef forDefo 4} {
-            set range [lindex [lindex $cTree $idx] 1]
-            set $tkn [::parse getstring $content \
-                    [list [lindex $range 0] [lindex $range 1]]]
-            
-            set $doff [lindex [lindex [lindex [lindex \
-                [lindex $cTree $idx] 2] 0] 1] 0]
-        }
-        set lst [list [lindex $v1 0] $v1o [lindex $v2 0] $v2o \
-            [lindex $v3 0] $v3o [lindex $forDef 0] $forDefo]
-        
-        foreach {elem doff} $lst {
-            if {$elem == ""} {
-                continue
-            }
-            
-            ::Parser::parse $node [expr {$doff + $off}] $elem
-        }
-    }
-    
-    proc parseIf {node cTree content off} {
-        for {set i 1} {$i < [llength $cTree]} {incr i} {
-            set rg [lindex [lindex $cTree $i] 1]
-            set iDef [::parse getstring $content \
-                [list [lindex $rg 0] [lindex $rg 1]]]
-            set iDefOff [lindex [lindex [lindex [lindex \
-                [lindex $cTree $i] 2] 0] 1] 0]
-            
-            switch -- $iDef {
-                "else" -
-                "elseif" {
-                    # nothing
-                }
-                default {
-                    set iDef [string trim $iDef "\{\}"]
-                    if {$iDef != "" && [catch {
-                            ::Parser::parse $node [expr {$off + $iDefOff}] $iDef
-                        } msg]} {
-                            #puts "$msg"
-                    }
-                }
-            }
-        }
-    }
-    
-    proc parseSwitch {node cTree content off} {
-        set range [lindex [lindex $cTree end] 1]
-        set sDef [::parse getstring $content \
-            [list [lindex $range 0] [lindex $range 1]]]
-        set sDefOff [lindex [lindex [lindex [lindex \
-            [lindex $cTree end] 2] 0] 1] 0]
-        
-        set sDef [lindex $sDef 0]
-        incr off $sDefOff
-        while {1} {
-            set res [::parse command $sDef {0 end}]
-            set ct [lindex $res 3]
-            if {$ct == ""} {
-                return
-            }
-            
-            incr off [lindex [lindex [lindex [lindex [lindex $ct end] end] 0] 1] 0]
-                
-            set rg [lindex [lindex $ct end] 1]
-            set def [::parse getstring $sDef [list [lindex $rg 0] [lindex $rg 1]]]
-            
-            # parse the definitions
-            set def [lindex $def 0]
-            if {$def != ""} {
-                ::Parser::parse $node $off $def
-            }
-            
-            set idx [lindex [lindex $res 2] 0]
-            incr off [lindex [lindex [lindex $ct end] 1] 1]
-            set sDef [::parse getstring $sDef [list $idx end]]
-            
-        }
-    }
-    
-    proc parseWhile {node cTree content off} {
-        set range [lindex [lindex $cTree end] 1]
-        set wDef [::parse getstring $content \
-            [list [lindex $range 0] [lindex $range 1]]]
-        set wDefOff [lindex [lindex [lindex [lindex \
-            [lindex $cTree end] 2] 0] 1] 0]
-        
-        set wDef [lindex $wDef 0]
-        if {$wDef != ""} {
-            ::Parser::parse $node [expr {$off + $wDefOff}] $wDef
-        }
-    }
-    
     
     # @c parses a test command
     proc parseTest {node cTree content setupOffPtr bodyOffPtr cleanupOffPtr} {
@@ -557,6 +439,139 @@ namespace eval ::Parser::Tcl {
     
 }
 
+namespace eval ::Parser::Tcl::ParseLocal {
+    
+    ::sugar::proc _set {node cTree content off} {
+        foreach {tkn idx} {varName 1 varDef 2} {
+            set $tkn [m-parse-token $content $cTree $idx]
+        }
+        
+        lassign [m-parse-defrange $cTree 1] doff
+        $node addVariable $varName [expr {$doff + $off}]
+    }
+    
+    ::sugar::proc _foreach {node cTree content off} {
+        foreach {tkn idx} {varSect 1 fDef 3} {
+            set $tkn [m-parse-token $content $cTree $idx]
+        }
+        
+        # offset in variable def section of foreach and definition
+        lassign [m-parse-defrange $cTree 1] do0
+        lassign [m-parse-defrange $cTree 3] defOff
+        
+        foreach {var} [lindex $varSect 0] {
+            $node addVariable $var [expr {$off + $do0}]
+        }
+        set fDef [string trim $fDef "\{\}"]
+        if {$fDef == ""} {
+            return
+        }
+        ::Parser::parse $node [expr {$off + $defOff}] $fDef
+    }
+    
+    proc _for {node cTree content off} {
+        foreach {tkn doff idx} {v1 v1o 1 v2 v2o 2 v3 v3o 3 forDef forDefo 4} {
+            set range [lindex [lindex $cTree $idx] 1]
+            set $tkn [::parse getstring $content \
+                    [list [lindex $range 0] [lindex $range 1]]]
+            
+            set $doff [lindex [lindex [lindex [lindex \
+                [lindex $cTree $idx] 2] 0] 1] 0]
+        }
+        set lst [list [lindex $v1 0] $v1o [lindex $v2 0] $v2o \
+            [lindex $v3 0] $v3o [lindex $forDef 0] $forDefo]
+        
+        foreach {elem doff} $lst {
+            if {$elem == ""} {
+                continue
+            }
+            
+            ::Parser::parse $node [expr {$doff + $off}] $elem
+        }
+    }
+    
+    proc _if {node cTree content off} {
+        for {set i 1} {$i < [llength $cTree]} {incr i} {
+            set rg [lindex [lindex $cTree $i] 1]
+            set iDef [::parse getstring $content \
+                [list [lindex $rg 0] [lindex $rg 1]]]
+            set iDefOff [lindex [lindex [lindex [lindex \
+                [lindex $cTree $i] 2] 0] 1] 0]
+            
+            switch -- $iDef {
+                "else" -
+                "elseif" {
+                    # nothing
+                }
+                default {
+                    set iDef [string trim $iDef "\{\}"]
+                    if {$iDef != "" && [catch {
+                            ::Parser::parse $node [expr {$off + $iDefOff}] $iDef
+                        } msg]} {
+                            #puts "$msg"
+                    }
+                }
+            }
+        }
+    }
+    
+    proc _switch {node cTree content off} {
+        set range [lindex [lindex $cTree end] 1]
+        set sDef [::parse getstring $content \
+            [list [lindex $range 0] [lindex $range 1]]]
+        set sDefOff [lindex [lindex [lindex [lindex \
+            [lindex $cTree end] 2] 0] 1] 0]
+        
+        set sDef [lindex $sDef 0]
+        incr off $sDefOff
+        while {1} {
+            set res [::parse command $sDef {0 end}]
+            set ct [lindex $res 3]
+            if {$ct == ""} {
+                return
+            }
+            
+            incr off [lindex [lindex [lindex [lindex [lindex $ct end] end] 0] 1] 0]
+                
+            set rg [lindex [lindex $ct end] 1]
+            set def [::parse getstring $sDef [list [lindex $rg 0] [lindex $rg 1]]]
+            
+            # parse the definitions
+            set def [lindex $def 0]
+            if {$def != ""} {
+                ::Parser::parse $node $off $def
+            }
+            
+            set idx [lindex [lindex $res 2] 0]
+            incr off [lindex [lindex [lindex $ct end] 1] 1]
+            set sDef [::parse getstring $sDef [list $idx end]]
+            
+        }
+    }
+    
+    proc _while {node cTree content off} {
+        set range [lindex [lindex $cTree end] 1]
+        set wDef [::parse getstring $content \
+            [list [lindex $range 0] [lindex $range 1]]]
+        set wDefOff [lindex [lindex [lindex [lindex \
+            [lindex $cTree end] 2] 0] 1] 0]
+        
+        set wDef [lindex $wDef 0]
+        if {$wDef != ""} {
+            ::Parser::parse $node [expr {$off + $wDefOff}] $wDef
+        }
+    }
+    
+    ::sugar::proc _lassign {node cTree content off} {
+        for {set i 2} {$i < [llength $cTree]} {incr i} {
+            set nv [m-parse-token $content $cTree $i]
+            lassign [m-parse-defrange $cTree 1] doff
+            $node addVariable $nv [expr {$doff + $off}]
+        }
+    }
+
+}
+
 namespace eval ::Parser::Util {
     # Returns the parent namespace in which a definition is to be created
     # ns is a qualified namespace of the form ::a::b::c. It is split into
@@ -564,13 +579,28 @@ namespace eval ::Parser::Util {
     # node of that name already exists in "node". If not, these nodes are
     # created. The node of the last identifier in ns is returned
     proc getNamespace {node nsList} {
+        if {[llength $nsList] > 0 && [lindex $nsList 0] == {}} {
+            # resolving from global namespace
+            set node [$node getTopnode ::Parser::Script]
+            set nsList [lrange $nsList 1 end]
+        }
         foreach {ns} $nsList {
-            set nsNode [$node lookup $ns]
-            if {$nsNode == ""} {
+            set nsNodes [$node lookupAll $ns]
+            set nsNode {}
+            foreach {nnode} $nsNodes {
+                if {[$nnode cget -type] eq "namespace"} {
+                    $nnode configure -isvalid 1
+                    set nsNode $nnode
+                    break
+                }
+            }
+            if {$nsNode == {}} {
                 set nsNode [::Parser::Script ::#auto -isvalid 1 -expanded 0 \
-                        -type "namespace" -name $ns]
+                    -type "namespace" -name $ns -isvalid 1]
                 $node addChild $nsNode
             }
+            #if {$nsNode == "" || [$nsNode cget -type] ne "namespace"} {
+            #}
             $nsNode configure -isvalid 1
             set node $nsNode
         }
@@ -581,14 +611,33 @@ namespace eval ::Parser::Util {
     # Checks whether a fully qualified namespace with all elements in nsList
     # exists inside node
     proc checkNamespace {node nsList} {
-        foreach {ns} $nsList {
-            set nsNode [$node lookup $ns]
-            if {$nsNode == ""} {
-                return no
-            }
-            set node $nsNode
+        if {[llength $nsList] == 0} {
+            # the global namespace
+            return yes
         }
-        return yes
+        
+        if {[llength $nsList] > 0 && [lindex $nsList 0] == {}} {
+            # resolving from global namespace
+            set node [$node getTopnode ::Parser::Script]
+            set nsList [lrange $nsList 1 end]
+        }
+        
+        foreach {ns} $nsList {
+            foreach {nnode} [$node lookupAll $ns] {
+                if {[$nnode cget -type] eq "namespace"} {
+                    return yes
+                }
+            }
+        }
+        return no
+        #foreach {ns} $nsList {
+        #    set nsNode [$node lookup $ns]
+        #    if {$nsNode == "" || [$nsNode cget -type] ne "namespace"} {
+        #        return no
+        #    }
+        #    set node $nsNode
+        #}
+        #return yes
     }
 }
 
