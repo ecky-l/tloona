@@ -211,7 +211,7 @@ namespace eval ::Parser {
             sugar::macro -
             macro -
             <substproc> {
-                Tcl::parseProc $node $codeTree $content $cmdRange $off {*}$args
+                Tcl::parseProc $node $codeTree $content $cmdRange $off
             }
             
             "command" -
@@ -330,8 +330,6 @@ namespace eval ::Parser {
             default {
                 set nsAll [regsub -all {::} [string trimleft $token :] " "]
                 set ns [lrange $nsAll 0 end-1]
-                #set ns [lrange [split [regsub -all {::} $token ,] ,] 0 end-1]]
-                
                 if {[Util::checkNamespace $node $ns]} {
                     set lclNode [Util::getNamespace $node $ns]
                     set tn [$lclNode lookup [lindex $nsAll end]]

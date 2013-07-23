@@ -317,7 +317,7 @@ namespace eval ::Parser::Tcl {
         $pn configure -name $procName -type proc -sugarized $sugarized \
             -definition $procBody -defoffset [expr {$defOff - $strt}] \
             -runtimens $rtns -arglist $argList -isvalid 1 \
-            -byterange $cmdRange {*}$args
+            -byterange $cmdRange
         # Set proc type
         switch -glob -- $procDef {
             *macro {
@@ -328,8 +328,6 @@ namespace eval ::Parser::Tcl {
             }
         }
         
-        #$pn configure -arglist $argList -byterange $cmdRange \
-        #    -isvalid 1 -sugarized $sugarized {*}$args
         ::Parser::parse $pn [expr {$defOff + $off}] $procBody
         
         $pn configure -isvalid 1
