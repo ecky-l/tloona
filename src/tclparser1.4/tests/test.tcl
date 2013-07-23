@@ -12,7 +12,16 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
 }
 
 if {"[info commands parser]" == ""} {
-    package require tclparser
+    package require parser
+package require parser::macros 1.0
+package require parser::script 1.0
+package require parser::tcl 1.0
+package require parser::itcl 1.0
+package require parser::snit 1.0
+package require parser::tcloo 1.0
+package require parser::nx 1.0
+package require parser::xotcl 1.0
+package require parser::web 1.0
 }
 
 test Proc "(test a single proc)" {
@@ -21,7 +30,7 @@ test Proc "(test a single proc)" {
             puts dummy
         }
     }
-    set root [::parser::Script ::#auto -name "Proc" \
+    set root [::Parser::Script ::#auto -name "Proc" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -37,7 +46,7 @@ test NsProc "(a proc inside a namespace)" {
             }
         }
     }
-    set root [::parser::Script ::#auto -name "NsProc" \
+    set root [::Parser::Script ::#auto -name "NsProc" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -59,7 +68,7 @@ test NestedNsProc "(a proc inside a nested namespace)" {
             }
         }
     }
-    set root [::parser::Script ::#auto -name "NestedNsProc" \
+    set root [::Parser::Script ::#auto -name "NestedNsProc" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -85,7 +94,7 @@ test NsProcOutside "(a proc defined for a namespace outside)" {
             return "dummy"
         }
     }
-    set root [::parser::Script ::#auto -name "NsProcOutside" \
+    set root [::Parser::Script ::#auto -name "NsProcOutside" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -129,7 +138,7 @@ test MoreNsProc "(more / nested namespaces and proc)" {
             return "dummy"
         }
     }
-    set root [::parser::Script ::#auto -name "MoreNsProc" \
+    set root [::Parser::Script ::#auto -name "MoreNsProc" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -159,7 +168,7 @@ test SimpleClass "(simple class construct)" {
         class ::a::A {
         }
     }
-    set root [::parser::Script ::#auto -name "SimpleClass" \
+    set root [::Parser::Script ::#auto -name "SimpleClass" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -192,7 +201,7 @@ test ClassMethods "(class with method definitions)" {
             }
         }
     }
-    set root [::parser::Script ::#auto -name "ClassMethods" \
+    set root [::Parser::Script ::#auto -name "ClassMethods" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -250,7 +259,7 @@ test ClassVars "(class variable declarations)" {
             private variable var31 ""
         }
     }
-    set root [::parser::Script ::#auto -name "ClassVars" \
+    set root [::Parser::Script ::#auto -name "ClassVars" \
             -definition $content -type "script"]
     $root parse 0
     return [$root print 4]
@@ -303,7 +312,7 @@ test ByteRange "(simple top level byte ranges)" {
             return "test"
         }
     }
-    set root [::parser::Script ::#auto -name "ClassVars" \
+    set root [::Parser::Script ::#auto -name "ClassVars" \
             -definition $content -type "script"]
     $root parse 0
     
@@ -333,7 +342,7 @@ test NestedByteRange "(nested byte ranges)" {
             return "test"
         }
     }
-    set root [::parser::Script ::#auto -name "ClassVars" \
+    set root [::Parser::Script ::#auto -name "ClassVars" \
             -definition $content -type "script"]
     $root parse 0
     

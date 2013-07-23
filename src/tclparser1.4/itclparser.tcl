@@ -44,7 +44,7 @@ namespace eval ::Parser {
     }
     
     class ConstructorNode {
-    inherit ::Parser::ProcNode
+    inherit ::Parser::OOProcNode
     public {
         variable initdefinition ""
         variable initbrange {}
@@ -105,22 +105,17 @@ namespace eval ::Parser::Itcl {
                     ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
                 }
             }
-            method {
-                set mNode [parseMethod $node $codeTree $content $off $accLev]
+            method - proc {
+                set defOff 0
+                set mNode [parseMethod $node $codeTree $content $off $accLev defOff]
                 if {$mNode != ""} {
                     $mNode configure -byterange $cmdRange -access $accLev
-                    ::Parser::parse $mNode $off [$mNode cget -definition]
+                    ::Parser::parse $mNode [expr {$off + $defOff}] [$mNode cget -definition]
                     $node addMethod $mNode
                 }
             }
             
-            proc {
-                set pn [::Parser::Tcl::parseProc $node $codeTree $content dummy]
-                if {$pn != ""} {
-                    $pn configure -byterange $cmdRange
-                    ::Parser::parse $pn $off [$pn cget -definition]
-                }
-            }
+            
         }
         
     }
@@ -343,14 +338,15 @@ namespace eval ::Parser::Itcl {
                     set CurrentAccess ""
                 }
                 
-                method {
+                method - proc {
                     set tmpAcc $CurrentAccess
                     if {$CurrentAccess == ""} {
                         set CurrentAccess public
                     }
-                    set mNode [parseMethod $node $codeTree $content $off $CurrentAccess]
+                    set defOff 0
+                    set mNode [parseMethod $node $codeTree $content $off $CurrentAccess defOff]
                     $mNode configure -byterange $cmdRange
-                    ::Parser::parse $mNode $off [$mNode cget -definition]
+                    ::Parser::parse $mNode [expr {$off + $defOff}] [$mNode cget -definition]
                     $node addMethod $mNode
                     set CurrentAccess $tmpAcc
                 }
@@ -487,7 +483,7 @@ namespace eval ::Parser::Itcl {
             return $dNode
         }
         
-        set dNode [::Parser::ProcNode ::#auto -definition $dDef \
+        set dNode [::Parser::OOProcNode ::#auto -definition $dDef \
             -type "destructor" -name "destructor"]
         $node addChild $dNode
         
@@ -539,7 +535,7 @@ namespace eval ::Parser::Itcl {
     # </ul>
     # When no definition is given, the definition is outside via the itcl::body
     # command or the method is virtual (needs to be overridden by derived classes).
-    # This method tries to grasp all posibilities and creates a Parser::ProcNode
+    # This method tries to grasp all posibilities and creates a Parser::OOProcNode
     # describing the method found in the source. It then parses the Node and sets
     # all variables found in the class definition to the body, so that code
     # completion will find them.
@@ -554,11 +550,12 @@ namespace eval ::Parser::Itcl {
     #    Byte offset in the current file. Important for definition parsing
     # \param[in] accLev
     #    The access level, one of public, protected or private
-    proc parseMethod {node cTree content offset accLev} {
-        set nTk [llength $cTree]
-        set dOff 0
+    ::sugar::proc parseMethod {node cTree content offset accLev defOffPtr} {
+        upvar $defOffPtr defOff
+        #set dOff 0
         
         set alev2 ""
+        set nTk [llength $cTree]
         if {$nTk == 5} {
             # complete declaration and definition, 
             # including access level
@@ -576,9 +573,11 @@ namespace eval ::Parser::Itcl {
         # The real start of the method, after comments, spaces etc.
         set strt [lindex [lindex [lindex $cTree 0] 1] 0]
         foreach {tkn idx} $aList {
-            set $tkn [::parse getstring $content [lindex [lindex $cTree $idx] 1]]
+            set $tkn [m-parse-token $content $cTree $idx]
+            #set $tkn [::parse getstring $content [lindex [lindex $cTree $idx] 1]]
             if {[string equal $tkn methBody]} {
-                set dOff [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 0]
+                lassign [m-parse-defrange $cTree $idx] defOff
+                #set dOff [lindex [lindex [lindex [lindex [lindex $cTree $idx] 2] 0] 1] 0]
             }
         }
         
@@ -602,17 +601,19 @@ namespace eval ::Parser::Itcl {
             set accLev public
         }
         
+        set methBody [string trim $methBody "{}"]
+        set strt 0
         # return existing method node if already present
         set mNode [$node lookup $methName]
         if {$mNode == "" || [$mNode cget -type] != "[set accLev]_method"} {
-            set mNode [::Parser::ProcNode ::#auto -type "[set accLev]_method" \
+            set mNode [::Parser::OOProcNode ::#auto -type "[set accLev]_method" \
                 -name $methName -arglist $argList -definition $methBody \
-                -defoffset [expr {$dOff - $strt}]]
+                -defoffset [expr {$defOff - $strt}]]
             $node addChild $mNode
         }
         
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
-            -defoffset [expr {$dOff - $strt}]
+            -defoffset [expr {$defOff - $strt}]
         
         return $mNode
     }

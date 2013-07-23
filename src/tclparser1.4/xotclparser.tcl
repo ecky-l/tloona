@@ -47,7 +47,7 @@ class ::Parser::XotclAttributeNode {
 
 # @c This object can deal with pre- and post assertions
 class ::Parser::XotclProcNode {
-    inherit ::Parser::ProcNode
+    inherit ::Parser::OOProcNode
     
     # @v preassertion: Code that checks pre assertion for xotcl procs
     public variable preassertion ""

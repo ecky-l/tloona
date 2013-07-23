@@ -1,6 +1,4 @@
-
-
-
+## \brief parser package for the main entry point of parsing Tcl files
 package require parser 1.4
 package require parser::macros 1.0
 package require parser::script 1.0

@@ -67,6 +67,8 @@ class Aitcl {
         variable y
         method prDo {args} {
         }
+        
+        proc aProc {}
     }
     
     private {
@@ -96,5 +98,8 @@ class Bitcl {
     protected method yDo {args} {
     }
     private method zDo {args} {
+    }
+    
+    private proc pProc {} {
     }
 }

@@ -56,6 +56,7 @@ namespace eval ::Parser {
         
         # @v displayformat: overrides the display format for tests
         public variable displayformat {"%s \{%s\}" -name -arglist}
+        
         # @v arglist: list of arguments to the proc
         public variable arglist {} {
             foreach {arg} $arglist {
@@ -75,9 +76,7 @@ namespace eval ::Parser {
         # @v runtimens: the namespace where this proc is defined
         # @v runtimens: at runtime
         public variable runtimens ""
-        # @v bodyextern: indicates whether the body is defined
-        # @v bodyextern: externally via itcl::body
-        public variable bodyextern 0
+        
         # @v defoffset: The definition offset, counted from the 
         # @v defoffset: beginning of the whole definition
         public variable defoffset 0

@@ -162,7 +162,7 @@ namespace eval ::Parser::Snit {
             return $dNode
         }
         
-        set dNode [::Parser::ProcNode ::#auto -definition $dDef \
+        set dNode [::Parser::OOProcNode ::#auto -definition $dDef \
             -type "destructor" -name "destructor"]
         $node addChild $dNode
         
@@ -210,7 +210,7 @@ namespace eval ::Parser::Snit {
     # </ul>
     # When no definition is given, the definition is outside via the itcl::body
     # command or the method is virtual (needs to be overridden by derived classes).
-    # This method tries to grasp all posibilities and creates a Parser::ProcNode
+    # This method tries to grasp all posibilities and creates a Parser::OOProcNode
     # describing the method found in the source. It then parses the Node and sets
     # all variables found in the class definition to the body, so that code
     # completion will find them.
@@ -241,7 +241,7 @@ namespace eval ::Parser::Snit {
         # return existing method node if already present
         set mNode [$node lookup $methName]
         if {$mNode == "" || [$mNode cget -type] != "[set accLev]_method"} {
-            set mNode [::Parser::ProcNode ::#auto -type "[set accLev]_method" \
+            set mNode [::Parser::OOProcNode ::#auto -type "[set accLev]_method" \
                 -name $methName -arglist $argList -definition $methBody \
                 -defoffset [expr {$dOff - $strt}]]
             $node addChild $mNode

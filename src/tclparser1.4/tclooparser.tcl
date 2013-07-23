@@ -70,7 +70,24 @@ namespace eval ::Parser {
         }
     }
     
-    class OOClassNode {
+    ## \brief A specialized proc for representing methods and class procs
+    class OOProcNode {
+        inherit ::Parser::ProcNode
+        constructor {args} {eval chain $args} {}
+        
+        ## \brief Indicates whether the body is defined externally
+        public variable bodyextern 0
+        
+        ## \brief The declaration of Proc or methods. This might be separate
+        #         from the definition.
+        public variable declaration ""
+        
+        ## \brief The declaration bytecode range
+        public variable decbrange {}
+        
+    }
+    
+    class TclOOClassNode {
         inherit ClassNode
         constructor {args} {eval chain $args} {}
     }
@@ -89,7 +106,7 @@ namespace eval ::Parser::TclOO {
         #set nsNode [::Parser::Util::getNamespace $node [lrange $nsAll 0 end-1]]
         set clsNode [$nsNode lookup $clsName]
         if {$clsNode == ""} {
-            set clsNode [::Parser::OOClassNode ::#auto -expanded 0 \
+            set clsNode [::Parser::TclOOClassNode ::#auto -expanded 0 \
                     -name $clsName -isvalid 1 -token class]
             $nsNode addChild $clsNode
         }
@@ -181,7 +198,7 @@ namespace eval ::Parser::TclOO {
             return $dNode
         }
         
-        set dNode [::Parser::ProcNode ::#auto -definition $dDef \
+        set dNode [::Parser::OOProcNode ::#auto -definition $dDef \
             -type "destructor" -name "destructor"]
         $node addChild $dNode
         
@@ -229,7 +246,7 @@ namespace eval ::Parser::TclOO {
     # </ul>
     # When no definition is given, the definition is outside via the itcl::body
     # command or the method is virtual (needs to be overridden by derived classes).
-    # This method tries to grasp all posibilities and creates a Parser::ProcNode
+    # This method tries to grasp all posibilities and creates a Parser::OOProcNode
     # describing the method found in the source. It then parses the Node and sets
     # all variables found in the class definition to the body, so that code
     # completion will find them.
@@ -263,7 +280,7 @@ namespace eval ::Parser::TclOO {
         # return existing method node if already present
         set mNode [$node lookup $methName]
         if {$mNode == "" || [$mNode cget -type] != "[set accLev]_method"} {
-            set mNode [::Parser::ProcNode ::#auto -type "[set accLev]_method" \
+            set mNode [::Parser::OOProcNode ::#auto -type "[set accLev]_method" \
                 -name $methName -arglist $argList -definition $methBody \
                 -defoffset [expr {$dOff - $strt}]]
             $node addChild $mNode
@@ -359,7 +376,7 @@ namespace eval ::Parser::TclOO {
     
     ## \brief Parses the oo::define command to alter class definitions.
     ::sugar::proc parseDefine {node cTree content cmdRange off} {
-        puts $cTree
+        puts parseDefine,$cTree
         set cls [m-parse-token $content $cTree 1]
         set nsNode [::Parser::Util::getNamespace $node \
             [lrange [split [regsub -all {::} $cls ,] ,] 0 end-1]]

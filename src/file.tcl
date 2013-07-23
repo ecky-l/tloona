@@ -290,18 +290,23 @@ class ::Tloona::TclFile {
         $T tag configure inscolorize -background white
         $T tag remove inscolorize $line.0 $nline.0
         set brlist [$codeItem cget -byterange]
-        switch -- [$codeItem cget -type] {
-            public_method -
-            protected_method -
-            private_method -
-            proc {
-                if {$def && [$codeItem cget -bodyextern]} {
-                    set brlist [$codeItem cget -defbrange]
-                }
-                
+        if {[$codeItem isa ::Parser::OOProcNode]} {
+            if {$def && [$codeItem cget -bodyextern]} {
+                set brlist [$codeItem cget -defbrange]
             }
-            default {}
         }
+#        switch -- [$codeItem cget -type] {
+#            public_method -
+#            protected_method -
+#            private_method -
+#            proc {
+#                if {$def && [$codeItem cget -bodyextern]} {
+#                    set brlist [$codeItem cget -defbrange]
+#                }
+#                
+#            }
+#            default {}
+#        }
         
         if {$brlist == {}} {
             return
