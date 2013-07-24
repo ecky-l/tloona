@@ -9,6 +9,11 @@ package require sugar 0.1
 package require parser::tcl 1.0
 package require parser::macros 1.0
 
+::sugar::macro m-exist-node {cmd pNode name class} {
+    list expr \{\[lsearch \[lmap o \[$pNode lookupAll $name\] \[list \
+        expr \{\[\$o isa $class \] && \[\$o cget -name\] eq $name\}\]\] 1\] >= 0\}
+}
+
 namespace eval ::Parser {
     
     ## \brief The base class for all OO systems.
@@ -380,6 +385,15 @@ namespace eval ::Parser::TclOO {
         set cls [m-parse-token $content $cTree 1]
         set nsNode [::Parser::Util::getNamespace $node \
             [lrange [split [regsub -all {::} $cls ,] ,] 0 end-1]]
+        set cls [namespace tail $cls]
+        set clsNode [$nsNode lookupAll $cls ::Parser::TclOOClassNode]
+        if {$clsNode == ""} {
+            set clsNode [::Parser::TclOOClassNode ::#auto -expanded 0 \
+                    -name $cls -isvalid 1 -token class]
+            $nsNode addChild $clsNode
+        }
+        # add method
+        puts $clsNode
     }
 }
 

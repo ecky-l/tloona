@@ -178,10 +178,13 @@ class ::itree::Node {
     # @a context: list of context tokens
     public method lookup {token {context {}}}
     
-    public method lookupAll {token} {
+    public method lookupAll {token {class ""}} {
         set res {}
         foreach child $_Children {
             if {[$child cget -name] eq $token} {
+                if {$class != {} && ![$child isa $class]} {
+                    continue
+                }
                 lappend res $child
             }
         }
