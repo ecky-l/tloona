@@ -234,7 +234,7 @@ namespace eval ::Parser {
                 parseClass $node $codeTree $content $cmdRange $off
             }
             
-            define - oo::define {
+            define - *oo::define {
                 TclOO::parseDefine $node $codeTree $content $cmdRange $off
             }
             
@@ -326,6 +326,14 @@ namespace eval ::Parser {
             }
             
             default {
+                # check for xotcl or nx classes. First, check for valid names
+                # Filter out everything that does not look like a self defined Xotcl/NX class.
+                # This will make trouble, if somebody redefines core commands with
+                # an Xotcl/NX class (unlikely), then the class will appear with no 
+                # instprocs in the browser. But at least its getting faster...
+                variable CoreCommands
+                if {[regexp {^(:{0,2}\w+)+} $token] && [lsearch -exact $CoreCommands $token] < 0} {
+                
                 set nsAll [regsub -all {::} [string trimleft $token :] " "]
                 set ns [lrange $nsAll 0 end-1]
                 if {[Util::checkNamespace $node $ns]} {
@@ -349,6 +357,7 @@ namespace eval ::Parser {
                             }                                
                         }
                     }
+                }
                 }
                 
             }

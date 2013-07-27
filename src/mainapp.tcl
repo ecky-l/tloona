@@ -992,8 +992,7 @@ class Tloona::Mainapp {
         
     }
 
-    # @c creates the navigation controls: code browser, project
-    # @c browser...
+    ## \brief creates the navigation controls: code browser, project browser...
     private method createNavigators {} {
         global UserOptions Icons
         

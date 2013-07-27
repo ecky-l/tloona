@@ -264,17 +264,24 @@ namespace eval ::Parser::TclOO {
     #    The content string with the definition
     # \param[in] offset
     #    Byte offset in the current file. Important for definition parsing
-    # \param[in] accLev
-    #    The access level, one of public, protected or private
-    ::sugar::proc parseMethod {node cTree content offset} {
+    # \param[in] mdo
+    #    The method definition offset, defines where to find the "method" keyword
+    #    in the parse tree. If parseMethod was called from a class
+    #    definition, it is zero (the default). If it is called from an oo::define
+    #    statement, the "method" keyord is at position 2
+    # \param[out] defOffPtr Pointer to definition offset
+    ::sugar::proc parseMethod {node cTree content offset mdo defOffPtr} {
+        upvar $defOffPtr defOff
         set nTk [llength $cTree]
         set dOff 0
         
         # method blubb {args} {body}
-        foreach {tkn idx} {def 0 methName 1 argList 2 methBody 3} {
+        
+        foreach {tkn idx} [list def $mdo methName [incr mdo] \
+                argList [incr mdo] methBody [incr mdo]] {
             set $tkn [m-parse-token $content $cTree $idx]
         }
-        lassign [m-parse-defrange $cTree 3] dOff dEnd
+        lassign [m-parse-defrange $cTree $mdo] defOff dEnd
         set accLev public
         if {![regexp {^[a-z]} $methName]} {
             set accLev protected
@@ -287,11 +294,11 @@ namespace eval ::Parser::TclOO {
         if {$mNode == "" || [$mNode cget -type] != "[set accLev]_method"} {
             set mNode [::Parser::OOProcNode ::#auto -type "[set accLev]_method" \
                 -name $methName -arglist $argList -definition $methBody \
-                -defoffset [expr {$dOff - $strt}]]
+                -defoffset [expr {$defOff - $strt}]]
             $node addChild $mNode
         }
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
-            -defoffset [expr {$dOff - $strt}]
+            -defoffset [expr {$defOff - $strt}]
         
         return $mNode
     }
@@ -335,7 +342,8 @@ namespace eval ::Parser::TclOO {
                 }
                 
                 method {
-                    set mNode [parseMethod $node $codeTree $content $off]
+                    set defOff 0
+                    set mNode [parseMethod $node $codeTree $content $off 0 defOff]
                     $mNode configure -byterange $cmdRange
                     ::Parser::parse $mNode $off [$mNode cget -definition]
                     $node addMethod $mNode
@@ -381,7 +389,7 @@ namespace eval ::Parser::TclOO {
     
     ## \brief Parses the oo::define command to alter class definitions.
     ::sugar::proc parseDefine {node cTree content cmdRange off} {
-        puts parseDefine,$cTree
+        # Get associated class node
         set cls [m-parse-token $content $cTree 1]
         set nsNode [::Parser::Util::getNamespace $node \
             [lrange [split [regsub -all {::} $cls ,] ,] 0 end-1]]
@@ -392,8 +400,17 @@ namespace eval ::Parser::TclOO {
                     -name $cls -isvalid 1 -token class]
             $nsNode addChild $clsNode
         }
-        # add method
-        puts $clsNode
+        # get defined token and decide what to do
+        set token [m-parse-token $content $cTree 2]
+        switch -- $token {
+        method {
+            set defOff 0
+            set mNode [parseMethod $clsNode $cTree $content $off 2 defOff]
+            $mNode configure -byterange $cmdRange
+            ::Parser::parse $mNode [expr {$off + $defOff}] [$mNode cget -definition]
+        }
+        
+        }
     }
 }
 

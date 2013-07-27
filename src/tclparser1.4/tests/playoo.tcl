@@ -47,7 +47,14 @@ class create snoopy {
 }
 
 class create cat
-define cat method miau {args} {puts miau}
+
+::oo::define cat method miau {args} {
+    puts miau
+    set x o
+    
+}
+
+define cat variable tail ""
 
 
 class Aitcl {
