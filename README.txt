@@ -17,6 +17,11 @@ The dependencies can be installed via teacup, which can be done with the script
 
 Release Notes
 -------------
+Tloona1.4.2 (2013/08/01):
+ * Runs with Tcl/Tk 8.6
+ * Partial Support for TclOO (oo::define, class, methods, constructor)
+ * Critical fix for expand {*} syntax with new version of Tclparser
+ * Many bugfixes
 
 Tloona1.4.0 (2013/07/14):
  * Partial support for snit in Code browser and the "send to REPL" feature
