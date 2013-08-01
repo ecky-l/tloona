@@ -28,7 +28,8 @@ class create dog {
         set tune wau
         copy [self] $name
     }
-    
+    destructor {
+    }
     method barg {} {
         #my variable tune
         puts $tune
@@ -55,7 +56,12 @@ class create cat
 }
 
 define cat variable tail ""
+define cat constructor {args} {
+    puts miau
+}
 
+define cat destructor {
+}
 
 class Aitcl {
     public {

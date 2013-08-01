@@ -120,93 +120,45 @@ namespace eval ::Parser::TclOO {
         return $clsNode
     }
     
-    ::sugar::proc parseConstructor {node cTree content defOffPtr} {
+    ::sugar::proc parseConstructor {node cTree content mdo defOffPtr} {
         upvar $defOffPtr defOff
         set defEnd 0
         
-        set nTk [llength $cTree]
-        set firstTkn [m-parse-token $content $cTree 0]
-        set argList ""
-        set initDef ""
-        set initBr {}
-        set constDef ""
-        set defIdx 2
-        if {$nTk == 3} {
-            # constructor without access level
-            set argList [m-parse-token $content $cTree 1]
-            set constDef [m-parse-token $content $cTree 2]
-            set defIdx 2
-        } elseif {$nTk == 4} {
-            if {$firstTkn == "constructor"} {
-                # Constructor with init Code
-                set argList [m-parse-token $content $cTree 1]
-                set initDef [m-parse-token $content $cTree 2]
-                set initBr [m-parse-defrange $cTree 2]
-            } else {
-                # access level definition
-                set argList [m-parse-token $content $cTree 2]
-            }
-            set constDef [m-parse-token $content $cTree 3]
-            set defIdx 3
-        } elseif {$nTk == 5} {
-            # Constructor with access and init code
-            set argList [m-parse-token $content $cTree 2]
-            set initDef [m-parse-token $content $cTree 3]
-            set initBr [m-parse-defrange $cTree 3]
-            set constDef [m-parse-token $content $cTree 4]
-            set defIdx 4
-        } else {
-            return ""
+        set defLst [list cDef $mdo argList [incr mdo] cBody [incr mdo]]
+        foreach {tkn idx} $defLst {
+            set $tkn [m-parse-token $content $cTree $idx]
         }
-        
-        set defRange [m-parse-defrange $cTree $defIdx]
-        set defOff [lindex $defRange 0]
-
+        lassign [m-parse-defrange $cTree $mdo] defOff defEnd
         set argList [lindex $argList 0]
-        set constDef [string trim $constDef \{\}]
+        set cBody [string trim $cBody \{\}]
         
         # return existing method node if already present
         set csNode [$node lookup "constructor"]
-        if {$csNode != "" && [$csNode cget -type] == "constructor"} {
-            $csNode configure -arglist $argList -definition $constDef -isvalid 1 \
-                -initdefinition $initDef -initbrange $initBr
-            return $csNode
+        if {$csNode == "" || [$csNode cget -type] != "constructor"} {
+            set csNode [::Parser::ConstructorNode ::#auto -type "constructor" \
+                -name "constructor" -arglist $argList -definition $cBody]
+            $node addChild $csNode
         }
-        
-        set csNode [::Parser::ConstructorNode ::#auto -type "constructor" \
-            -name "constructor" -arglist $argList -definition $constDef \
-                -initdefinition $initDef -initbrange $initBr]
-        $node addChild $csNode
-        
+        $csNode configure -arglist $argList -definition $cBody -isvalid 1
         return $csNode
-        
     }
     
-    ::sugar::proc parseDestructor {node cTree content defOffPtr} {
+    ::sugar::proc parseDestructor {node cTree content mdo defOffPtr} {
         upvar $defOffPtr defOff
         set defEnd 0
         set dDef ""
         
-        if {[llength $cTree] == 2} {
-            set range [lindex [lindex $cTree 1] 1]
-            set dDef [::parse getstring $content $range]
-            lassign [m-parse-defrange $cTree 1] defOff defEnd
-        } else {
-            # TODO: for access level
-            return
+        foreach {tkn idx} [list dDef $mdo dBody [incr mdo]] {
+            set $tkn [m-parse-token $content $cTree $idx]
         }
+        lassign [m-parse-defrange $cTree $mdo] defOff defEnd
         
         set dNode [$node lookup "destructor"]
-        if {$dNode != "" && [$dNode cget -type] == "destructor"} {
-            $dNode configure -definition $dDef -isvalid 1
-            
-            return $dNode
+        if {$dNode == "" || [$dNode cget -type] != "destructor"} {
+            set dNode [::Parser::OOProcNode ::#auto -type destructor -name destructor]
+            $node addChild $dNode
         }
-        
-        set dNode [::Parser::OOProcNode ::#auto -definition $dDef \
-            -type "destructor" -name "destructor"]
-        $node addChild $dNode
-        
+        $dNode configure -definition $dBody -isvalid 1
         return $dNode
         
     }
@@ -304,8 +256,8 @@ namespace eval ::Parser::TclOO {
     }
     
     ## \brief Parse variables
-    ::sugar::proc parseVar {node cTree content} {
-        set vNode [::Parser::Tcl::parseVar $node $cTree $content]
+    ::sugar::proc parseVar {node cTree content {mdo 0}} {
+        set vNode [::Parser::Tcl::parseVar $node $cTree $content $mdo]
         if {$vNode ne ""} {
             $vNode configure -type protected_variable
         }
@@ -351,20 +303,20 @@ namespace eval ::Parser::TclOO {
                 
                 constructor {
                     set defOff 0
-                    set csNode [parseConstructor $node $codeTree $content defOff]
+                    set csNode [parseConstructor $node $codeTree $content 0 defOff]
                     $csNode configure -byterange $cmdRange
                     ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
                 }
                 
                 destructor {
                     set defOff 0
-                    set dNode [parseDestructor $node $codeTree $content defOff]
+                    set dNode [parseDestructor $node $codeTree $content 0 defOff]
                     $dNode configure -byterange $cmdRange
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
                 
                 variable {
-                    set vNode [parseVar $node $codeTree $content]
+                    set vNode [parseVar $node $codeTree $content 0]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
                     }
@@ -403,11 +355,27 @@ namespace eval ::Parser::TclOO {
         # get defined token and decide what to do
         set token [m-parse-token $content $cTree 2]
         switch -- $token {
+        constructor {
+            set defOff 0
+            set csNode [parseConstructor $clsNode $cTree $content 2 defOff]
+            $csNode configure -byterange $cmdRange
+            ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
+        }
+        destructor {
+            set defOff 0
+            set dNode [parseDestructor $clsNode $cTree $content 2 defOff]
+            $dNode configure -byterange $cmdRange
+            ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
+        }
         method {
             set defOff 0
             set mNode [parseMethod $clsNode $cTree $content $off 2 defOff]
             $mNode configure -byterange $cmdRange
             ::Parser::parse $mNode [expr {$off + $defOff}] [$mNode cget -definition]
+        }
+        variable {
+            set vNode [parseVar $clsNode $cTree $content 2]
+            $vNode configure -byterange $cmdRange
         }
         
         }

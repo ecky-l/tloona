@@ -334,14 +334,14 @@ namespace eval ::Parser::Tcl {
     }
     
     ## \brief Parses a Tcl namespace variable
-    ::sugar::proc parseVar {node cTree content} {
+    ::sugar::proc parseVar {node cTree content {mdo 0}} {
         if {[$node isa ::Parser::ProcNode]} {
             # we don't want to show variable definitions in procs
             return
         }
         
         lassign {variable "" ""} varDef vName vDef
-        set tokens {varDef 0 vName 1 vDef 2}
+        set tokens [list varDef $mdo vName [incr mdo] vDef [incr mdo]]
         foreach {tkn idx} $tokens {
             if {$idx >= [llength $cTree]} {
                 break
