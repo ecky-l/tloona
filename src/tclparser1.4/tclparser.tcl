@@ -334,9 +334,10 @@ namespace eval ::Parser::Tcl {
     }
     
     ## \brief Parses a Tcl namespace variable
-    ::sugar::proc parseVar {node cTree content {mdo 0}} {
+    ::sugar::proc parseVar {node cTree content off {mdo 0}} {
         if {[$node isa ::Parser::ProcNode]} {
             # we don't want to show variable definitions in procs
+            ParseLocal::_set $node $cTree $content $off
             return
         }
         

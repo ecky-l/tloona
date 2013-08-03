@@ -302,7 +302,7 @@ namespace eval ::Parser::Snit {
                     #set dCfOff 0
                     #set dCgOff 0
                     #set acc [getarg -access]
-                    set vNode [::Parser::Tcl::parseVar $node $codeTree $content]
+                    set vNode [::Parser::Tcl::parseVar $node $codeTree $content $off]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
                     }

@@ -228,6 +228,7 @@ namespace eval ::Parser {
             *snit::widget -
             class -
             *itcl::class -
+            *oo::class -
             Class -
             *xotcl::Class - 
             *nx::Class {
@@ -274,7 +275,7 @@ namespace eval ::Parser {
             }
             
             variable {
-                set vNode [Tcl::parseVar $node $codeTree $content]
+                set vNode [Tcl::parseVar $node $codeTree $content $off]
                 if {$vNode != ""} {
                     $vNode configure -byterange $cmdRange
                 }

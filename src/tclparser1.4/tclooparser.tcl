@@ -256,8 +256,8 @@ namespace eval ::Parser::TclOO {
     }
     
     ## \brief Parse variables
-    ::sugar::proc parseVar {node cTree content {mdo 0}} {
-        set vNode [::Parser::Tcl::parseVar $node $cTree $content $mdo]
+    ::sugar::proc parseVar {node cTree content off {mdo 0}} {
+        set vNode [::Parser::Tcl::parseVar $node $cTree $content $off $mdo]
         if {$vNode ne ""} {
             $vNode configure -type protected_variable
         }
@@ -316,7 +316,7 @@ namespace eval ::Parser::TclOO {
                 }
                 
                 variable {
-                    set vNode [parseVar $node $codeTree $content 0]
+                    set vNode [parseVar $node $codeTree $content $off 0]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
                     }
@@ -374,7 +374,7 @@ namespace eval ::Parser::TclOO {
             ::Parser::parse $mNode [expr {$off + $defOff}] [$mNode cget -definition]
         }
         variable {
-            set vNode [parseVar $clsNode $cTree $content 2]
+            set vNode [parseVar $clsNode $cTree $content $off 2]
             $vNode configure -byterange $cmdRange
         }
         
