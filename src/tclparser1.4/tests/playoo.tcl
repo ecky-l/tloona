@@ -73,6 +73,7 @@ class Aitcl {
         constructor {args} {
         }
         method do {} {
+            
         }
     }
     
