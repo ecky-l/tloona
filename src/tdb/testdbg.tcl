@@ -1,6 +1,6 @@
 lappend auto_path ..
 
-package require tloonadebug
+package require tdb
 package require parser
 package re -exact Itcl 3.4
 namespace import ::itcl::*
@@ -20,10 +20,10 @@ namespace eval xx {
 
 xx::dummy 1 1 2
 
-::Debugger::SetProcDebug xx::dummy
+::Tdb::SetProcDebug xx::dummy
 xx::dummy 1 2 3
 
-::Debugger::UnsetProcDebug xx::dummy
+::Tdb::UnsetProcDebug xx::dummy
 xx::dummy 1 2 3
 
 #TestDebug

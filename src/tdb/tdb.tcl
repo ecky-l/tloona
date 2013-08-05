@@ -2,28 +2,28 @@
 package require parser 1.4.1
 package re -exact Itcl 3.4
 
-namespace eval ::Debugger {
+namespace eval ::Tdb {
     ## \brief Dictionary of original command bodies
     variable OrigBodies {}
 }
 
-namespace eval ::Debugger::Cmd {}
+namespace eval ::Tdb::Cmd {}
 
-proc ::Debugger::Cmd::up {} {
+proc ::Tdb::Cmd::up {} {
     uplevel 2 {
         ::Tloona::Debug::BreakPoint
     }
 }
 
 
-proc ::Debugger::Cmd::bt {} {
+proc ::Tdb::Cmd::bt {} {
     set l [uplevel info level]
     for {set i $l} {$i > 0} {incr i -1} {
         puts [info level $i]
     }
 }
 
-proc ::Debugger::BreakPoint {args} {
+proc ::Tdb::BreakPoint {args} {
     set upLev 1
     set frameLev 1
     foreach {k v} {-uplevel upLev -framelevel frameLev} {
@@ -93,7 +93,7 @@ proc ::Debugger::BreakPoint {args} {
     return $bpRes
 }
 
-proc ::Debugger::ParseToken {content treePtr restPtr} {
+proc ::Tdb::ParseToken {content treePtr restPtr} {
     upvar $treePtr tree
     upvar $restPtr rest
     
@@ -114,7 +114,7 @@ proc ::Debugger::ParseToken {content treePtr restPtr} {
     ::parse getstring $content [lindex $res 1]
 }
 
-proc ::Debugger::SetProcDebug {cmd} {
+proc ::Tdb::SetProcDebug {cmd} {
     set cmdBody [info body $cmd]
     set ns [namespace qualifiers $cmd]
     if {$ns == {}} {
@@ -123,10 +123,10 @@ proc ::Debugger::SetProcDebug {cmd} {
     uplevel #0 [list namespace eval $ns \
         [list rename $cmd __[namespace tail $cmd]__]]
     uplevel #0 [list namespace eval $ns \
-        [list proc [namespace tail $cmd] {args} [list ::Debugger::Execute $cmdBody]]]
+        [list proc [namespace tail $cmd] {args} [list ::Tdb::Execute $cmdBody]]]
 }
 
-proc ::Debugger::UnsetProcDebug {cmd} {
+proc ::Tdb::UnsetProcDebug {cmd} {
     set ns [namespace qualifiers $cmd]
     if {$ns == {}} {
         set ns ::
@@ -144,12 +144,12 @@ proc ::Debugger::UnsetProcDebug {cmd} {
 # set via uplevel (__dbg_in) which is then given to the coroutine
 # to indicate whether we want to step into or over the next command.
 # sets an indicator value that
-proc ::Debugger::Execute {cmdBody} {
+proc ::Tdb::Execute {cmdBody} {
     coroutine DebugParse apply {{content} {
         yield
         set input n
         while {$content != {}} {
-            set cmd [::Debugger::ParseToken $content tree content]
+            set cmd [::Tdb::ParseToken $content tree content]
             #append cmd \n bp
             set input [yield $cmd]
             if {$input == "s"} {
@@ -188,7 +188,7 @@ proc ::Debugger::Execute {cmdBody} {
     puts $prompt
     while {![catch {DebugParse $dbgCmd} res]} {
         puts "        [lindex [split $res \n] 0] ..."
-        set dbgCmd [::Debugger::BreakPoint -prevcmd $dbgCmd -uplevel 2 -framelevel 3]
+        set dbgCmd [::Tdb::BreakPoint -prevcmd $dbgCmd -uplevel 2 -framelevel 3]
         uplevel $res
     }
         
@@ -199,7 +199,7 @@ proc TestDebug {} {
         yield
         set input n
         while {$content != {}} {
-            set cmd [::Debugger::ParseToken $content tree content]
+            set cmd [::Tdb::ParseToken $content tree content]
             #append cmd \n bp
             set input [yield $cmd]
             if {$input == "s"} {
@@ -220,7 +220,7 @@ proc TestDebug {} {
     set __dbg_in xxx
     while {![catch {gagga $__dbg_in} res]} {
         puts "[lindex [split $res \n] 0] ..."
-        set __dbg_in [::Debugger::BreakPoint]
+        set __dbg_in [::Tdb::BreakPoint]
         eval $res
     }
         
@@ -242,4 +242,4 @@ proc debug {cmd args} {
     #}}
 }
 
-package provide tloonadebug 1.0
+package provide tdb 0.1
