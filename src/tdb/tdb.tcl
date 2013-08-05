@@ -7,20 +7,75 @@ namespace eval ::Tdb {
     variable OrigBodies {}
 }
 
+## \brief Implements some debugger specific commands
 namespace eval ::Tdb::Cmd {}
 
+## \brief The command to switch stack level
 proc ::Tdb::Cmd::up {} {
     uplevel 2 {
         ::Tloona::Debug::BreakPoint
     }
 }
 
-
+## \brief The command to get backtraces
 proc ::Tdb::Cmd::bt {} {
     set l [uplevel info level]
     for {set i $l} {$i > 0} {incr i -1} {
         puts [info level $i]
     }
+}
+
+## \brief The parser commands.
+#
+# These are mostly coroutines that are setup with specific content during
+# the debugging session
+namespace eval ::Tdb::Parser {
+    
+    variable Continuations {
+        if {{1 2} 3} 
+        for {1 {2 4} 3 1} 
+        foreach { {[lassign 2 {*}1] != {}} 3}
+    }
+}
+
+## \brief Create unique Coro names
+proc ::Tdb::Parser::CoroName {} {
+    return "coro[string range [format %2.2x [clock milliseconds]] 6 10]"
+}
+
+## \brief Coroutine for step next
+proc ::Tdb::Parser::StepNext {content} {
+    yield
+    while {$content != {}} {
+        set res [::parse command $content {0 end}]
+        set cmd [::parse getstring $content [lindex $res 1]]
+        set content [::parse getstring $content [lindex $res 2]]
+        yield $cmd
+    }
+    return {}
+}
+
+## \brief Coroutine for step into.
+#
+# Since Tcl doesn't support call/cc we need to keep an array of
+# all available control structures and the next continuation for them.
+# We match the first token of the parse tree against this array to 
+# find out where to proceed in the tree, yield every command in there
+# to be evaluated in the debugger context and take the result. Based on 
+# the result we eventually set the next continuation and start the yield 
+# process for that.<br>
+# If the first token is a Tcl proc or method, we set it up for debugging
+# so that it all can start at a new stack level. 
+proc ::Tdb::Parser::StepInto {content} {
+    yield
+    
+    variable Continuations
+    
+    set res [::parse command $content {0 end}]
+    set cTree [lindex $res 3]
+    set cmd [::parse getstring $content [lindex [lindex $cTree 0] 1]]
+    puts $cmd
+    return {}
 }
 
 proc ::Tdb::BreakPoint {args} {
@@ -40,7 +95,7 @@ proc ::Tdb::BreakPoint {args} {
     set bpRes ""
     set cmd ""
     while {1} {
-        puts -nonewline  ">> ";#$prompt
+        puts -nonewline  "(tdb) ";#$prompt
         flush stdout
         gets stdin line
         
@@ -93,27 +148,7 @@ proc ::Tdb::BreakPoint {args} {
     return $bpRes
 }
 
-proc ::Tdb::ParseToken {content treePtr restPtr} {
-    upvar $treePtr tree
-    upvar $restPtr rest
-    
-    set res [::parse command $content {0 end}]
-    set tree [lindex $res 3]
-    set rest [::parse getstring $content [lindex $res 2]]
-    #puts $res
-    
-    #set tree [lindex $res 3]
-    #if {$tree == {}} {
-    #    return
-    #}
-    #puts tt,[llength $tree]
-    #foreach {tkn} $tree {
-    #    puts [::parse getstring $content [lindex $tkn 1]],$tkn
-    #}
-    
-    ::parse getstring $content [lindex $res 1]
-}
-
+## \brief setup a proc for debugging
 proc ::Tdb::SetProcDebug {cmd} {
     set cmdBody [info body $cmd]
     set ns [namespace qualifiers $cmd]
@@ -136,38 +171,11 @@ proc ::Tdb::UnsetProcDebug {cmd} {
         [list rename __[namespace tail $cmd]__ [namespace tail $cmd]]]
 }
 
-## \brief Debugger experiments
-#
-# Try: setup a coroutine that parses the body of a proc or method
-# and yields the next command. Process this command in a loop right 
-# after a breakpoint (bp) command. From the bp command, a value is
-# set via uplevel (__dbg_in) which is then given to the coroutine
-# to indicate whether we want to step into or over the next command.
-# sets an indicator value that
-proc ::Tdb::Execute {cmdBody} {
-    coroutine DebugParse apply {{content} {
-        yield
-        set input n
-        while {$content != {}} {
-            set cmd [::Tdb::ParseToken $content tree content]
-            #append cmd \n bp
-            set input [yield $cmd]
-            if {$input == "s"} {
-                # get out the subcommands. Tcl doesn't support 
-                # continuations so we have a problem here: we won't 
-                # know in advance to which command the interpreter 
-                # will jump next in case of control structures
-                puts "step into to be implemented"
-            }
-        }
-        return -code error
-    }} $cmdBody
-    
-    set dbgCmd ""
-
+## \brief Returns a prompt for command line debugging
+proc ::Tdb::Prompt {} {
     # The prompt
     set fr  [info frame]
-    set frData [info frame [expr {$fr - 2}]]
+    set frData [info frame [expr {$fr - 3}]]
     set prompt "Debug "
     switch -- [dict get $frData type] {
         source {
@@ -185,12 +193,55 @@ proc ::Tdb::Execute {cmdBody} {
             append prompt " ([dict get $frData cmd])) "
         }
     }
-    puts $prompt
-    while {![catch {DebugParse $dbgCmd} res]} {
-        puts "        [lindex [split $res \n] 0] ..."
+    return $prompt
+}
+
+## \brief Debugger experiments
+#
+# Try: setup a coroutine that parses the body of a proc or method
+# and yields the next command. Process this command in a loop right 
+# after a breakpoint (bp) command. From the bp command, a value is
+# set via uplevel (__dbg_in) which is then given to the coroutine
+# to indicate whether we want to step into or over the next command.
+# sets an indicator value that
+proc ::Tdb::Execute {cmdBody} {
+    set coroStack {}
+    set coro [Parser::CoroName]
+    lappend coroStack $coro
+    coroutine $coro Parser::StepNext $cmdBody
+    
+    puts [Prompt]
+    set dbgCmd ""
+    set evalResult {}
+    while {1} {
+        set coro [lindex $coroStack 0]
+        set nextCmd [$coro $evalResult]
+        if {$nextCmd == {}} {
+            set coroStack [lrange $coroStack 1 end]
+        }
+        
+        puts "        [lindex [split $nextCmd \n] 0] ..."
         set dbgCmd [::Tdb::BreakPoint -prevcmd $dbgCmd -uplevel 2 -framelevel 3]
-        uplevel $res
+        
+        if {$dbgCmd == "s"} {
+            # setup a new coroutine context for step into
+            set coro [Parser::CoroName]
+            set coroStack [linsert $coroStack 0 $coro]
+            coroutine $coro Parser::StepInto $nextCmd
+            continue
+        }
+        set evalResult [uplevel $nextCmd]
+        
+        if {$coroStack == {}} {
+            break
+        }
     }
+    
+    #while {![catch {[lindex $coroStack 0] $dbgCmd} res]} {
+    #    puts "        [lindex [split $res \n] 0] ..."
+    #    set dbgCmd [::Tdb::BreakPoint -prevcmd $dbgCmd -uplevel 2 -framelevel 3]
+    #    uplevel $res
+    #}
         
 }
 

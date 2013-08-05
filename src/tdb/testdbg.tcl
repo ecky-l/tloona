@@ -14,16 +14,17 @@ namespace eval xx {
         for {set i 0} {$i < 5} {incr i} {
             incr x $i
         }
+        if {$x > 4} {
+            puts huha
+        } else {
+            incr x 2
+        }
         puts hi,$args
     }
 }
 
-xx::dummy 1 1 2
-
 ::Tdb::SetProcDebug xx::dummy
 xx::dummy 1 2 3
-
 ::Tdb::UnsetProcDebug xx::dummy
-xx::dummy 1 2 3
 
 #TestDebug

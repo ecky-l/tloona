@@ -754,8 +754,6 @@ class Tloona::Mainapp {
             ".test" -
             ".ws3" {
                 if {[set fileObj [isOpen $uri]] != ""} {
-                    Tmw::message $TloonaApplication "File exists" ok \
-                        "The File $uri exists already"
                     component textnb select $fileObj
                     return
                 }
