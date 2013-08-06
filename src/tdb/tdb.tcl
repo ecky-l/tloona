@@ -11,6 +11,8 @@ package re -exact Itcl 3.4
 namespace eval ::Tdb {
     ## \brief Dictionary of original command bodies
     variable OrigBodies {}
+    
+    variable DebugCmd c
 }
 
 ## \brief Implements some debugger specific commands
@@ -51,6 +53,8 @@ proc ::Tdb::Parser::CoroName {} {
 
 ## \brief Coroutine for step next
 proc ::Tdb::Parser::StepNext {content} {
+    namespace upvar ::Tdb DebugCmd debugCmd
+    
     yield
     #puts $content
     while {$content != {}} {
@@ -92,7 +96,7 @@ proc ::Tdb::Parser::StepNext {content} {
             set step [m-parse-token $content $cTree 3]
             set stepPuts "for {...} {...} {$step}"
             set body [m-parse-token $content $cTree 4]
-            puts $body
+            #puts $body
             for {yield [list $init $initPuts y]} {[yield [list $eval $evalPuts y]]} \
                         {yield [list $step $stepPuts y]} {
                 # set up an inner coroutine that returns the body in pieces
@@ -248,6 +252,8 @@ proc ::Tdb::Prompt {} {
 # to indicate whether we want to step into or over the next command.
 # sets an indicator value that
 proc ::Tdb::Execute {cmdBody} {
+    variable DebugCmd
+    
     set coroStack {}
     set coro [Parser::CoroName]
     lappend coroStack $coro
