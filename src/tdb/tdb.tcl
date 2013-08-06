@@ -1,6 +1,12 @@
 
 package require parser 1.4.1
+package require sugar 0.1
 package re -exact Itcl 3.4
+
+## \brief Gets the token of a parse tree at specified index
+::sugar::macro m-parse-token {cmd content tree idx} {
+    list string trim \[::parse getstring $content \[lindex \[lindex $tree $idx\] 1\]\] \"{}\"
+}
 
 namespace eval ::Tdb {
     ## \brief Dictionary of original command bodies
@@ -46,13 +52,14 @@ proc ::Tdb::Parser::CoroName {} {
 ## \brief Coroutine for step next
 proc ::Tdb::Parser::StepNext {content} {
     yield
+    #puts $content
     while {$content != {}} {
         set res [::parse command $content {0 end}]
         set cmd [::parse getstring $content [lindex $res 1]]
         set content [::parse getstring $content [lindex $res 2]]
-        yield $cmd
+        yield [list $cmd "[lindex [split $cmd \n] 0] ..." y]
     }
-    return {}
+    return -code 42
 }
 
 ## \brief Coroutine for step into.
@@ -66,16 +73,52 @@ proc ::Tdb::Parser::StepNext {content} {
 # process for that.<br>
 # If the first token is a Tcl proc or method, we set it up for debugging
 # so that it all can start at a new stack level. 
-proc ::Tdb::Parser::StepInto {content} {
+::sugar::proc ::Tdb::Parser::StepInto {content} {
     yield
-    
-    variable Continuations
     
     set res [::parse command $content {0 end}]
     set cTree [lindex $res 3]
-    set cmd [::parse getstring $content [lindex [lindex $cTree 0] 1]]
-    puts $cmd
-    return {}
+    set cmd [m-parse-token $content $cTree 0]
+    switch -- $cmd {
+        if {
+        }
+        while {
+        }
+        for {
+            set init [m-parse-token $content $cTree 1]
+            set initPuts "for {$init} {...} {...}"
+            set eval [list expr [m-parse-token $content $cTree 2]]
+            set evalPuts "for {...} {[m-parse-token $content $cTree 2]} {...}"
+            set step [m-parse-token $content $cTree 3]
+            set stepPuts "for {...} {...} {$step}"
+            set body [m-parse-token $content $cTree 4]
+            puts $body
+            for {yield [list $init $initPuts y]} {[yield [list $eval $evalPuts y]]} \
+                        {yield [list $step $stepPuts y]} {
+                # set up an inner coroutine that returns the body in pieces
+                #coroutine eatBody StepNext $body
+                #yieldto eatBody
+                set bodyi $body
+                while {$bodyi != {}} {
+                    set resi [::parse command $bodyi {0 end}]
+                    set cmdi [::parse getstring $bodyi [lindex $resi 1]]
+                    set bodyi [::parse getstring $bodyi [lindex $resi 2]]
+                    yield [list $cmdi "[lindex [split $cmdi \n] 0] ..." y]
+                }
+            }
+        }
+        foreach {
+        }
+        switch {
+        }
+        
+        default {
+            # TODO: find a way to turn s into n for the commands that cannot
+            # be stepped into
+            yield [list $content "[lindex [split $content \n] 0] ..." n]
+        }
+    }
+    return -code 42
 }
 
 proc ::Tdb::BreakPoint {args} {
@@ -215,34 +258,36 @@ proc ::Tdb::Execute {cmdBody} {
     set evalResult {}
     while {1} {
         set coro [lindex $coroStack 0]
-        set nextCmd [$coro $evalResult]
-        if {$nextCmd == {}} {
+        if {[catch {$coro $evalResult} nextCmd] == 42} {
             set coroStack [lrange $coroStack 1 end]
         }
         
-        puts "        [lindex [split $nextCmd \n] 0] ..."
+        set canStep [lindex $nextCmd 2]
+        if {$canStep == {}} {
+            set canStep n
+        }
+        set lineP [string repeat "    " [llength $coroStack]]
+        append lineP [lindex $nextCmd 1]
+        puts $lineP
+        set nextCmd [lindex $nextCmd 0]
         set dbgCmd [::Tdb::BreakPoint -prevcmd $dbgCmd -uplevel 2 -framelevel 3]
         
-        if {$dbgCmd == "s"} {
+        if {$dbgCmd == "s" && $canStep} {
             # setup a new coroutine context for step into
             set coro [Parser::CoroName]
             set coroStack [linsert $coroStack 0 $coro]
             coroutine $coro Parser::StepInto $nextCmd
             continue
         }
-        set evalResult [uplevel $nextCmd]
+        if {[string trim $nextCmd] != ""} {
+            set evalResult [uplevel $nextCmd]
+        }
         
         if {$coroStack == {}} {
             break
         }
     }
     
-    #while {![catch {[lindex $coroStack 0] $dbgCmd} res]} {
-    #    puts "        [lindex [split $res \n] 0] ..."
-    #    set dbgCmd [::Tdb::BreakPoint -prevcmd $dbgCmd -uplevel 2 -framelevel 3]
-    #    uplevel $res
-    #}
-        
 }
 
 proc TestDebug {} {
