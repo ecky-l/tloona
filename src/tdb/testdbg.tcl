@@ -9,11 +9,11 @@ namespace import ::itcl::*
 
 namespace eval xx {
     proc dummy {args} {
-        #set x 0
-        #lassign [info commands] cmd1 cmd2 cmd3
+        set x 0
+        lassign [info commands] cmd1 cmd2 cmd3
         for {set i 0 ; set j 1} {$i < 5} {incr i} {
             incr x $i
-            for {set j 1} {$j < 10} {incr j} {
+            for {set j 1} {$j < 3} {incr j} {
                 incr x $j
             }
         }
