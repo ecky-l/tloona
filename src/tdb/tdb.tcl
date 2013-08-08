@@ -40,115 +40,98 @@ proc ::Tdb::Cmd::bt {} {
 # These are mostly coroutines that are setup with specific content during
 # the debugging session
 namespace eval ::Tdb::Step {
-    
-    variable Continuations {
-        if {{1 2} 3} 
-        for {1 {2 4} 3 1} 
-        foreach { {[lassign 2 {*}1] != {}} 3}
-    }
+    namespace export CoroName Into
 }
+
 
 ## \brief Create unique Coro names
 proc ::Tdb::Step::CoroName {} {
     return "coro[string range [format %2.2x [clock milliseconds]] 6 10]"
 }
 
-## \brief Coroutine for step next
-proc ::Tdb::Step::StepNext {content} {
-    namespace upvar ::Tdb DebugCmd debugCmd
-    
-    yield
-    #puts $content
-    while {$content != {}} {
-        set res [::parse command $content {0 end}]
-        set cmd [::parse getstring $content [lindex $res 1]]
-        set content [::parse getstring $content [lindex $res 2]]
-        yield [list $cmd "[lindex [split $cmd \n] 0] ..." y]
-    }
-    return -code break
-}
-
-## \brief Coroutine for step into.
+## \brief Next Step coroutine
 #
-# Since Tcl doesn't support call/cc we need to keep an array of
-# all available control structures and the next continuation for them.
-# We match the first token of the parse tree against this array to 
-# find out where to proceed in the tree, yield every command in there
-# to be evaluated in the debugger context and take the result. Based on 
-# the result we eventually set the next continuation and start the yield 
-# process for that.<br>
-# If the first token is a Tcl proc or method, we set it up for debugging
-# so that it all can start at a new stack level. 
-::sugar::proc ::Tdb::Step::StepInto {content} {
-    yield
+# This is a coroutine that is set up with a script content as context.
+# While the script has a next command, it yields a list containig this 
+# command and a coroutine which can be used to step into the command. 
+# If a step into is not possible, the second list element is empty. 
+# Callers of a contextuated coroutine with this proc can process the 
+# yielded results and decide on their own, whether to step into the 
+# command or step over. However they are responsible of deleting the 
+# returned coroutine either by processing it or by renaming it to {}.
+proc ::Tdb::Step::Into {content} {
+    namespace upvar ::Tdb DebugCmd DebugCmd
+    yield [info coroutine]
     
-    set res [::parse command $content {0 end}]
-    set cTree [lindex $res 3]
-    set cmd [m-parse-token $content $cTree 0]
-    switch -- $cmd {
-        if {
-        }
-        while {
-        }
-        for {
-            set init [m-parse-token $content $cTree 1]
-            set initPuts "for {$init} {...} {...}"
-            set eval [list expr [m-parse-token $content $cTree 2]]
-            set evalPuts "for {...} {[m-parse-token $content $cTree 2]} {...}"
-            set step [m-parse-token $content $cTree 3]
-            set stepPuts "for {...} {...} {$step}"
-            set body [m-parse-token $content $cTree 4]
-            for {yield [list $init $initPuts y]} {[yield [list $eval $evalPuts y]]} \
-                        {yield [list $step $stepPuts y]} {
-                # set up an inner coroutine that returns the body in pieces
-                #coroutine eatBody StepNext $body
-                set bodyi $body
-                while {$bodyi != {}} {
-                    set resi [::parse command $bodyi {0 end}]
-                    set cmdi [::parse getstring $bodyi [lindex $resi 1]]
-                    set bodyi [::parse getstring $bodyi [lindex $resi 2]]
-                    yield [list $cmdi "[lindex [split $cmdi \n] 0] ..." y]
-                }
-                
-            }
-        }
-        foreach {
-        }
-        switch {
-        }
-        
-        default {
-            # TODO: find a way to turn s into n for the commands that cannot
-            # be stepped into
-            coroutine eatBody StepNext $content
-            set evalRes ""
-            while {[catch {eatBody $evalRes} innerCmd] != 42} {
-                yield $innerCmd
-            }
-        }
-    }
-    return -code 42
-}
-
-## \brief Coroutine for step next
-proc ::Tdb::Step::NextCmd {content treePtr restPtr} {
-    upvar $treePtr tree
-    upvar $restPtr rest
-    
-    #puts $content
     while {$content != {}} {
         set res [::parse command $content {0 end}]
-        set tree [lindex $res 3]
-        puts $res
-        set cmd [::parse getstring $content [lindex $res 1]]
-        puts $cmd
-        set rest [::parse getstring $content [lindex $res 2]]
-        uplevel [list yield [list $cmd "[lindex [split $cmd \n] 0] ..." y]]
+        set nextCmd [::parse getstring $content [lindex $res 1]]
+        set coroStep {}
+        
+        set pRes [::parse command $nextCmd {0 end}]
+        set tree [lindex $pRes 3]
+        set cmd1 [::parse getstring $nextCmd [lindex [lindex $tree 0] 1]]
+        switch -- $cmd1 {
+            if - while - for - foreach - switch {
+                set cmd Cmd::
+                append cmd [string tou [string in $cmd1 0]] \
+                    [string ra $cmd1 1 end]
+                set coroStep [coroutine [CoroName] $cmd $nextCmd]
+            }
+        }
+        set content [::parse getstring $content [lindex $res 2]]
+        yield [list $nextCmd $coroStep]
     }
-    #return -code 42
 }
 
 
+namespace eval ::Tdb::Step::Cmd {
+    namespace import ::Tdb::Step::*
+}
+
+proc ::Tdb::Step::Cmd::If {content} {
+    yield [info coroutine]
+}
+
+proc ::Tdb::Step::Cmd::While {content} {
+    yield [info coroutine]
+}
+
+## \brief Step into coroutine for the ::for command
+::sugar::proc ::Tdb::Step::Cmd::For {content} {
+    namespace upvar ::Tdb LastResult evalRes
+    yield [info coroutine]
+    set res [::parse command $content {0 end}]
+    set tree [lindex $res 3]
+    
+    set init [m-parse-token $content $tree 1]
+    set eval [list expr [m-parse-token $content $tree 2]]
+    set step [m-parse-token $content $tree 3]
+    set body [m-parse-token $content $tree 4]
+    
+    yield [list $init [coroutine [CoroName] ::Tdb::Step::Into $init]]
+    while {1} {
+        set evr [yield [list $eval {}]]
+        if {! $evalRes} {
+            break
+        }
+        yield [list $body [coroutine [CoroName] ::Tdb::Step::Into $body]]
+        yield [list $step [coroutine [CoroName] ::Tdb::Step::Into $step]]
+    }
+}
+
+proc ::Tdb::Step::Cmd::Foreach {content} {
+    yield [info coroutine]
+}
+
+proc ::Tdb::Step::Cmd::Switch {content} {
+    yield [info coroutine]
+}
+
+## \brief A breakpoint for command line use
+#
+# This simple breakpoint command lets users evaluate commands in 
+# the script context that they debug
 proc ::Tdb::BreakPoint {args} {
     variable DebugCmd
     set upLev 1
@@ -263,182 +246,48 @@ proc ::Tdb::Prompt {} {
     return $prompt
 }
 
-namespace eval ::Tdb::Step::Cmd {
-}
 
-proc ::Tdb::Step::Cmd::If {content} {
-    yield [info coroutine]
-    return -code break
-}
-
-proc ::Tdb::Step::Cmd::While {content} {
-    yield [info coroutine]
-    return -code break
-}
-
-::sugar::proc ::Tdb::Step::Cmd::For {content} {
-    namespace upvar ::Tdb LastResult evalRes
-    yield [info coroutine]
-    puts heyho
-    set res [::parse command $content {0 end}]
-    set tree [lindex $res 3]
-    
-    set init [m-parse-token $content $tree 1]
-    set eval [list expr [m-parse-token $content $tree 2]]
-    set step [m-parse-token $content $tree 3]
-    set body [m-parse-token $content $tree 4]
-    
-    yield $init
-    while {1} {
-        yield $eval
-        puts $evalRes
-        if {! $evalRes} {
-            break
-        }
-        set coro [coroutine [::Tdb::Step::CoroName] ::Tdb::Step::Next $body]
-        while {[info commands $coro] != {}} {
-            yieldto $coro
-        }
-        
-        yield $step
-    }
-}
-
-proc ::Tdb::Step::Cmd::Foreach {content} {
-    yield [info coroutine]
-    return -code break
-}
-
-proc ::Tdb::Step::Cmd::Switch {content} {
-    yield [info coroutine]
-    return -code break
-}
-
-proc ::Tdb::Step::InnerStep {content} {
-    yield [info coroutine]
-    while {$content != {}} {
-        set res [::parse command $content {0 end}]
-        set cmd [::parse getstring $content [lindex $res 1]]
-        set content [::parse getstring $content [lindex $res 2]]
-        yield $cmd
-    }
-}
-
-proc ::Tdb::Step::Next {content} {
-    namespace upvar ::Tdb DebugCmd DebugCmd
-    yield [info coroutine]
-    
-    set coro [coroutine [CoroName] InnerStep $content]
-    while {[info commands $coro] != {}} {
-        set nextCmd [$coro]
-        yield $nextCmd
-        if {$DebugCmd == "s"} {
-            #set nextCmd [$coro]
-            set pRes [::parse command $nextCmd {0 end}]
-            set tree [lindex $pRes 3]
-            set cmd1 [::parse getstring $nextCmd [lindex [lindex $tree 0] 1]]
-            switch -- $cmd1 {
-                if - while - for - foreach - switch {
-                    set cmd Cmd::
-                    append cmd [string tou [string in $cmd1 0]] \
-                        [string ra $cmd1 1 end]
-                    set coroStep [coroutine [CoroName] $cmd $nextCmd]
-                    while {[info commands $coroStep] != {}} {
-                        yieldto $coroStep
-                    }
-                }
-                default {
-                    yield $nextCmd
-                }
-            }
-            #yield $nextCmd
-        
-        }
-        
-    }
-}
-
-proc ::Tdb::Execute {cmdBody} {
+proc ::Tdb::Execute {nextCmd} {
     variable DebugCmd
     variable LastResult
     
-    set coro [coroutine [Step::CoroName] Step::Next $cmdBody]
-    puts [Prompt]
-    set evalResult ""
-    set DebugCmd n
-    while {[info commands $coro] != {}} {
-        set nextCmd [$coro]
-        if {[string trim $nextCmd] == ""} {
-            continue
-        }
-        puts "    [lindex [split $nextCmd \n] 0] ..."
-        BreakPoint -uplevel 2
-        if {$DebugCmd == "s"} {
-            set evalResult ""
-            continue
-        }
-        if {[string trim $nextCmd] != ""} {
-            set LastResult [uplevel $nextCmd]
-        }
-        
-    }
-}
-
-## \brief Debugger experiments
-#
-# Try: setup a coroutine that parses the body of a proc or method
-# and yields the next command. Process this command in a loop right 
-# after a breakpoint (bp) command. From the bp command, a value is
-# set via uplevel (__dbg_in) which is then given to the coroutine
-# to indicate whether we want to step into or over the next command.
-# sets an indicator value that
-proc ::Tdb::Execute2 {cmdBody} {
-    variable DebugCmd
-    
     set coroStack {}
-    set coro [Step::CoroName]
-    lappend coroStack $coro
-    coroutine $coro Step::StepNext $cmdBody
-    
-    puts [Prompt]
-    set dbgCmd ""
-    set evalResult {}
+    set stepCoro [coroutine [Step::CoroName] Step::Into $nextCmd]
     while {1} {
-        set coro [lindex $coroStack 0]
-        if {[catch {$coro $evalResult} nextCmd] == 42} {
-            set coroStack [lrange $coroStack 1 end]
-        }
-        
-        set canStep [lindex $nextCmd 2]
-        if {$canStep == {}} {
-            set canStep n
-        }
-        set lineP [string repeat "    " [llength $coroStack]]
-        append lineP [lindex $nextCmd 1]
-        puts $lineP
-        set nextCmd [lindex $nextCmd 0]
-        BreakPoint -uplevel 2
-        
-        if {$DebugCmd == "s" && $canStep} {
-            # setup a new coroutine context for step into
-            set coro [Step::CoroName]
-            set coroStack [linsert $coroStack 0 $coro]
-            coroutine $coro Step::StepInto $nextCmd
-            continue
-        }
-        if {[string trim $nextCmd] != ""} {
-            if {[catch {uplevel $nextCmd} evalResult]} {
-                puts $evalResult,$nextCmd
-                BreakPoint -uplevel 2
+        if {$nextCmd != "" || $coroStack != {}} {
+            puts "   [string trim [lindex [split $nextCmd \n] 0]] ..."
+            BreakPoint -uplevel 2
+            if {$DebugCmd == "s" && $stepCoro != {}} {
+                # Backup the stepCoro as next one to use on "n". Then update 
+                # nextCmd and get the new stepCoro. After that proceed to the
+                # beginning of loop
+                set coroStack [linsert $coroStack 0 $stepCoro]
+                lassign [$stepCoro $LastResult] nextCmd stepCoro
+                continue
             }
-            #set evalResult [uplevel $nextCmd]
+            if {[string trim $nextCmd] != ""} {
+                set LastResult [uplevel $nextCmd]
+            }
         }
         
+        # important: if there was a stepCoro assigned in a previous "s"
+        # but not further executed, it needs to be deleted
+        if {$stepCoro != {}} {
+            rename $stepCoro {}
+        }
+        # nothing more to do if the coroStack is empty
         if {$coroStack == {}} {
             break
         }
+        
+        # coroStack is not empty. Update the nextCmd and step Coro
+        # and remove the current coro from stack if it has returned
+        set cCoro [lindex $coroStack 0]
+        lassign [$cCoro $LastResult] nextCmd stepCoro
+        if {[info commands $cCoro] == {}} {
+            set coroStack [lrange $coroStack 1 end]
+        }
     }
-    
 }
 
 
