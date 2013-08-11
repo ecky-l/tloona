@@ -71,12 +71,25 @@ proc ::Tdb::Step::Into {content} {
         set pRes [::parse command $nextCmd {0 end}]
         set tree [lindex $pRes 3]
         set cmd1 [::parse getstring $nextCmd [lindex [lindex $tree 0] 1]]
-        switch -- $cmd1 {
-            if - while - for - foreach - switch {
-                set cmd Cmd::
-                append cmd [string tou [string in $cmd1 0]] \
-                    [string ra $cmd1 1 end]
-                set coroStep [coroutine [CoroName] $cmd $nextCmd]
+        if {[info procs $cmd1] != {}} {
+            # TODO: setup proc for debugging step. Take into account that
+            # proc might exist in the current namespace only or that it is 
+            # a method
+            
+        } else {
+            switch -- $cmd1 {
+                if - while - for - foreach - switch {
+                    set cmd Cmd::
+                    append cmd [string tou [string in $cmd1 0]] \
+                        [string ra $cmd1 1 end]
+                    set coroStep [coroutine [CoroName] $cmd $nextCmd]
+                }
+                default {
+                    # Build a coro that performs command and variable 
+                    # substitutions by looking into the parse tree
+                    set coroStep [coroutine [CoroName] \
+                        ::Tdb::Step::Cmd::Substitute $nextCmd]
+                }
             }
         }
         set content [::parse getstring $content [lindex $res 2]]
@@ -89,6 +102,44 @@ namespace eval ::Tdb::Step::Cmd {
     namespace import ::Tdb::Step::*
 }
 
+## \brief Perform Command and variable substitution.
+#
+# This procedure constructs a new command from content by stepwise
+# substitution of words ([commands] and $variables) on step into
+proc ::Tdb::Step::Cmd::Substitute {content} {
+    yield [info coroutine]
+    
+    set res [::parse command $content {0 end}]
+    set tree [lindex $res 3]
+    foreach {elem} $tree {
+        if {[lindex $elem 0] != "word"} {
+            continue
+        }
+        set elemTrees [lindex $elem end]
+        foreach {elemTree} [lindex $elem end] {
+            switch -- [lindex $elemTree 0] {
+                variable {
+                    set varName [::parse getstring $content \
+                        [lindex [lindex [lindex $elemTree end] 0] 1]]
+                    set var [::parse getstring $content [lindex $elemTree 1]]
+                    set $varName [yield [list [list subst $var] {}]]
+                }
+                command {
+                    set cmdName [::parse getstring $content [lindex $elemTree 1]]
+                    set cmd [string range $cmdName 1 end-1]
+                    set $cmdName [yield [list $cmd [coroutine [CoroName] ::Tdb::Step::Into $cmd]]]
+                    set cmdNameRE $cmdName
+                    foreach {c} {{\[} {\]} {\$}} {
+                        set cmdNameRE [regsub -all $c $cmdNameRE \\$c]
+                    }
+                    set content [regsub $cmdNameRE $content "\$\{$cmdName\}"]
+                }
+            }
+        }
+    }
+    yield [list [subst $content] {}]
+    return
+}
 proc ::Tdb::Step::Cmd::If {content} {
     yield [info coroutine]
 }
@@ -162,7 +213,7 @@ proc ::Tdb::BreakPoint {args} {
         
         switch -- $line {
         
-        n - s {
+        n - s - o {
             set DebugCmd $line
             break
         }
@@ -251,17 +302,18 @@ proc ::Tdb::Execute {nextCmd} {
     variable DebugCmd
     variable LastResult
     
-    set coroStack {}
+    set cmdStack {}
     set stepCoro [coroutine [Step::CoroName] Step::Into $nextCmd]
     while {1} {
-        if {$nextCmd != "" || $coroStack != {}} {
+        if {$nextCmd != ""} {
             puts "   [string trim [lindex [split $nextCmd \n] 0]] ..."
             BreakPoint -uplevel 2
-            if {$DebugCmd == "s" && $stepCoro != {}} {
-                # Backup the stepCoro as next one to use on "n". Then update 
-                # nextCmd and get the new stepCoro. After that proceed to the
-                # beginning of loop
-                set coroStack [linsert $coroStack 0 $stepCoro]
+            if {$DebugCmd == "s" && $stepCoro != {} && [info commands $stepCoro] != {}} {
+                # Backup the nextCmd and stepCoro as next one to use on "n" or 
+                # "o". Then update nextCmd and get the new stepCoro. After 
+                # that proceed to the beginning of loop, where nextCmd will be
+                # break'ed again.
+                set cmdStack [linsert $cmdStack 0 $nextCmd $stepCoro]
                 lassign [$stepCoro $LastResult] nextCmd stepCoro
                 continue
             }
@@ -269,23 +321,49 @@ proc ::Tdb::Execute {nextCmd} {
                 set LastResult [uplevel $nextCmd]
             }
         }
-        
-        # important: if there was a stepCoro assigned in a previous "s"
-        # but not further executed, it needs to be deleted
-        if {$stepCoro != {}} {
+        # important: if the last command was "s" and the command in this step is "n",
+        # the stepCoro assigned in the previous step is not used and needs to be deleted
+        if {$stepCoro != {} && [info commands $stepCoro] != {}} {
             rename $stepCoro {}
         }
-        # nothing more to do if the coroStack is empty
-        if {$coroStack == {}} {
+        # nothing more to do if the cmdStack is empty
+        if {$cmdStack == {}} {
             break
         }
         
-        # coroStack is not empty. Update the nextCmd and step Coro
-        # and remove the current coro from stack if it has returned
-        set cCoro [lindex $coroStack 0]
+        # cmdStack is not empty. Get nextCmd from the first values in
+        # the stack
+        set cCoro [lindex $cmdStack 1]
         lassign [$cCoro $LastResult] nextCmd stepCoro
+        
+        # This is the place to eventually get out of a currently executed
+        # step. Process all remaining commands in the current stack without
+        # breakpoint, then assign the first command in the stack to nextCmd.
+        # The stack will be reduced afterwards since cCoro does not longer 
+        # exist.
+        if {$DebugCmd == "o"} {
+            # step out
+            while {[info commands $cCoro] != {}} {
+                set LastResult [uplevel $nextCmd]
+                if {$stepCoro != {}} {
+                    rename $stepCoro {}
+                }
+                lassign [$cCoro $LastResult] nextCmd stepCoro
+            }
+            #set cmdStack [lassign $cmdStack nextCmd stepCoro]
+            set cmdStack [lrange $cmdStack 2 end]
+            set cCoro [lindex $cmdStack 1]
+            lassign [$cCoro $LastResult] nextCmd stepCoro
+            
+            #set nextCmd [lindex $cmdStack 0]
+            #set stepCoro [lindex $cmdStack 1]
+            puts outwith,$nextCmd
+        }
+        
+        # Pop current cmd and coro from the stack, if there are no 
+        # commands left
         if {[info commands $cCoro] == {}} {
-            set coroStack [lrange $coroStack 1 end]
+            set cmdStack [lrange $cmdStack 2 end]
         }
     }
 }
@@ -302,8 +380,6 @@ proc debug {cmd args} {
         # an ordinary proc
         set body [info body $cmd]
     }
-    #coroutine dbg apply {{} {
-    #}}
 }
 
 package provide tdb 0.1

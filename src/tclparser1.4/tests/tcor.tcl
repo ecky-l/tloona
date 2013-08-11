@@ -23,17 +23,8 @@ class A {
         puts bye
     }
     
-    method do {args} {
-        puts [coroutine nn apply {{obj} {
-            set i 0
-            set rr [yield blahblah,[incr i],[info coroutine]]
-            puts $rr
-            #yield $i ;#incri
-            return gagga
-        }} $this]
-        puts hehyho,[nn x]
-        #nn y
-        #rename nn {}
+    private method do {args} {
+        puts pub
     }
     
     method incri {} {
@@ -41,13 +32,6 @@ class A {
     }
     
     method alln {} {
-        yield
-        set i 0
-        return $i
-        while 1 {
-            yield $i
-            incr i 2
-        }
     }
 }
 
