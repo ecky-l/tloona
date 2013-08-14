@@ -48,6 +48,32 @@ namespace eval ::Tmw::Fs {
         uplevel Tmw::Fs::FileSystem ::#auto $args
     }
     
+    ## \brief helper proc to get file type
+    proc getFileType {file} {
+        set type file
+        switch -- [file extension $file] {
+            .tcl - .itcl - .xotcl - .tk - .itk - .ws3 {
+                set type tclfile
+            }
+            .test {
+                set type testfile
+            }
+            .png - .jpg - .jpeg - .ico - .gif - .bmp - .xcf {
+                set type image
+            }
+            .exe - .bin {
+                set type exefile
+            }
+            .kit - .vfs {
+                set type starkit
+            }
+            .htm - .html - .tml - .adp {
+                set type webscript
+            }
+        }
+        return $type
+    }
+    
     # @c Builds up a directory structure from rootObj file (filesystem)
     #
     # @a rootObj: the root object where to start
@@ -64,10 +90,7 @@ namespace eval ::Tmw::Fs {
         foreach {file} $dirList {
             # skip the following files
             switch -- [file tail $file] {
-                . -
-                .. -
-                .svn -
-                .DS_Store {
+                . - .. - .svn - .DS_Store {
                     continue
                 }
             }
@@ -90,44 +113,7 @@ namespace eval ::Tmw::Fs {
                     continue
                 }
                 
-                set type file
-                switch -- [file extension $file] {
-                    .tcl -
-                    .itcl -
-                    .xotcl -
-                    .tk -
-                    .itk -
-                    .ws3 {
-                        set type tclfile
-                    }
-                    .test {
-                        set type testfile
-                    }
-                    .png -
-                    .jpg -
-                    .jpeg -
-                    .ico -
-                    .gif -
-                    .bmp -
-                    .xcf {
-                        set type image
-                    }
-                    .exe -
-                    .bin {
-                        set type exefile
-                    }
-                    .kit -
-                    .vfs {
-                        set type starkit
-                    }
-                    .htm -
-                    .html -
-                    .tml -
-                    .adp {
-                        set type webscript
-                    }
-                }
-                
+                set type [getFileType $file]
                 set thing [$rootObj lookup $file]
                 if {$thing == "" || ![$thing isa ::Tmw::Fs::File]} {
                     set thing [::Tmw::Fs::File ::#auto -name $file \
@@ -190,27 +176,6 @@ namespace eval ::Tmw::Fs {
             }
             
         }
-    }
-    
-    # @c Looks up the full name of a token (procedure, class, method etc.)
-    # @c and returns the file and the appropriate node. If type is not "",
-    # @c the lookup process is constrained to files of this type
-    #
-    # @a fsObj: a file system object or fsContent object
-    # @a token: full name of the token to look up
-    # @a type: the constraint type
-    # @a filePtr: returns the file name where the token is defined
-    # @a nodePtr: returns the defining node
-    #
-    # @r 0/1 whether the node has been found
-    proc lookupToken {fsObj token types filePtr nodePtr} {
-        
-    }
-    
-    # @c Method stub to parse the file. The default implementation
-    # @c does nothing but subclasses may override.
-    # @c The method is called during construction
-    proc parseFile {fileObj} {
     }
     
     # @c Base class for file system content. Files and directories of
@@ -403,6 +368,97 @@ namespace eval ::Tmw::Fs {
             eval configure $args
         }
         
+    }
+    
+    ## \brief Represents a project.
+    #
+    # A project contains all package, namespace, class etc. definitions
+    # ordered by namespace/proc/class without files.
+    class Project {
+    inherit ::Parser::Script
+    public {
+        # @v name: overrides the name of itree::Node. Configure code
+        # @v name: assigns -tail and -path attributes
+        variable name "" {
+            configure -tail [file tail $name] -dirname [file dirname $name]
+        }
+        # @v tail: the basename of the file path, without directory
+        variable tail ""
+        # @v dirname: the directory where the file lives
+        variable dirname ""
+        # @v isvalid: whether the file is still valid. Used in rebuilding
+        # @v isvalid: the path
+        variable isvalid 1
+        
+        # @v displayformat: overrides the default displayformat from itree::Node
+        variable displayformat {"%s (%s)" -tail -dirname}
+    
+        constructor {args} {
+            eval configure $args
+        }
+        
+        ## \brief Build the project, i.e. parse all Tcl files
+        method build {{dir ""}} {
+            if {$dir == ""} {
+                set dir [cget -dirname]
+            }
+            set dirList [concat [glob -nocomplain [file join $dir *]] \
+                [glob -nocomplain [file join $dir .*]]]
+            foreach {file} $dirList {
+                # skip the following files
+                switch -- [file tail $file] {
+                    . - .. - .svn - .DS_Store {
+                        continue
+                    }
+                }
+                
+                set thing ""
+                regsub -all { } $file {\\ } file
+                if {[file isdirectory $file]} {
+                    $this build $file
+                } elseif {[file isfile $file]} {
+                    if {[regexp {~|(?:\.bak)$} $file]} {
+                        # skip backup files
+                        continue
+                    }
+                    
+                    set type [::Tmw::Fs::getFileType $file]
+                    if {$type == "tclfile" || $type == "testfile"} {
+                        parseFile $file
+                    }
+                }
+                
+            }
+        }
+        
+        ## \brief Parse file content and add to this node.
+        #
+        # Then, set the -file attribute for every node
+        method parseFile {filename} {
+            if {[catch {set fh [open $filename "r"]} msg]} {
+                return -code error "can not open file: $msg"
+            }
+            
+            set definition [read $fh]
+            close $fh
+            set name [file tail $filename]
+            set type "script"
+    
+            if {[catch {::Parser::parse $this 0 $definition} msg]} {
+                ::log::log error "--------------------------------------"
+                ::log::log error "::Parser::Script::parseFile "
+                ::log::log error "  ($this, $filename)"
+                ::log::log error $::errorInfo
+            }
+            
+            foreach {c} [getChildren 1] {
+                $c configure -filename $filename
+            }
+            #setFilename $filename
+            
+        }
+    }
+    
     }
     
 }

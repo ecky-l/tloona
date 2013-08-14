@@ -40,7 +40,7 @@ class ::Parser::StructuredFile {
         method lookupRange {range} {}
         
         method getCommands {cmdsPtr {deep 0}} {}
-
+        
     }
     
     protected {
@@ -76,8 +76,11 @@ class ::Parser::Script {
         # @v displayformat: overloads the display format
     public variable displayformat {"%s" -name}
     
+    ## \brief The file where the script is defined
+    public variable filename ""
+    
+    # @c parses the file content
     public method parseFile {filename} {
-        # @c parses the file content
         if {[catch {set fh [open $filename "r"]} msg]} {
             return -code error "can not open file: $msg"
         }
@@ -96,6 +99,15 @@ class ::Parser::Script {
         
     }
     
+    ## \brief Recursively set the filename for this and all children.
+    public method setFilename {filename} {
+        configure -filename $filename
+        foreach {child} [getChildren] {
+            $child setFilename $filename
+        }
+    }
+
+
     # @c lookus up a byte in all child nodes
     # @c recursively. Returns the node which range
     # @c includes the byte
