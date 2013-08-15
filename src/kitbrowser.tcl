@@ -167,19 +167,8 @@ proc ::Tloona::Fs::starkit {args} {
 # @c browser. Files can be browsed and opened from there, it is also
 # @c possible to insert new Tcl files directly
 class ::Tloona::KitBrowser {
-    inherit Tloona::CodeBrowser
+    inherit Tloona::ProjectBrowser
     
-    # @v -openfilecmd: a piece of code that is executed to open files
-    itk_option define -openfilecmd openFileCmd Command ""
-    # @v -closefilecmd: a piece of code that is executed to close files
-    itk_option define -closefilecmd closeFileCmd Command ""
-    # @v -isopencmd: a piece of code to determine whether a file is open
-    itk_option define -isopencmd isOpenCmd Command ""
-    # @v -selectcodecmd: a command that is executed when a code fragment is selected
-    itk_option define -selectcodecmd selectCodeCmd Command ""
-    
-    # @v Starkits: A list of File systems
-    protected variable Starkits {}
         
     constructor {args} {
         set tb [toolbar tools -pos n -compound none]
@@ -360,17 +349,11 @@ class ::Tloona::KitBrowser {
         delete object .wrapwizz
     }
     
-    ##
-    # Change directory in the slave console that is configured
+    ## \brief Change directory in the slave console that is configured
     public method onCdConsoleThere {item} {
         $mainwindow component console eval [list cd [$item cget -name]] 1
     }
     
-    # @c Callback for collapse the tree view
-    public method onSyncronize {} {
-        configure -syncronize $syncronize
-    }
-        
     # @r All Tcl files in a particular starkit
     public method getTclFiles {starKit} {
         set tclFiles {}
@@ -412,38 +395,6 @@ class ::Tloona::KitBrowser {
         chain [$item getTopnode ::Parser::StructuredFile]
     }
         
-    # @c selects the code definition of Itcl methods. Essentially,
-    # @c dispatches to the -selectcodecmd option.
-    public method selectCode {x y def} {
-        if {$itk_option(-selectcodecmd) == ""} {
-            return
-        }
-        eval $itk_option(-selectcodecmd) [component treeview] $x $y $def
-    }
-        
-    # @c Overrides remove in Tmw::Browser. Closes files that are still
-    # @c open
-    public method removeProjects {nodes} {
-        foreach {node} $nodes {
-            if {[$node getParent] != ""} {
-                continue
-            }
-            foreach {file} [$node getChildren yes] {
-                if {![$file isa ::Tmw::Fs::File]} {
-                    continue
-                }
-                set fCls [apply $itk_option(-isopencmd) [$file cget -name]]
-                if {$fCls == ""} {
-                    continue
-                }
-                
-                eval $itk_option(-closefilecmd) $fCls
-            }
-        }
-        
-        remove $nodes yes
-    }
-    
     # @c Overrides the expand method
     public method expand {open {item ""}} {
         if {$item == ""} {
@@ -561,36 +512,6 @@ class ::Tloona::KitBrowser {
         }
         
         tk_popup .kitcmenu $xr $yr
-    }
-        
-    # @c Overrides createToolbar in Codebrowser. Adds other widgets and
-    # @c aligns them different
-    protected method createToolbar {} {
-        global Icons
-        
-        chain
-        toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
-            -type checkbutton -variable [scope syncronize] -separate 0 \
-            -command [code $this onSyncronize]
-        toolbutton collapse -toolbar tools -image $Icons(Collapse) \
-            -type command -separate 0 -command [code $this collapseAll]
-    }
-    
-    # @c checks whether a file is open already. The method
-    # @c invokes the -isopencmd code. If no -isopencmd is
-    # @c given, the check can not be performed
-    #
-    # @a file: the file in the file system to check for
-    private method isOpen {{file ""}} {
-        if {$itk_option(-isopencmd) == ""} {
-            return
-        }
-        if {$file == ""} {
-            set file [selection]
-        }
-        set fname [$file cget -name]
-        
-        return [expr {[apply $itk_option(-isopencmd) $fname] != ""}]
     }
     
 }

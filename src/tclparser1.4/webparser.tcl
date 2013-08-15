@@ -17,9 +17,7 @@ namespace eval ::Parser {
 class ::Parser::WebCmdNode {
     inherit ::Parser::Script
     
-    constructor {args} {
-        eval configure $args
-    }
+    constructor {args} {chain {*}$args} {}
     
     # @v displayformat: overrides the display format for tests
     public variable displayformat {"%s" -name}

@@ -17,11 +17,11 @@ catch {
 namespace eval ::Parser {
     class SnitTypeNode {
         inherit ClassNode
-        constructor {args} {eval chain $args} {}
+        constructor {args} {chain {*}$args} {}
     }
     class SnitWidgetNode {
         inherit SnitTypeNode
-        constructor {args} {eval chain $args} {}
+        constructor {args} {chain {*}$args} {}
     }
 }
 

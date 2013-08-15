@@ -4,7 +4,8 @@
 package require tmw::platform 1.0
 package require tmw::icons 1.0
 package require tloona::kitbrowser 1.0
-package require tloona::codebrowser 1.0
+#package require tloona::codebrowser 1.0
+package require tloona::projectoutline 1.0
 package require tmw::slaveconsole 1.0
 package require tmw::backendconsole 1.0
 package require tloona::file 1.0
@@ -1032,6 +1033,18 @@ class Tloona::Mainapp {
         bind $V <Control-Button-1> [code $this selectCode %W %x %y 1]
         bind [component codebrowser] <<SortSeqChanged>> \
             [code $this setOption %W "CodeBrowser,Sort"]
+        
+        # The project outline
+        itk_component add projectoutline {
+            ::Tloona::projectoutline $bnb.projectoutline \
+                -sortsequence $UserOptions(CodeBrowser,SortSeq) \
+                -sortalpha $UserOptions(CodeBrowser,SortAlpha) \
+                -mainwindow $itk_interior
+        }
+        component projectoutline setNodeIcons $Icons(ScriptIcons)
+        component projectoutline addSendCmd [code $this sendToConsole]
+        $bnb add [component projectoutline] -text "Project Outline"
+        
     }
 
     # @c Creates debugging tools and inspection browsers

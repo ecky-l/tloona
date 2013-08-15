@@ -7,7 +7,7 @@ package require tmw::icons 1.0
 package provide tloona::codebrowser 1.0
 
 usual CodeBrowser {}
-usual CodeOutline {}
+usual ProjectBrowser {}
 
 # @c This class implements the code browser for Tloona. The codebrowser
 # @c is the central point where the code structure of several scripts
@@ -351,96 +351,115 @@ proc ::Tloona::codebrowser {path args} {
     uplevel ::Tloona::CodeBrowser $path $args
 }
 
-# @c Represents an outline of code. This is different in respect to that
-# @c not files or complete Code trees are displayed, but the children of
-# @c code trees in one window. Since these children are the same children
-# @c as for other browsers (or might be the same), it needs special 
-# @c implementations of several methods
-class ::Tloona::CodeOutline {
+
+## \brief A basic project browser.
+#
+# This is the base class for kit browser and project outline
+class ::Tloona::ProjectBrowser {
     inherit ::Tloona::CodeBrowser
+    
+    ## \brief a piece of code that is executed to open files
+    itk_option define -openfilecmd openFileCmd Command ""
+    ## \brief a piece of code that is executed to close files
+    itk_option define -closefilecmd closeFileCmd Command ""
+    ## \brief a piece of code to determine whether a file is open
+    itk_option define -isopencmd isOpenCmd Command ""
+    ## \brief a command that is executed when a code fragment is selected
+    itk_option define -selectcodecmd selectCodeCmd Command ""
+    
+    ## \brief A list of File systems
+    protected variable Starkits {}
     
     constructor {args} {
         eval itk_initialize $args
-        if {[tk windowingsystem] eq "aqua"} {
-            # On Mac the right mouse button is Button-2
-            bind [component treeview] <Button-2> [code $this contextMenu %X %Y %x %y]
-        } else {
-            bind [component treeview] <Button-3> [code $this contextMenu %X %Y %x %y]
-        }
     }
     
-    # @c Overrides remove in browser. Removes children of trees
-    public method remove {nodes {delete no}} {
-        if {[string equal $nodes all]} {
-            chain all
+    ## \brief Add a filesystem by root directory
+    # 
+    # Meant to be overridden by derived classes.
+    public method addFileSystem {root} {
+    }
+    
+    ## \brief selects the code definition of Itcl methods. 
+    # 
+    # Essentially, dispatches to the -selectcodecmd option.
+    public method selectCode {x y def} {
+        if {$itk_option(-selectcodecmd) == ""} {
             return
         }
-        
-        set nnodes {}
-        foreach {node} $nodes {
-            set nnodes [concat $nnodes [$node getChildren]]
-        }
-        chain $nnodes
-    }
-        
-    # @c Overrides add in browser
-    public method add {nodes recursive refresh args} {
-        set nnodes {}
-        foreach {node} $nodes {
-            set nnodes [concat $nnodes [$node getChildren]]
-        }
-        eval chain [list $nnodes] $recursive $refresh $args
+        eval $itk_option(-selectcodecmd) [component treeview] $x $y $def
     }
     
-    # @c Overrides createToolbar in Codebrowser. Adds an collapse button
+    # @c Callback for collapse the tree view
+    public method onSyncronize {} {
+        configure -syncronize $syncronize
+    }
+        
+    ## \brief Overrides remove in Tmw::Browser.
+    # 
+    # Closes files that are still open
+    public method removeProjects {nodes} {
+        foreach {node} $nodes {
+            if {[$node getParent] != ""} {
+                continue
+            }
+            foreach {file} [$node getChildren yes] {
+                set fName ""
+                if {[$file isa ::Tmw::Fs::File]} {
+                    set fName [$file cget -name]
+                } elseif {[$file isa ::Parser::Script]} {
+                    set fName [$file cget -filename]
+                } else {
+                    continue
+                }
+                set fCls [apply $itk_option(-isopencmd) $fName]
+                if {$fCls == ""} {
+                    continue
+                }
+                
+                eval $itk_option(-closefilecmd) $fCls
+            }
+        }
+        
+        remove $nodes yes
+    }
+
+    # @c Overrides createToolbar in Codebrowser. Adds other widgets and
+    # @c aligns them different
     protected method createToolbar {} {
         global Icons
         
         chain
+        toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
+            -type checkbutton -variable [scope syncronize] -separate 0 \
+            -command [code $this onSyncronize]
         toolbutton collapse -toolbar tools -image $Icons(Collapse) \
             -type command -separate 0 -command [code $this collapseAll]
     }
     
-    # @c Creates a contextmenu and displays it
-    protected method contextMenu {xr yr x y} {
-        set itm [component treeview identify $x $y]
-        set realItem ""
-        switch -- [lindex $itm 0] {
-            "nothing" {
-                return
-            }
-            "item" {
-                set realItem [lindex $itm 1]
-            }
-        }
-        
-        if {$realItem == ""} {
+    # @c checks whether a file is open already. The method
+    # @c invokes the -isopencmd code. If no -isopencmd is
+    # @c given, the check can not be performed
+    #
+    # @a file: the file in the file system to check for
+    protected method isOpen {{file ""}} {
+        if {$itk_option(-isopencmd) == ""} {
             return
         }
-        
-        Tmw::Browser::selection set $realItem
-        # create context menu
-        if {[winfo exists .outlinecmenu]} {
-            destroy .outlinecmenu
+        if {$file == ""} {
+            set file [selection]
         }
-        menu .outlinecmenu -tearoff no
-        menu .outlinecmenu.commm -tearoff no
-        .outlinecmenu add cascade -label "Send to Comm" -menu .outlinecmenu.commm
-        if {[set mw [cget -mainwindow]] != "" &&
-                [$mw isa ::Tloona::Mainapp] && 
-                [$mw getCommIDs] != {}} {
-                
-            foreach {cid} [$mw getCommIDs] {
-                .outlinecmenu.commm add command -label "Comm $cid" \
-                    -command [code $this sendDefinition $realItem comm $cid]
-            }
-            .outlinecmenu.commm add separator
-        }
-        .outlinecmenu.commm add command -label "New Comm ID" \
-            -command [code $this sendDefinition $realItem comm ""]
         
-        tk_popup .outlinecmenu $xr $yr
+        set fname ""
+        if {[$file isa ::Tmw::Fs::FSContent]} {
+            set fname [$file cget -name]
+        } elseif {[$file isa ::Parser::Script]} {
+            set fname [$file cget -filename]
+        }
+        
+        expr {$fname != "" && [apply $itk_option(-isopencmd) $fname] != {}}
     }
+    
     
 }
 
@@ -577,6 +596,3 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     return $script
 }
 
-proc ::Tloona::codeoutline {path args} {
-    uplevel ::Tloona::CodeOutline $path $args
-}

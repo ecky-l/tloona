@@ -37,7 +37,7 @@ namespace eval ::Parser {
     variable CoreCommands {
         after append apply array auto_execok auto_import auto_load auto_load_index 
         auto_qualify binary break case catch cd chan clock close concat continue 
-        coroutine countlines dict encoding eof error eval exec exit expr fblocked 
+        coroutine countlines dict else encoding eof error eval exec exit expr fblocked 
         fconfigure fcopy file fileevent flush for foreach format getNsCmd gets glob 
         global if incr info interp join lappend lassign lindex linsert list llength 
         lmap load lrange lrepeat lreplace lreverse lsearch lset lsort namespace open 
@@ -50,9 +50,7 @@ namespace eval ::Parser {
     class ProcNode {
         inherit ::Parser::Script
         
-        constructor {args} {
-            eval configure $args
-        }
+        constructor {args} {chain {*}$args} {}
         
         # @v displayformat: overrides the display format for tests
         public variable displayformat {"%s \{%s\}" -name -arglist}
@@ -112,9 +110,7 @@ namespace eval ::Parser {
             variable cgetbrange {}
         }
         
-        constructor {args} {
-            eval configure $args
-        }
+        constructor {args} {chain {*}$args} {}
         
     }
     
@@ -128,9 +124,7 @@ namespace eval ::Parser {
         public variable version ""
         # @v version: the package version
         
-        constructor {args} {
-            eval configure $args
-        }
+        constructor {args} {chain {*}$args} {}
     }
     
     # @c This class represents a Tcl test. Tests are special commands that
@@ -139,9 +133,7 @@ namespace eval ::Parser {
     class TclTestNode {
         inherit ::Parser::Script
         
-        constructor {args} {
-            eval configure $args
-        }
+        constructor {args} {chain {*}$args} {}
         
         public {
             # @v description: Test description
@@ -303,7 +295,7 @@ namespace eval ::Parser::Tcl {
         #set topNode [$node getTopnode ::Parser::Script]
         
         set pn [$nsNode lookup $procName]
-        if {$pn == "" || [$pn cget -type] != "proc"} {
+        if {$pn == "" || ![$pn isa ::Parser::ProcNode]} {
             set pn [::Parser::ProcNode ::#auto -name $procName -type proc]
             $nsNode addChild $pn
         }

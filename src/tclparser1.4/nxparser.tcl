@@ -68,23 +68,20 @@ class ::Parser::NxAttributeNode {
     # @v getterproc: The getter method for this attribute
     public variable setterproc {}
     
-    constructor {args} {
-        eval configure $args
-
-	# TODO: missing icons/types
-	# - private/protected/public object variables 
-	#   ("class variables"/"static variables" in C++)
-	# - accessor might be "none"
-	# - distinguish between defype "variable" and "property"
-
-	if {[cget -type] eq "unknown"} {
-	    if {[cget -kind] eq "object"} {
-		set type variable
-	    } else {
-		set type [cget -access]_variable
-	    }
-	    configure -type $type
-	}
+    constructor {args} {chain {*}$args} {
+        # TODO: missing icons/types
+        # - private/protected/public object variables 
+        #   ("class variables"/"static variables" in C++)
+        # - accessor might be "none"
+        # - distinguish between defype "variable" and "property"
+        if {[cget -type] eq "unknown"} {
+            if {[cget -kind] eq "object"} {
+                set type variable
+            } else {
+                set type [cget -access]_variable
+            }
+            configure -type $type
+        }
     }
 }
 
@@ -104,22 +101,21 @@ class ::Parser::NxProcNode {
     public variable kind instance
     public variable access protected
     public variable deftype scripted
-    constructor {args} {
-        eval configure $args
-	if {[cget -type] eq "unknown"} {
-	    #
-	    # TODO missing: 
-	    # - distinguish between deftype "scripted", "alias", and "forward"
-	    # - private/protected/public object method 
-	    #   ("class method"/"static method" in C++)
-	    #
-	    if {[cget -kind] eq "object"} {
-		set type proc
-	    } else {
-		set type [cget -access]_method
-	    }
-	    configure -type $type
-	}
+    constructor {args} {chain {*}$args} {
+        if {[cget -type] eq "unknown"} {
+            #
+            # TODO missing: 
+            # - distinguish between deftype "scripted", "alias", and "forward"
+            # - private/protected/public object method 
+            #   ("class method"/"static method" in C++)
+            #
+            if {[cget -kind] eq "object"} {
+                set type proc
+            } else {
+                set type [cget -access]_method
+            }
+            configure -type $type
+        }
     }
 }
 
@@ -131,9 +127,7 @@ class ::Parser::NxClassNode {
     # @v slotdefinition: Used for parsing the attributes
     public variable slotdefinition ""
     
-    constructor {args} {
-        eval configure $args
-    }
+    constructor {args} {chain {*}$args} {}
     
 }
 

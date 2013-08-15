@@ -60,6 +60,7 @@ class ::Parser::Script {
     constructor {args} {
         set _Commands [concat $::Parser::CoreCommands $::Parser::ItclCoreCommands \
             $::Parser::XotclCoreCommands]
+        configure -filename $::Parser::CurrentFile
         eval configure $args
     }
     

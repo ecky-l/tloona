@@ -19,8 +19,7 @@ namespace eval ::Parser {
     ## \brief The base class for all OO systems.
     class ClassNode {
         inherit ::Parser::Script
-        constructor {args} {
-            eval configure $args
+        constructor {args} {chain {*}$args} {
             addVariable this 0 1
         }
         
@@ -78,7 +77,7 @@ namespace eval ::Parser {
     ## \brief A specialized proc for representing methods and class procs
     class OOProcNode {
         inherit ::Parser::ProcNode
-        constructor {args} {eval chain $args} {}
+        constructor {args} {chain {*}$args} {}
         
         ## \brief Indicates whether the body is defined externally
         public variable bodyextern 0
@@ -94,7 +93,7 @@ namespace eval ::Parser {
     
     class TclOOClassNode {
         inherit ClassNode
-        constructor {args} {eval chain $args} {}
+        constructor {args} {chain {*}$args} {}
     }
 }
 

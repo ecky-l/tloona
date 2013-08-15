@@ -23,6 +23,7 @@ sugar::macro getarg {cmd arg args} {
 namespace eval ::Parser {
     variable CurrentAccess ""
     
+    variable CurrentFile ""
     
     ## \brief Parse a class node and returns it as tree.
     #
@@ -285,9 +286,7 @@ namespace eval ::Parser {
                 Tcl::ParseLocal::_$token $node $codeTree $content $off
             }
             
-            "body" -
-            "itcl::body" -
-            "::itcl::body" {
+            body - *itcl::body {
                 set defOff 0
                 if {[catch {
                         Itcl::parseBody $node $codeTree $content defOff

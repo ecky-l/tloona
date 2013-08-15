@@ -443,18 +443,15 @@ namespace eval ::Tmw::Fs {
             close $fh
             set name [file tail $filename]
             set type "script"
-    
+            
+            set ::Parser::CurrentFile $filename
             if {[catch {::Parser::parse $this 0 $definition} msg]} {
                 ::log::log error "--------------------------------------"
                 ::log::log error "::Parser::Script::parseFile "
                 ::log::log error "  ($this, $filename)"
                 ::log::log error $::errorInfo
             }
-            
-            foreach {c} [getChildren 1] {
-                $c configure -filename $filename
-            }
-            #setFilename $filename
+            set ::Parser::CurrentFile ""
             
         }
     }

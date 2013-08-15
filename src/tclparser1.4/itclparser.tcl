@@ -40,7 +40,7 @@ namespace eval ::Parser {
     class ItclClassNode {
         inherit ::Parser::ClassNode
         
-        constructor {args} {eval chain $args} {}
+        constructor {args} {chain {*}$args} {}
     }
     
     class ConstructorNode {
@@ -49,18 +49,14 @@ namespace eval ::Parser {
         variable initdefinition ""
         variable initbrange {}
         
-        constructor {args} {
-            eval configure $args
-        }
+        constructor {args} {chain {*}$args} {}
     }
     }
     
     class ItkComponentNode {
         inherit ::Parser::Script
         
-        constructor {args} {
-            eval configure $args
-        }
+        constructor {args} {chain {*}$args} {}
         
         public {
             # @v accesslevel: Components can have -private accesslevel. By 

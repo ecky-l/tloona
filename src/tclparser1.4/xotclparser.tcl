@@ -39,9 +39,7 @@ class ::Parser::XotclAttributeNode {
     # @v getterproc: The getter method for this attribute
     public variable setterproc {}
     
-    constructor {args} {
-        eval configure $args
-    }
+    constructor {args} {chain {*}$args} {}
 }
 
 
@@ -58,9 +56,7 @@ class ::Parser::XotclProcNode {
     # @v postdefoffset: byte offset for postassertion code
     public variable postdefrange {}
     
-    constructor {args} {
-        eval configure $args
-    }
+    constructor {args} {chain {*}$args} {}
 }
 
 
@@ -71,7 +67,7 @@ class ::Parser::XotclClassNode {
     # @v slotdefinition: Used for parsing the attributes
     public variable slotdefinition ""
     
-    constructor {args} {eval chain $args} {}
+    constructor {args} {chain {*}$args} {}
     
 }
 

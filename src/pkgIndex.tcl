@@ -9,6 +9,7 @@
 # full path name of this file's directory.
 
 package ifneeded tloona::codebrowser 1.0 [list source [file join $dir codebrowser.tcl]]
+package ifneeded tloona::projectoutline 1.0 [list source [file join $dir projectoutline.tcl]]
 package ifneeded tloona::codecompletion 1.0 [list source [file join $dir codecompletion.tcl]]
 package ifneeded tloona::console 1.0 [list source [file join $dir console.tcl]]
 package ifneeded tloona::file 1.0 [list source [file join $dir file.tcl]]
