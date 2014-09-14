@@ -1,9 +1,10 @@
 # tide::ui::WrapWizzard
 package require tmw::icons 1.0
-
 package require tmw::wizzard 1.0
+package require tloona::starkit 1.0
 
 package provide tloona::wrapwizzard 1.0
+
 
 catch {
     namespace import ::itcl::*
@@ -16,7 +17,14 @@ itk::usual TCheckbutton {}
 class ::Tloona::WrapWizzard {
     inherit ::Tmw::Wizzard
     
+    ## Determines whetherwe want a starkit or starpack
     private variable _KitSel kit
+    
+    ## The application name as which to deploy
+    private variable _AppName ""
+
+    ## The application version. Empty if no version
+    private variable _Version ""
         
     private variable _Options
     array set _Options {
@@ -48,30 +56,31 @@ class ::Tloona::WrapWizzard {
         }
     }
     
-    public method setRuntimeNames {file} {
-        set k [file join [file dirname $file] \
-            [file root [file tail $file]].vfs]
+    ## Set the deployment details. 
+    # 
+    # Output directory is target/ inside the project. The extension depends
+    # on the platform and type (.exe/.bin for starpacks, .kit for starkits)
+    public method setDeployDetails {file} {
+        set _AppName [::Tloona::Fs::getStarkitApplicationName $file]
+        set _Version [::Tloona::Fs::getStarkitVersion $file]
         
-        switch -- $::tcl_platform(platform) {
-            "windows" {
-                set e [file join [file dirname $file] \
-                    [file root [file tail $file]].exe]
-            }
-            "unix" -
-            default {
-                set e [file join [file dirname $file] \
-                    [file root [file tail $file]].bin]
-            }
+        set baseName $_AppName
+        if {$_Version != ""} {
+            append baseName $_Version
         }
+        set kitFile $baseName.kit
+        set packFile $baseName.[expr {
+            ($::tcl_platform(platform) eq "windows" ) ? "exe" : "bin"
+        }]
         
-        component kitsel configure -text "Create Starkit ($k)"
-        component packsel configure -text "Create Starpack ($e)"
+        component kitsel configure -text "Create Starkit ($kitFile)"
+        component packsel configure -text "Create Starpack ($packFile)"
     }
 
     public method getOptions {} {
         set opts {}
         
-        lappend opts -type $_KitSel
+        lappend opts -type $_KitSel -version $_Version -appname $_AppName
         if {$_Options(c_interp)} {
             lappend opts -interp $_Options(v_interp)
         }
@@ -100,6 +109,7 @@ class ::Tloona::WrapWizzard {
         eval $itk_option(-okcmd)
     }
     
+    ## Create the widgets in this dialog
     private method _initKitPackSel {parent} {
         global Tmw::Icons UserOptions
         
@@ -113,26 +123,24 @@ class ::Tloona::WrapWizzard {
                 -variable [scope _KitSel] -value pack
         }
         
-        # SDX selection widgets
+        
+        # the appname and version
         set f [ttk::frame $parent.fselsdx]
-        ttk::label $f.lselsdx -text "Path to SDX: "
-        itk_component add selsdx {
-            ttk::entry $f.selsdx -width 20 -textvariable ::UserOptions(PathToSDX)
+        ttk::label $f.lappname -text "Application Name (required): "
+        itk_component add appname {
+            ttk::entry $f.appname -width 15 -textvar [scope _AppName]
         }
-        ttk::button $f.bselsdx -image $::Tmw::Icons(FileOpen) -command [code $this selectSDX]
-        ttk::label $f.dlhint -text "(see http://www.equi4.com/starkit/sdx.html)" \
-            -font {Helvetica 10}
-        grid $f.lselsdx [component selsdx] $f.bselsdx -padx 5
-        grid $f.dlhint -columnspan 3 -pady 1 -sticky w
+        
+        ttk::label $f.lversion -text "Version (empty for no version): "
+        itk_component add version {
+            ttk::entry $f.version -width 15 -textvar [scope _Version]
+        }
+        
+        grid $f.lappname [component appname] -padx 5 -pady 5 -sticky we
+        grid $f.lversion [component version] -padx 5 -pady 5 -sticky we
         
         pack [component kitsel] [component packsel] $f -side top -expand y \
             -fill both -padx 20 -pady 10
-    }
-    
-    private method selectSDX {} {
-        global UserOptions
-        set ::UserOptions(PathToSDX) [tk_getOpenFile -filetypes {{Starkits {.kit}}} \
-            -parent [namespace tail $this]]
     }
     
     private method _initOptions {parent} {

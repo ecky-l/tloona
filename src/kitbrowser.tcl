@@ -8,158 +8,11 @@ package require tmw::filesystem 1.0
 package require tloona::wrapwizzard 1.0
 package require tloona::codebrowser 1.0
 package require parser::script 1.0
-
+package require tloona::starkit 1.0
 package provide tloona::kitbrowser 1.0
 
 usual KitBrowser {}
 
-namespace eval ::Tloona::Fs {}
-# @c This class is used to represent starkits. They can be extracted 
-# @c and wrapped. Besides that, configuration of the -name attribute 
-# @c is special.
-# @c Starkits are file systems and can be displayed in the kit browser.
-class ::Tloona::Fs::Starkit {
-    inherit ::Tmw::Fs::FileSystem
-    
-    constructor {args} {
-        eval configure $args
-    }
-    
-    public {
-        # @v name: overrides name attribute. Checks for extrated
-        variable name "" {
-            switch -- [file extension $name] {
-                .kit {
-                    extracted 0
-                }
-                default {
-                    extracted 1
-                }
-            }
-            configure -tail [file tail $name] -dirname [file dirname $name]
-        }
-        
-        variable vfsid ""
-        
-        # @c Extracts a starkit. If wThread is not "", the extraction is
-        # @c done in this thread
-        method extract {tPool varPtr}
-        
-        # @c Wraps a starkit. If wThread is not "", this is done in this
-        # @c thread
-        method wrap {tPool args}
-        
-        method extracted {{e -1}}
-    }
-    
-    private {
-        variable _Extracted 0
-    }
-}
-
-body ::Tloona::Fs::Starkit::extract {tPool varPtr} {
-    if {[extracted]} {
-        return
-    }
-    
-    upvar $varPtr var
-    
-    set script "eval sdx::unwrap::unwrap [cget -name] \n"
-    #thread::send -async $wThread $script var
-    if {$tPool != ""} {
-        set job [tpool::post -nowait $tPool $script]
-        tpool::wait $tPool $job
-    } else {
-        eval $script
-    }
-    configure -name [file rootname [cget -name]].vfs
-    
-    return ""
-}
-
-body ::Tloona::Fs::Starkit::extracted {{e -1}} {
-    if {$e < 0} {
-        return $_Extracted
-    }
-    
-    if {![string is boolean -strict $e]} {
-        error "argument e must be boolean"
-    }
-    set _Extracted $e
-}
-
-body ::Tloona::Fs::Starkit::wrap {args} {
-    global auto_path TloonaRoot UserOptions
-    if {![extracted]} {
-        return
-    }
-    
-    if {$UserOptions(PathToSDX) == ""} {
-        error "Need SDX. Get it from http://www.equi4.com/starkit/sdx.html"
-    }
-    
-    set nargs {}
-    set ktype "kit"
-    set tPool ""
-    while {$args != {}} {
-        switch -- [lindex $args 0] {
-            -type {
-                set args [lrange $args 1 end]
-                set ktype [lindex $args 0]
-            }
-            -varptr {
-                set args [lrange $args 1 end]
-                upvar [lindex $args 0] var
-            }
-            -tpool {
-                set args [lrange $args 1 end]
-                set tPool [lindex $args 0]
-            }
-            default {
-                lappend nargs [lindex $args 0]
-            }
-        }
-        
-        set args [lrange $args 1 end]
-    }
-    
-    switch -- $ktype {
-        "pack" {
-            switch -- $::tcl_platform(platform) {
-                "windows" {
-                    set k [file join [file dirname [cget -name]] \
-                        [file root [file tail [cget -name]]].exe]
-                }
-                "unix" -
-                default {
-                    set k [file join [file dirname [cget -name]] \
-                        [file root [file tail [cget -name]]].bin]
-                }
-            }
-            
-        }
-        "kit" -
-        default {
-            set k [file join [file dirname [cget -name]] \
-                [file root [file tail [cget -name]]].kit]
-            
-        }
-    }
-    
-    set script "source $::UserOptions(PathToSDX)\n"
-    append script "package require sdx\n"
-    append script "set tmpDir [pwd]\n"
-    append script "cd [eval file join [lrange [file split $k] 0 end-1]]\n"
-    append script "sdx::sdx wrap $k $nargs \n"
-    append script "cd \$tmpDir \n"
-    eval $script
-    
-    return $k
-}
-
-proc ::Tloona::Fs::starkit {args} {
-    uplevel Tloona::Fs::Starkit ::#auto $args
-}
 
 # @c This class represents a browser for starkit projects (starkit and 
 # @c starpacks). When the user opens a starkit, it is extracted resp.
@@ -318,12 +171,12 @@ class ::Tloona::KitBrowser {
         
     }
         
-    # @c callback handler for wrapping a vfs project
+    ## callback handler for wrapping a vfs project
     public method onWrapKit {{file ""}} {
         global TloonaApplication
         
         Tloona::wrapwizzard .wrapwizz -master $TloonaApplication
-        .wrapwizz setRuntimeNames [$file cget -name]
+        .wrapwizz setDeployDetails [$file cget -name]
         
         if {[.wrapwizz show] == "Cancel"} {
             delete object .wrapwizz
@@ -340,10 +193,12 @@ class ::Tloona::KitBrowser {
                 set n [eval $file wrap -tpool [cget -threadpool] [.wrapwizz getOptions] \
                     -varptr var]
             }
-            #set n [eval $file wrap "" [.wrapwizz getOptions] -varptr var]
             
             $mw showProgress 0
             $mw configure -status $defst
+            $this refresh
+            
+            Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
         }
         
         delete object .wrapwizz

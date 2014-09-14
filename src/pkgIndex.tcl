@@ -14,7 +14,9 @@ package ifneeded tloona::codecompletion 1.0 [list source [file join $dir codecom
 package ifneeded tloona::console 1.0 [list source [file join $dir console.tcl]]
 package ifneeded tloona::file 1.0 [list source [file join $dir file.tcl]]
 package ifneeded tloona::mainapp 1.0 [list source [file join $dir mainapp.tcl]]
+package ifneeded tloona::starkit 1.0 [list source [file join $dir starkit.tcl]]
 package ifneeded tloona::kitbrowser 1.0 [list source [file join $dir kitbrowser.tcl]]
 package ifneeded tloona::wrapwizzard 1.0 [list source [file join $dir wrapwizzard.tcl]]
 package ifneeded tloona::htmlparser 1.0 [list source [file join $dir htmlparser.tcl]]
 package ifneeded tloona::debugger 1.0 [list source [file join $dir debugger.tcl]]
+

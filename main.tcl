@@ -8,7 +8,7 @@ set TloonaVersion {}
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
-lappend auto_path $::TloonaRoot [file join $::TloonaRoot src]
+lappend auto_path $::TloonaRoot [file join $::TloonaRoot src] [file join $::TloonaRoot lib]
 
 #package require Thread 2.6.3
 package require comm 4.3
@@ -18,6 +18,7 @@ package require tmw::icons 1.0
 package require tmw::plugin 1.0
 package require log 1.2
 package require tloona::mainapp 1.0
+package require tloona::starkit 1.0
 package require debug 1.0
 package require starkit
 
@@ -179,25 +180,6 @@ proc ::Tloona::openLog {} {
     log::lvSuppress error 0
 }
 
-## Read the version from ReleaseNotes file. 
-#
-# This requires that there is an entry with the most recent 
-# version withthe form "Tloona <version>", where <version> is
-# extracted and set as the global version. The first of these
-# entries is taken, others are ignored, as well as comments 
-# starting with a #
-proc ::Tloona::readVersion {} {
-    global TloonaRoot TloonaVersion
-    set TloonaVersion unknown
-    set fh [open [file join $TloonaRoot ReleaseNotes.txt] r]
-    while {[gets $fh line] >= 0} {
-        if {[regexp ^Tloona $line]} {
-            set TloonaVersion [lindex [split $line] 1]
-            break
-        }
-    }
-    close $fh
-}
 
 proc ::Tloona::closeLog {} {
     global AppLogChannel
@@ -241,8 +223,8 @@ namespace eval ::Tloona::Ui {
 
 proc ::main {args} {
     # load configuration file
-    global UserOptions tcl_platform TloonaRoot TloonaApplication
-    Tloona::readVersion
+    global UserOptions tcl_platform TloonaRoot TloonaApplication TloonaVersion
+    set TloonaVersion [Tloona::Fs::getStarkitVersion $TloonaRoot]
     Tloona::openLog
     Tloona::initIcons
     Tloona::loadUserOptions
