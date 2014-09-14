@@ -1,0 +1,19 @@
+Tloona 1.5 :
+ * changed version handling. A globab variable tloona_version is set
+   to the slave interpreter. The version is read from this file
+
+Tloona 1.4.2 :
+Release Date 2013/08/01
+ * Runs with Tcl/Tk 8.6
+ * Partial Support for TclOO (oo::define, class, methods, constructor)
+ * Critical fix for expand {*} syntax with new version of Tclparser
+ * Many bugfixes
+
+Tloona 1.4.0 :
+Release Date 2013/07/14
+ * Partial support for snit in Code browser and the "send to REPL" feature
+ * Extends and fixes in Itcl/Itk support ("common", itk_component in methods)
+ * sugar macro integration in REPL and code browser + sugar::proc icon
+ * AppMain.tcl and .icns icon for .app on Mac OSX (see comments in AppMain.tcl)
+ * Various code/speed optimizations and bugfixes
+

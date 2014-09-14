@@ -4,6 +4,7 @@
 # an integrated development environment for Tcl/Tk
 ################################################################################
 
+set TloonaVersion {}
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
@@ -168,13 +169,36 @@ proc ::Tloona::saveUserOptions {} {
 }
     
 proc ::Tloona::openLog {} {
-    global AppLogChannel
+    global AppLogChannel TloonaVersion
     set AppLogChannel [open [file join $::env(HOME) .tloonalog] w]
+    puts $AppLogChannel "Tloona Version $TloonaVersion"
+    puts $AppLogChannel ""
+    flush $AppLogChannel
     log::lvChannelForall $::AppLogChannel
     log::lvSuppress debug 0
     log::lvSuppress error 0
 }
-    
+
+## Read the version from ReleaseNotes file. 
+#
+# This requires that there is an entry with the most recent 
+# version withthe form "Tloona <version>", where <version> is
+# extracted and set as the global version. The first of these
+# entries is taken, others are ignored, as well as comments 
+# starting with a #
+proc ::Tloona::readVersion {} {
+    global TloonaRoot TloonaVersion
+    set TloonaVersion unknown
+    set fh [open [file join $TloonaRoot ReleaseNotes.txt] r]
+    while {[gets $fh line] >= 0} {
+        if {[regexp ^Tloona $line]} {
+            set TloonaVersion [lindex [split $line] 1]
+            break
+        }
+    }
+    close $fh
+}
+
 proc ::Tloona::closeLog {} {
     global AppLogChannel
     catch {close $AppLogChannel}
@@ -218,6 +242,7 @@ namespace eval ::Tloona::Ui {
 proc ::main {args} {
     # load configuration file
     global UserOptions tcl_platform TloonaRoot TloonaApplication
+    Tloona::readVersion
     Tloona::openLog
     Tloona::initIcons
     Tloona::loadUserOptions
