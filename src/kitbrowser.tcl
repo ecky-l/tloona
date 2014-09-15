@@ -173,7 +173,14 @@ class ::Tloona::KitBrowser {
         
     ## callback handler for wrapping a vfs project
     public method onWrapKit {{file ""}} {
-        global TloonaApplication
+        global TloonaApplication tcl_version
+        
+        # wrapping only works in Tcl >= 8.6
+        if {$tcl_version < 8.6} {
+            tk_messageBox -type ok -icon error -title "Tcl Version not supported" \
+                -parent [namespace tail $this] -message "Deployment works only in Tcl >= 8.6"
+            return
+        }
         
         set mw [cget -mainwindow]
         if {$mw == ""} {
