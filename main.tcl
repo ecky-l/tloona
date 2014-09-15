@@ -8,7 +8,7 @@ set TloonaVersion {}
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
-lappend auto_path $::TloonaRoot [file join $::TloonaRoot src] [file join $::TloonaRoot lib]
+set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
 
 #package require Thread 2.6.3
 package require comm 4.3
