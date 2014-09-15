@@ -43,7 +43,7 @@ proc ::Tloona::Fs::getStarkitVersion {baseDir} {
 
 ## Recursively copy a directory, excluding certain patterns
 proc ::Tloona::Fs::copyFiles {src dest exclude} {
-    foreach {f} [glob [file join $src *]] {
+    foreach {f} [glob -nocomplain [file join $src *]] {
         if {[apply $exclude [file tail $f]]} {
             continue
         }
