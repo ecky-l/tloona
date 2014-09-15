@@ -185,7 +185,6 @@ class ::Tloona::Fs::Starkit {
                 ($ktype eq "pack") ? $exeExt : "kit"
             }]
             
-            puts nargs,$nargs
             # execute SDX wrap
             set curDir [pwd]
             cd $tmpDir 
