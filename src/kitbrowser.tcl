@@ -183,25 +183,30 @@ class ::Tloona::KitBrowser {
             return
         }
         
-        if {[set mw [cget -mainwindow]] != "" && [$mw isa ::Tloona::Mainapp]} {
-            set defst [$mw cget -status]
-            $mw configure -status "creating standalone runtime..."
-            $mw showProgress 1
-            if {[cget -threadpool] == ""} {
-                set n [eval $file wrap [.wrapwizz getOptions] -varptr var]
-            } else {
-                set n [eval $file wrap -tpool [cget -threadpool] [.wrapwizz getOptions] \
-                    -varptr var]
+        try {
+                
+            if {[set mw [cget -mainwindow]] != "" && [$mw isa ::Tloona::Mainapp]} {
+                set defst [$mw cget -status]
+                $mw configure -status "creating standalone runtime..."
+                $mw showProgress 1
+                
+                if {[cget -threadpool] == ""} {
+                    set n [eval $file wrap [.wrapwizz getOptions] -varptr var]
+                } else {
+                    set n [eval $file wrap -tpool [cget -threadpool] [.wrapwizz getOptions] \
+                        -varptr var]
+                }
+                
+                $mw showProgress 0
+                $mw configure -status $defst
+                $this refresh
+                
+                Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
             }
             
-            $mw showProgress 0
-            $mw configure -status $defst
-            $this refresh
-            
-            Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
+        } finally {
+            delete object .wrapwizz
         }
-        
-        delete object .wrapwizz
     }
     
     ## \brief Change directory in the slave console that is configured
