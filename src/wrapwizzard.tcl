@@ -66,12 +66,10 @@ class ::Tloona::WrapWizzard {
         set _AppName [::Tloona::Fs::getStarkitApplicationName $file]
         set _Version [::Tloona::Fs::getStarkitVersion $file]
         
-        set baseName $_AppName
+        set baseName "<Application Name>"
         append baseName - <version>
         set kitFile $baseName.kit
-        set packFile $baseName.[expr {
-            ($::tcl_platform(platform) eq "windows" ) ? "exe" : ""
-        }]
+        set packFile $baseName.exe
         
         component kitsel configure -text "Create Starkit ($kitFile)"
         component packsel configure -text "Create Starpack ($packFile)"

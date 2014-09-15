@@ -173,16 +173,14 @@ class ::Tloona::Fs::Starkit {
             
             # copy the kit for deployment. First, determine value of tmp
             set tmpDir /tmp/
-            set exeExt bin
             if {$::tcl_platform(platform) == "windows"} {
                 set tmpDir $::env(TEMP)
-                set exeExt exe
             }
             set tmpDir [file join $tmpDir TloonaDeploy]
             set deployDir [::Tloona::Fs::copyForDeployment [cget -name] $tmpDir $appName $version]
             
             set deployFile [file root $deployDir].[expr {
-                ($ktype eq "pack") ? $exeExt : "kit"
+                ($ktype eq "pack") ? "exe" : "kit"
             }]
             
             # execute SDX wrap
