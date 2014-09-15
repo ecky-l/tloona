@@ -175,6 +175,11 @@ class ::Tloona::KitBrowser {
     public method onWrapKit {{file ""}} {
         global TloonaApplication
         
+        set mw [cget -mainwindow]
+        if {$mw == ""} {
+            return
+        }
+        
         Tloona::wrapwizzard .wrapwizz -master $TloonaApplication
         .wrapwizz setDeployDetails [$file cget -name]
         
@@ -183,28 +188,25 @@ class ::Tloona::KitBrowser {
             return
         }
         
+        set defst [$mw cget -status]
+        $mw configure -status "creating standalone runtime..."
+        $mw showProgress 1
+        
         try {
-                
-            if {[set mw [cget -mainwindow]] != "" && [$mw isa ::Tloona::Mainapp]} {
-                set defst [$mw cget -status]
-                $mw configure -status "creating standalone runtime..."
-                $mw showProgress 1
-                
-                if {[cget -threadpool] == ""} {
-                    set n [eval $file wrap [.wrapwizz getOptions] -varptr var]
-                } else {
-                    set n [eval $file wrap -tpool [cget -threadpool] [.wrapwizz getOptions] \
-                        -varptr var]
-                }
-                
-                $mw showProgress 0
-                $mw configure -status $defst
-                $this refresh
-                
-                Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
+            set a [.wrapwizz getOptions]
+            if {[dict exists $a -runtime] && [dict get $a -runtime] == {}} {
+                set m "Can not create a Starpack without a valid Tclkit runtime\n\n"
+                append m "Please specify one"
+                tk_messageBox -type ok -icon error -title "Runtime not provided" \
+                    -parent [namespace tail $this] -message $m
+                return
             }
-            
+            set n [eval $file wrap [.wrapwizz getOptions] -varptr var]
+            $this refresh
+            Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
         } finally {
+            $mw showProgress 0
+            $mw configure -status $defst
             delete object .wrapwizz
         }
     }

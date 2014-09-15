@@ -42,6 +42,8 @@ class ::Tloona::WrapWizzard {
         _initKitPackSel [addPage]
         _initOptions [addPage]
         
+        component OK configure -command [code $this onOk]
+        
         buttonconfigure OK -state disabled
         configure -title "Create deployable runtime" \
             -buttonpadx 20 -nextcmd [code $this _updateOptions]
@@ -65,12 +67,10 @@ class ::Tloona::WrapWizzard {
         set _Version [::Tloona::Fs::getStarkitVersion $file]
         
         set baseName $_AppName
-        if {$_Version != ""} {
-            append baseName $_Version
-        }
+        append baseName - <version>
         set kitFile $baseName.kit
         set packFile $baseName.[expr {
-            ($::tcl_platform(platform) eq "windows" ) ? "exe" : "bin"
+            ($::tcl_platform(platform) eq "windows" ) ? "exe" : ""
         }]
         
         component kitsel configure -text "Create Starkit ($kitFile)"
@@ -98,7 +98,7 @@ class ::Tloona::WrapWizzard {
     }
     
     protected method onOk {} {
-        if {[_finalCheck] == 1} {
+        if {$_KitSel eq "pack" && $_Options(c_runtime) == ""} {
             set m "Can not create a Starpack without a valid Tclkit runtime\n\n"
             append m "Please specify one"
             tk_messageBox -type ok -icon error -title "Runtime not provided" \

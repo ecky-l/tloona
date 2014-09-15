@@ -185,10 +185,11 @@ class ::Tloona::Fs::Starkit {
                 ($ktype eq "pack") ? $exeExt : "kit"
             }]
             
+            puts nargs,$nargs
             # execute SDX wrap
             set curDir [pwd]
             cd $tmpDir 
-            sdx::sdx wrap $deployFile $nargs
+            sdx::sdx wrap $deployFile {*}$nargs
             cd $curDir
             
             # copy the kit into the target folder
