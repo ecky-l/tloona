@@ -105,11 +105,16 @@ class ::Tmw::SlaveConsole {
         interp alias $interp gets {} [code $this getsAlias $interp]
         
         # set packages and variables
-        $interp eval {package require sugar ;}
-        global TloonaVersion
+        global TloonaVersion TloonaRoot
         if {[info exist TloonaVersion]} {
             $interp eval [list set tloona_version $TloonaVersion]
         }
+        if {[info exist TloonaRoot]} {
+            $interp eval [list lappend auto_path \
+                [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
+
+        }
+        $interp eval {package require sugar ;}
     }
     
     # @c The puts alias for slave interpreters
