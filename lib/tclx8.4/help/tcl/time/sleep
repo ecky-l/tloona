@@ -1,0 +1,3 @@
+       sleep seconds
+              Sleep the Extended Tcl process for seconds seconds.  Seconds, if
+              specified as a decimal number, is truncated to an integer value.

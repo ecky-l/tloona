@@ -1,0 +1,2 @@
+       write_file fileName string ?string...?
+              This procedure writes the specified strings to the named file.

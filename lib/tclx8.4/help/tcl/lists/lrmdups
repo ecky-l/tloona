@@ -1,0 +1,3 @@
+       lrmdups list
+              Procedure  to  remove  duplicate  elements  from  a  list.   The
+              returned list will be sorted.

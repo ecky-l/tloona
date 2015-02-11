@@ -1,0 +1,52 @@
+       commandloop  ?-async?  ?-interactive  on  |  off  | tty? ?-prompt1 cmd?
+       ?-prompt2 cmd? ?-endcommand cmd?
+
+              Create  an  interactive command loop reading commands from stdin
+              and writing results to stdout.  Command loops are  maybe  either
+              be  blocking  or event oriented.  This command is useful for Tcl
+              scripts that do not normally converse interactively with a  user
+              through  a  Tcl command interpreter, but which sometimes want to
+              enter this mode, perhaps for debugging  or  user  configuration.
+              The command loop terminates on EOF.
+
+              The following options are available:
+
+              -async A  command  handler  will be associated with stdin.  When
+                     input is available on stdin, it will be read and  accumu-
+                     lated  until  a  full command is available.  That command
+                     will then be evaluated.  An event loop  must  be  entered
+                     for input to be read and processed.
+
+              -interactive on | off | tty
+                     Enable  or disable interactive command mode.  In interac-
+                     tive mode, commands are prompted for and the  results  of
+                     comments  are printed.  The value maybe any boolean value
+                     or tty.  If tty is used, interactive mode is  enabled  if
+                     stdin is associated with a terminal or terminal emulator.
+                     The default is tty.
+
+              -prompt1 cmd
+                     If specified, cmd  is used is  evaluate  and  its  result
+                     used  for the main command prompt.  If not specified, the
+                     command in tcl_prompt1 is evaluated to output the prompt.
+                     Note  the  difference  in  behavior, cmd results is used,
+                     while tcl_prompt1 outputs.  This is to allow  for  future
+                     expansion  to command loops that write to other than std-
+                     out.
+
+              -prompt2 cmd
+                     If specified, cmd is used is evaluate and its result used
+                     for  the secondary (continuation) command prompt.  If not
+                     specified, the command in  tcl_prompt2  is  evaluated  to
+                     output the prompt.
+
+              -endcommand cmd
+                     If specified, cmd is evaluated when the command loop ter-
+                     minates.
+
+                     In interactive mode, the results of set commands with two
+                     arguments are not printed.
+
+                     If  SIGINT  is configured to generate a Tcl error, it can
+                     be used to delete the current command being type  without
+                     aborting the program in progress.

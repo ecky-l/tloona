@@ -1,0 +1,9 @@
+       link ?-sym? srcpath destpath
+
+              Create  a  directory entry, destpath, linking it to the existing
+              file, srcpath.  If -sym is specified, a  symbolic  link,  rather
+              than  a  hard link, is created.  (The -sym option is only avail-
+              able on systems that support symbolic links.)
+
+              The link command is not available on Windows.  Use the Tcl  8.4+
+              file link command instead.
