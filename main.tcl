@@ -12,7 +12,7 @@ set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::
 #lappend auto_path [file join $::TloonaRoot src] [file join $::TloonaRoot lib]
 #package require Thread 2.6.3
 package require comm 4.3
-package require img::png 1.3
+package require -exact img::png 1.4.2
 package require tmw::dialog 1.0
 package require tmw::icons 1.0
 package require tmw::plugin 1.0
