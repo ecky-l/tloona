@@ -9,7 +9,7 @@ set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
-
+#lappend auto_path [file join $::TloonaRoot src] [file join $::TloonaRoot lib]
 #package require Thread 2.6.3
 package require comm 4.3
 package require img::png 1.3
@@ -21,6 +21,7 @@ package require tloona::mainapp 1.0
 package require tloona::starkit 1.0
 package require debug 1.0
 package require starkit
+
 
 puts "Tloona comm ID: [set ::CommId [::comm::comm self]]"
 source [file join $::TloonaRoot src toolbutton.tcl]
@@ -238,12 +239,10 @@ proc ::main {args} {
             wm iconbitmap . -default [file join $TloonaRoot icons tide.ico]
         }
     }
-    
     # create the tooltip and completion box
     ::Tloona::Mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
             -filetabsize $UserOptions(FileNTabs) -progressincr 5 \
             -filetabexpand $UserOptions(FileExpandTabs) -threadpool "" ;#$tPool
-    
     wm geometry $TloonaApplication $UserOptions(MainGeometry)
     update
     
