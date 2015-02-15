@@ -8,6 +8,9 @@ set TloonaVersion {}
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
+set env(ITCL_LIBRARY) [file join $::TloonaRoot lib Itcl3.4]
+set env(ITK_LIBRARY) [file join $::TloonaRoot lib Itk3.4]
+
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
 #lappend auto_path [file join $::TloonaRoot src] [file join $::TloonaRoot lib]
 #package require Thread 2.6.3
