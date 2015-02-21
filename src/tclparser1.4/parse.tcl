@@ -229,6 +229,7 @@ namespace eval ::Parser {
             *snit::widget -
             class -
             *itcl::class -
+            *itcl::widget -
             *oo::class -
             Class -
             *xotcl::Class - 
