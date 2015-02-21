@@ -1,13 +1,13 @@
-package ifneeded zlibtcl 1.2.8     [list load [file join $dir libzlibtcl1.2.8[info sharedlibext]]]
-package ifneeded pngtcl 1.4.12     [list load [file join $dir libpngtcl1.4.12[info sharedlibext]]]
-package ifneeded tifftcl 3.9.4     [list load [file join $dir libtifftcl3.9.4[info sharedlibext]]]
-package ifneeded jpegtcl 8.4     [list load [file join $dir libjpegtcl8.4[info sharedlibext]]]
+package ifneeded zlibtcl 1.2.8     [list load [file join $dir libzlibtcl1.2.8.dylib]]
+package ifneeded pngtcl 1.4.12     [list load [file join $dir libpngtcl1.4.12.dylib]]
+package ifneeded tifftcl 3.9.4     [list load [file join $dir libtifftcl3.9.4.dylib]]
+package ifneeded jpegtcl 8.4     [list load [file join $dir libjpegtcl8.4.dylib]]
 # -*- tcl -*- Tcl package index file
 # --- --- --- Handcrafted, final generation by configure.
 #
 # $Id: pkgIndex.tcl.in 209 2009-03-03 17:19:05Z nijtmans $
 
-package ifneeded img::base 1.4.2 [list load [file join $dir libtkimg1.4.2[info sharedlibext]]]
+package ifneeded img::base 1.4.2 [list load [file join $dir libtkimg1.4.2.dylib]]
 
 # Compatibility hack. When asking for the old name of the package
 # then load all format handlers and base libraries provided by tkImg.
@@ -40,21 +40,21 @@ package ifneeded Img 1.4.2 {
     package provide Img 1.4.2
 }
 
-package ifneeded img::bmp 1.4.2     [list load [file join $dir libtkimgbmp1.4.2[info sharedlibext]]]
-package ifneeded img::gif 1.4.2     [list load [file join $dir libtkimggif1.4.2[info sharedlibext]]]
-package ifneeded img::ico 1.4.2     [list load [file join $dir libtkimgico1.4.2[info sharedlibext]]]
-package ifneeded img::jpeg 1.4.2     [list load [file join $dir libtkimgjpeg1.4.2[info sharedlibext]]]
-package ifneeded img::pcx 1.4.2     [list load [file join $dir libtkimgpcx1.4.2[info sharedlibext]]]
-package ifneeded img::pixmap 1.4.2     [list load [file join $dir libtkimgpixmap1.4.2[info sharedlibext]]]
-package ifneeded img::png 1.4.2     [list load [file join $dir libtkimgpng1.4.2[info sharedlibext]]]
-package ifneeded img::ppm 1.4.2     [list load [file join $dir libtkimgppm1.4.2[info sharedlibext]]]
-package ifneeded img::ps 1.4.2     [list load [file join $dir libtkimgps1.4.2[info sharedlibext]]]
-package ifneeded img::sgi 1.4.2     [list load [file join $dir libtkimgsgi1.4.2[info sharedlibext]]]
-package ifneeded img::sun 1.4.2     [list load [file join $dir libtkimgsun1.4.2[info sharedlibext]]]
-package ifneeded img::tga 1.4.2     [list load [file join $dir libtkimgtga1.4.2[info sharedlibext]]]
-package ifneeded img::tiff 1.4.2     [list load [file join $dir libtkimgtiff1.4.2[info sharedlibext]]]
-package ifneeded img::window 1.4.2     [list load [file join $dir libtkimgwindow1.4.2[info sharedlibext]]]
-package ifneeded img::xbm 1.4.2     [list load [file join $dir libtkimgxbm1.4.2[info sharedlibext]]]
-package ifneeded img::xpm 1.4.2     [list load [file join $dir libtkimgxpm1.4.2[info sharedlibext]]]
-package ifneeded img::dted 1.4.2     [list load [file join $dir libtkimgdted1.4.2[info sharedlibext]]]
-package ifneeded img::raw 1.4.2     [list load [file join $dir libtkimgraw1.4.2[info sharedlibext]]]
+package ifneeded img::bmp 1.4.2     [list load [file join $dir libtkimgbmp1.4.2.dylib]]
+package ifneeded img::gif 1.4.2     [list load [file join $dir libtkimggif1.4.2.dylib]]
+package ifneeded img::ico 1.4.2     [list load [file join $dir libtkimgico1.4.2.dylib]]
+package ifneeded img::jpeg 1.4.2     [list load [file join $dir libtkimgjpeg1.4.2.dylib]]
+package ifneeded img::pcx 1.4.2     [list load [file join $dir libtkimgpcx1.4.2.dylib]]
+package ifneeded img::pixmap 1.4.2     [list load [file join $dir libtkimgpixmap1.4.2.dylib]]
+package ifneeded img::png 1.4.2     [list load [file join $dir libtkimgpng1.4.2.dylib]]
+package ifneeded img::ppm 1.4.2     [list load [file join $dir libtkimgppm1.4.2.dylib]]
+package ifneeded img::ps 1.4.2     [list load [file join $dir libtkimgps1.4.2.dylib]]
+package ifneeded img::sgi 1.4.2     [list load [file join $dir libtkimgsgi1.4.2.dylib]]
+package ifneeded img::sun 1.4.2     [list load [file join $dir libtkimgsun1.4.2.dylib]]
+package ifneeded img::tga 1.4.2     [list load [file join $dir libtkimgtga1.4.2.dylib]]
+package ifneeded img::tiff 1.4.2     [list load [file join $dir libtkimgtiff1.4.2.dylib]]
+package ifneeded img::window 1.4.2     [list load [file join $dir libtkimgwindow1.4.2.dylib]]
+package ifneeded img::xbm 1.4.2     [list load [file join $dir libtkimgxbm1.4.2.dylib]]
+package ifneeded img::xpm 1.4.2     [list load [file join $dir libtkimgxpm1.4.2.dylib]]
+package ifneeded img::dted 1.4.2     [list load [file join $dir libtkimgdted1.4.2.dylib]]
+package ifneeded img::raw 1.4.2     [list load [file join $dir libtkimgraw1.4.2.dylib]]
