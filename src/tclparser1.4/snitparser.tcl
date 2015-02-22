@@ -7,6 +7,7 @@ package require Tclx 8.4
 package require log 1.2
 package require parser::script 1.0
 package require parser::tcloo 1.0
+package require parser::tcl 1.0
 
 package provide parser::snit 1.0
 
@@ -234,7 +235,9 @@ namespace eval ::Parser::Snit {
             set $tkn [m-parse-token $content $cTree $idx]
         }
         lassign [m-parse-defrange $cTree 3] dOff dEnd
-        set accLev public
+        set accLev [expr {
+            [string is upper [string index $methName 0]] ? "private" : "public"
+        }]
         set argList [lindex $argList 0]
         set strt [lindex [lindex [lindex $cTree 0] 1] 0]
         
@@ -251,7 +254,71 @@ namespace eval ::Parser::Snit {
         
         return $mNode
     }
-
+    
+    ## \brief Parses the component command
+    # 
+    # Has the form 
+    #    component name ?-public <method name>? ?-inherit flag?
+    # 
+    # Will be put inside the class node under a node "Components"
+    sugar::proc parseComponent {node cTree content off dBdPtr} {
+        upvar $dBdPtr dBdOff
+        set dBdEnd 0
+        
+        set cName [m-parse-token $content $cTree 1]
+        lassign [m-parse-defrange $cTree 1] dBdOff dBdEnd
+        # Components are usually created in constructors or methods, 
+        # get the class where the component belongs to.
+        set clsNode [$node getParent]
+        while {$clsNode != {} && [$clsNode cget -type] != "class"} {
+            set clsNode [$clsNode getParent]
+        }
+        if {$clsNode == {}} {
+            set clsNode $node
+        }
+        
+        set cmpn [$clsNode lookup "Components"]
+        if {$cmpn == ""} {
+            set cmpn [$clsNode addChild [::Parser::Script ::#auto \
+                -type itk_components -name "Components" -expanded 0]]
+        }
+        $cmpn configure -isvalid 1
+        
+        set compNode [$cmpn lookup $cName]
+        if {$compNode == ""} {
+            set compNode [::Parser::ItkComponentNode ::#auto]
+            $cmpn addChild $compNode
+        }
+        
+        set t public_component
+        $compNode configure -type $t -name $cName -isvalid 1
+        
+        return $compNode
+    }
+    
+    ## \brief Parses the delegate statement inside a snit definition
+    #
+    # Which has the form
+    #    delegate method name to component as othername 
+    #    delegate method name to component using {other} 
+    #    delegate option -name to component as -othername 
+    #    delegate method|option * to component 
+    sugar::proc parseDelegate {node cTree content off dBdPtr} {
+    }
+    
+    ## \brief Parses an option statement
+    # 
+    # Has the form
+    #    option nameSpec ?default? 
+    #    option nameSpec ?options?
+    # with
+    #    nameSpec: either "-name" or {-name name Name} (with resources and class)
+    #    options: something of -default <value>, -readonly <flag>, -type <value>, 
+    #                          -cgetmethod <method>, -configuremethod <method>,
+    #                          -validatemethod <method>
+    sugar::proc parseOption {node cTree content off dBdPtr} {
+    }
+    
     ## \brief Parse a class node and returns it as tree
     ::sugar::proc parseClassDef {node off content} {
         
@@ -277,6 +344,11 @@ namespace eval ::Parser::Snit {
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
+                typemethod -
+                proc {
+                    ::Parser::Tcl::parseProc $node $codeTree $content $cmdRange $off
+                }
+                
                 method {
                     set mNode [parseMethod $node $codeTree $content $off]
                     $mNode configure -byterange $cmdRange
@@ -298,13 +370,42 @@ namespace eval ::Parser::Snit {
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
                 
-                variable {
+                variable -
+                typevariable {
                     #set dCfOff 0
                     #set dCgOff 0
                     #set acc [getarg -access]
                     set vNode [::Parser::Tcl::parseVar $node $codeTree $content $off]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
+                    }
+                    if {$token == "typevariable"} {
+                        $vNode configure -type private_variable
+                    }
+                }
+                
+                component -
+                typecomponent {
+                    set dBdOff 0
+                    set compNode [parseComponent $node $codeTree $content $off dBdOff]
+                    if {$compNode != ""} {
+                        $compNode configure -byterange $cmdRange
+                    }
+                }
+                
+                delegate {
+                    set dBdOff 0
+                    set delNode [parseDelegate $node $codeTree $content $off dBdOff]
+                    if {$delNode != ""} {
+                        $delNode configure -byterange $cmdRange
+                    }
+                }
+                
+                option {
+                    set dBdOff 0
+                    set optNode [parseOption $node $codeTree $content $off dBdOff]
+                    if {$optNode != ""} {
+                        $optNode configure -byterange $cmdRange
                     }
                 }
                 

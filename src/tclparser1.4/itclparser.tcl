@@ -50,6 +50,7 @@ namespace eval ::Parser {
         variable initbrange {}
         
         constructor {args} {chain {*}$args} {}
+        
     }
     }
     

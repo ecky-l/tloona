@@ -227,6 +227,8 @@ namespace eval ::Parser {
             *snit::type -
             widget -
             *snit::widget -
+            widgetadaptor -
+            *snit::widgetadaptor -
             class -
             *itcl::class -
             *itcl::widget -
@@ -234,7 +236,10 @@ namespace eval ::Parser {
             Class -
             *xotcl::Class - 
             *nx::Class {
-                parseClass $node $codeTree $content $cmdRange $off
+                set clsNode [parseClass $node $codeTree $content $cmdRange $off]
+                if {$clsNode != {}} {
+                    $clsNode configure -token $token
+                }
             }
             
             define - *oo::define {

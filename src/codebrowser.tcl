@@ -493,7 +493,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
                     # obviously a snit type. handle appropriately
                     append script ::snit::method " " 
                     append script [getNSQ $clNode] " " [$node cget -name] " " 
-                    append script [$node cget -arglist] " " \{
+                    append script [list [$node cget -arglist]] " " 
                     append script \{ [string trim [$node cget -definition] "{}"] \}
                 }
                 default {
