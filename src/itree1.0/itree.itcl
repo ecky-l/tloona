@@ -123,6 +123,21 @@ class ::itree::Node {
         return $_Parent
     }
     
+    ## \brief Find a parent node by type or name
+    public method findParent {args} {
+        set parent $this
+        while {$parent != ""} {
+            set found 1
+            foreach {k v} $args {
+                set found [expr {$found && [cget $k] == $v}]
+            }
+            if {$found} {
+                break
+            }
+            set parent [$parent getParent]
+        }
+        return $parent
+    }
     
     # @c get the topmost node in the tree. If type is not "", the
     # @c it terminates the topnode search by a type - If the node

@@ -360,7 +360,6 @@ body ::Tmw::Browser::displayTreeNode {node recursive args} {
         }
     }
 
-    
     $widget insert $parentNode $insPos -id $node
     eval $widget item $node $args
     $widget item $node -open [$node cget -expanded]

@@ -24,6 +24,15 @@ namespace eval ::Parser {
         inherit SnitTypeNode
         constructor {args} {chain {*}$args} {}
     }
+    class SnitDelegateNode {
+        inherit ::Parser::Script
+        constructor {args} {chain {*}$args} {}
+    }
+    class SnitOptionNode {
+        inherit ::Parser::Script
+        public variable namespec {}
+        constructor {args} {chain {*}$args} {}
+    }
 }
 
 namespace eval ::Parser::Snit {
@@ -267,16 +276,10 @@ namespace eval ::Parser::Snit {
         
         set cName [m-parse-token $content $cTree 1]
         lassign [m-parse-defrange $cTree 1] dBdOff dBdEnd
+        
         # Components are usually created in constructors or methods, 
         # get the class where the component belongs to.
-        set clsNode [$node getParent]
-        while {$clsNode != {} && [$clsNode cget -type] != "class"} {
-            set clsNode [$clsNode getParent]
-        }
-        if {$clsNode == {}} {
-            set clsNode $node
-        }
-        
+        set clsNode [$node findParent -type class]
         set cmpn [$clsNode lookup "Components"]
         if {$cmpn == ""} {
             set cmpn [$clsNode addChild [::Parser::Script ::#auto \
@@ -290,8 +293,7 @@ namespace eval ::Parser::Snit {
             $cmpn addChild $compNode
         }
         
-        set t public_component
-        $compNode configure -type $t -name $cName -isvalid 1
+        $compNode configure -type public_component -name $cName -isvalid 1
         
         return $compNode
     }
@@ -304,6 +306,34 @@ namespace eval ::Parser::Snit {
     #    delegate option -name to component as -othername 
     #    delegate method|option * to component 
     sugar::proc parseDelegate {node cTree content off dBdPtr} {
+        upvar $dBdPtr dBdOff
+        set dBdEnd 0
+        
+        set moro [m-parse-token $content $cTree 1]
+        set cName [m-parse-token $content $cTree 2]
+        switch -- [llength $cTree] {
+        5 {
+        }
+        7 {
+        }
+        }
+        
+        set clsNode [$node findParent -type class]
+        set cmpn [$clsNode lookup Delegates]
+        if {$cmpn == ""} {
+            set cmpn [$node addChild [::Parser::Script ::#auto \
+                -type itk_components -name "Delegates" -expanded 0]]
+        }
+        $cmpn configure -isvalid 1
+        
+        set result [$cmpn lookup $cName]
+        if {$result == ""} {
+            set result [::Parser::SnitDelegateNode ::#auto -type snit_delegate \
+                -name $cName -displayformat {"%s" -name} -isvalid 1]
+            $cmpn addChild $result
+        }
+        $result configure -isvalid 1
+        return $result
     }
     
     ## \brief Parses an option statement
@@ -317,6 +347,36 @@ namespace eval ::Parser::Snit {
     #                          -cgetmethod <method>, -configuremethod <method>,
     #                          -validatemethod <method>
     sugar::proc parseOption {node cTree content off dBdPtr} {
+        upvar $dBdPtr dBdOff
+        set dBdEnd 0
+        
+        set nameSpec [m-parse-token $content $cTree 1]
+        set cName [lindex $nameSpec 0]
+        switch -- [llength $cTree] {
+        2 {
+            # just "option -name"
+        }
+        3 {
+            # one of "option -name value" or "option nameSpec value"
+        }
+        }
+        
+        set clsNode [$node findParent -type class]
+        set cmpn [$clsNode lookup Options]
+        if {$cmpn == ""} {
+            set cmpn [$node addChild [::Parser::Script ::#auto \
+                -type itk_components -name Options -expanded 0]]
+        }
+        $cmpn configure -isvalid 1
+        
+        set result [$cmpn lookup $cName]
+        if {$result == ""} {
+            set result [::Parser::SnitOptionNode ::#auto -type snit_option \
+                -name $cName -namespec $nameSpec -displayformat {"%s" -namespec}]
+            $cmpn addChild $result
+        }
+        $result configure -isvalid 1 -namespec $nameSpec
+        return $result
     }
     
     ## \brief Parse a class node and returns it as tree
@@ -372,9 +432,6 @@ namespace eval ::Parser::Snit {
                 
                 variable -
                 typevariable {
-                    #set dCfOff 0
-                    #set dCgOff 0
-                    #set acc [getarg -access]
                     set vNode [::Parser::Tcl::parseVar $node $codeTree $content $off]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange

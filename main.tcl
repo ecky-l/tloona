@@ -291,6 +291,7 @@ proc ::main {args} {
     $TloonaApplication onCurrFile
 }
 
+catch {console show}
 eval ::main $argv
 
 
