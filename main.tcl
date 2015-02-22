@@ -84,6 +84,11 @@ proc ::Tloona::initIcons {} {
     set Icons(ItkComponents) [image create photo -file [file join $IconPath itk_components.png]]
     set Icons(PublicComponent) [image create photo -file [file join $IconPath public_component.png]]
     set Icons(PrivateComponent) [image create photo -file [file join $IconPath private_component.png]]
+    set Icons(SnitDeletages) [image create photo -file [file join $IconPath delegates.png]]
+    set Icons(SnitDeletage) [image create photo -file [file join $IconPath delegate.png]]
+    set Icons(SnitDeletageOption) [image create photo -file [file join $IconPath delegate_option.png]]
+    set Icons(SnitOptions) [image create photo -file [file join $IconPath options.png]]
+    set Icons(SnitOption) [image create photo -file [file join $IconPath option.png]]
 
     # @v Icons: This is an array which contains the icons that are displayed
     # @v Icons: in the code and project browsers for different types of files
@@ -116,7 +121,12 @@ proc ::Tloona::initIcons {} {
                 itk_components $Icons(ItkComponents) \
                 public_component $Icons(PublicComponent) \
                 private_component $Icons(PrivateComponent) \
-                tcltest $Icons(TclTest)]
+                tcltest $Icons(TclTest) \
+                snit_delegates $Icons(SnitDeletages) \
+                snit_delegate $Icons(SnitDeletage) \
+                snit_delegate_option $Icons(SnitDeletageOption) \
+                snit_options $Icons(SnitOptions) \
+                snit_option $Icons(SnitOption)]
 
     set Icons(TclFileOpen) [image create photo -file [file join $IconPath tclfileopen.png]]
     set Icons(KitFileOpen) [image create photo -file [file join $IconPath kitfileopen.png]]
@@ -291,7 +301,6 @@ proc ::main {args} {
     $TloonaApplication onCurrFile
 }
 
-catch {console show}
 eval ::main $argv
 
 

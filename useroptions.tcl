@@ -69,17 +69,21 @@ set ::UserOptions(CodeBrowser,SortSeq) {
     macro
     variable
     class
-    public_common
-    protected_common
-    private_common
     itk_components
     public_component
     private_component
-    constructor
-    destructor
+    snit_options
+    snit_option
+    snit_delegates
+    snit_delegate
+    public_common
+    protected_common
+    private_common
     public_variable
     protected_variable
     private_variable
+    constructor
+    destructor
     public_method
     protected_method
     private_method
@@ -96,17 +100,18 @@ set ::UserOptions(KitBrowser,SortSeq) {
     macro
     variable
     class
+    snit_options
+    snit_option
+    snit_delegates
+    snit_delegate
     public_common
     protected_common
     private_common
-    itk_components
-    public_component
-    private_component
-    constructor
-    destructor
     public_variable
     protected_variable
     private_variable
+    constructor
+    destructor
     public_method
     protected_method
     private_method

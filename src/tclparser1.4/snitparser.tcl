@@ -31,6 +31,11 @@ namespace eval ::Parser {
     class SnitOptionNode {
         inherit ::Parser::Script
         public variable namespec {}
+        public variable readonly 0
+        public variable otype {}
+        public variable cgetmethod {}
+        public variable configuremethod {}
+        public variable validatemethod {}
         constructor {args} {chain {*}$args} {}
     }
 }
@@ -310,29 +315,34 @@ namespace eval ::Parser::Snit {
         set dBdEnd 0
         
         set moro [m-parse-token $content $cTree 1]
+        set dtype [expr {
+            $moro == "method" ? "snit_delegate" : "snit_delegate_option"
+        }]
+        
         set cName [m-parse-token $content $cTree 2]
-        switch -- [llength $cTree] {
-        5 {
+        set dargs [list -isvalid 1 -type $dtype -name $cName]
+        set def {}
+        for {set i 3} {$i < [llength $cTree]-1} {incr i 2} {
+            lappend def [m-parse-token $content $cTree $i] \
+                [m-parse-token $content $cTree [expr {$i + 1}]]
         }
-        7 {
-        }
-        }
+        lappend dargs -definition $def
         
         set clsNode [$node findParent -type class]
         set cmpn [$clsNode lookup Delegates]
         if {$cmpn == ""} {
             set cmpn [$node addChild [::Parser::Script ::#auto \
-                -type itk_components -name "Delegates" -expanded 0]]
+                -type snit_delegates -name "Delegates" -expanded 0]]
         }
         $cmpn configure -isvalid 1
         
         set result [$cmpn lookup $cName]
         if {$result == ""} {
-            set result [::Parser::SnitDelegateNode ::#auto -type snit_delegate \
-                -name $cName -displayformat {"%s" -name} -isvalid 1]
+            set result [::Parser::SnitDelegateNode ::#auto \
+                -displayformat {"%s %s" -name -definition}]
             $cmpn addChild $result
         }
-        $result configure -isvalid 1
+        $result configure {*}$dargs
         return $result
     }
     
@@ -352,12 +362,29 @@ namespace eval ::Parser::Snit {
         
         set nameSpec [m-parse-token $content $cTree 1]
         set cName [lindex $nameSpec 0]
+        set oArgs [list -name $cName -namespec $nameSpec]
         switch -- [llength $cTree] {
         2 {
             # just "option -name"
         }
         3 {
             # one of "option -name value" or "option nameSpec value"
+            lappend oArgs -definition [m-parse-token $content $cTree 2]
+        }
+        default {
+            # contains more options
+            for {set i 2} {$i < [llength $cTree]-1} {incr i 2} {
+                set j [expr {$i + 1}]
+                set o [m-parse-token $content $cTree $i]
+                set v [m-parse-token $content $cTree $j]
+                if {[string match $o -default]} {
+                    lappend oArgs -definition $v
+                } elseif {[string match $o -type]} {
+                    lappend oArgs -otype $v
+                } else {
+                    lappend oArgs $o $v
+                }
+            }
         }
         }
         
@@ -365,17 +392,17 @@ namespace eval ::Parser::Snit {
         set cmpn [$clsNode lookup Options]
         if {$cmpn == ""} {
             set cmpn [$node addChild [::Parser::Script ::#auto \
-                -type itk_components -name Options -expanded 0]]
+                -type snit_options -name Options -expanded 0]]
         }
         $cmpn configure -isvalid 1
         
         set result [$cmpn lookup $cName]
         if {$result == ""} {
             set result [::Parser::SnitOptionNode ::#auto -type snit_option \
-                -name $cName -namespec $nameSpec -displayformat {"%s" -namespec}]
+                -displayformat {"%s = %s" -namespec -definition}]
             $cmpn addChild $result
         }
-        $result configure -isvalid 1 -namespec $nameSpec
+        $result configure -isvalid 1 {*}$oArgs 
         return $result
     }
     
