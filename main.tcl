@@ -13,8 +13,7 @@ set env(ITCL_LIBRARY) [file join $::TloonaRoot lib Itcl3.4]
 set env(ITK_LIBRARY) [file join $::TloonaRoot lib Itk3.4]
 
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
-#lappend auto_path [file join $::TloonaRoot src] [file join $::TloonaRoot lib]
-#package require Thread 2.6.3
+
 package require comm 4.3
 package require -exact img::png 1.4.2
 package require tmw::dialog 1.0
