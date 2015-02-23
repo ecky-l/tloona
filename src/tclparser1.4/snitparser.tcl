@@ -463,9 +463,7 @@ namespace eval ::Parser::Snit {
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
                     }
-                    if {$token == "typevariable"} {
-                        $vNode configure -type private_variable
-                    }
+                    $vNode configure -type private_variable
                 }
                 
                 component -

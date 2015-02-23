@@ -582,6 +582,11 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script [string trim [$node cget -definition] "{}"]
             append script \}
         }
+        
+        package {
+            append script [$node cget -definition]
+        }
+        
         default {
             # not implemented
             return

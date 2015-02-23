@@ -191,7 +191,7 @@ namespace eval ::Parser {
             switch -glob -- $token {
                 
             package {
-                Tcl::parsePkg $node $codeTree $content $cmdRange $off
+                set pkg [Tcl::parsePkg $node $codeTree $content $cmdRange $off]
             }
             
             namespace {

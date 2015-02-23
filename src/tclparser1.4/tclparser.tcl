@@ -162,7 +162,7 @@ namespace eval ::Parser {
 namespace eval ::Parser::Tcl {
         
     # @c parses a package definition. If "package require"
-    proc parsePkg {node cTree content cmdRange off} {
+    sugar::proc parsePkg {node cTree content cmdRange off} {
         set nTk [llength $cTree]
         if {$nTk == 5} {
             set aList {pkgSub 1 pkgSwitch 2 pkgName 3 pkgVer 4}
@@ -198,10 +198,15 @@ namespace eval ::Parser::Tcl {
             return $pkgNode
         }
         
+        set def {}
+        for {set i 0} {$i < [llength $cTree]} {incr i} {
+            lappend def [m-parse-token $content $cTree $i]
+        }
+        
         set pkgNode [::Parser::PackageNode ::#auto -type "package" \
                 -name $pkgName -version $pkgVer]
         $pkgImp addChild $pkgNode
-        $pkgNode configure -byterange $cmdRange
+        $pkgNode configure -byterange $cmdRange -definition $def
         return $pkgNode
     }
     
