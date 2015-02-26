@@ -11,9 +11,6 @@ namespace eval Splash {
 
 }
 
-#snit::widget ::Tmw::Splash::Splash {
-#}
-
 ## \brief Creates a new splash window
 #
 # Initializes a background thread and creates a splash window in it.
@@ -30,7 +27,7 @@ proc ::Tmw::Splash::create {args} {
     set WorkerThread [thread::create -joinable]
     set T $WorkerThread
     thread::send $T [list set ::auto_path $::auto_path]
-    thread::send $T [list package require tmw::splashwin]
+    thread::send $T {package require tmw::splashwin}
     thread::send -async $T [list Tmw::SplashWin::Create {*}$args]
 }
 
@@ -60,5 +57,3 @@ proc ::Tmw::Splash::message {value} {
 
 package provide tmw::splash 1.0
 
-lappend auto_path ../.. ./
-Tmw::Splash::create -showprogress 1

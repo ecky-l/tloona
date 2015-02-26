@@ -163,5 +163,3 @@ proc Tmw::SplashWin::Destroy {args} {
 
 package provide tmw::splashwin 1.0
 
-#lappend auto_path ../../lib
-#Tmw::SplashWin::Create -showprogress y
