@@ -319,13 +319,15 @@ proc ::main {args} {
     }
     
 
-    ::Tmw::Splash::Message "Opening previous session Files"
+    ::Tmw::Splash::Message "Restoring previous Session"
     ::Tmw::Splash::Progress 70
     # open projects
     foreach {prj} $UserOptions(KitProjects) {
         if {![file exists $prj]} {
             continue
         }
+        
+        ::Tmw::Splash::Message "Opening Project [file tail $prj]"
         $TloonaApplication openFile $prj 0
     }
     
