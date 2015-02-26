@@ -14,17 +14,46 @@ set env(ITK_LIBRARY) [file join $::TloonaRoot lib Itk3.4]
 
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
 
+package require tmw::splash 1.0
+
+
+# create the splash screen
+Tmw::Splash::Create -topdir $::TloonaRoot -showprogress 1 -title Tloona
+Tmw::Splash::Message "Loading packages"
+
+Tmw::Splash::Message "Loading comm"
+Tmw::Splash::Progress 5
 package require comm 4.3
+Tmw::Splash::Message "Loading img::png"
+Tmw::Splash::Progress 7
 package require -exact img::png 1.4.2
+Tmw::Splash::Message "Loading tmw::dialog"
+Tmw::Splash::Progress 8
 package require tmw::dialog 1.0
+Tmw::Splash::Message "Loading tmw::icons"
+Tmw::Splash::Progress 10
 package require tmw::icons 1.0
+Tmw::Splash::Message "Loading tmw::plugin"
+Tmw::Splash::Progress 12
 package require tmw::plugin 1.0
+Tmw::Splash::Message "Loading log"
+Tmw::Splash::Progress 15
 package require log 1.2
+Tmw::Splash::Message "Loading tloona::mainapp"
+Tmw::Splash::Progress 16
 package require tloona::mainapp 1.0
+Tmw::Splash::Message "Loading tloona::starkit"
+Tmw::Splash::Progress 20
 package require tloona::starkit 1.0
+Tmw::Splash::Message "Loading debug"
+Tmw::Splash::Progress 22
 package require debug 1.0
+Tmw::Splash::Message "Loading starkit"
+Tmw::Splash::Progress 25
 package require starkit
 
+Tmw::Splash::Message "Generating comm id"
+Tmw::Splash::Progress 30
 
 puts "Tloona comm ID: [set ::CommId [::comm::comm self]]"
 source [file join $::TloonaRoot src toolbutton.tcl]
@@ -239,11 +268,20 @@ proc ::main {args} {
     # load configuration file
     global UserOptions tcl_platform TloonaRoot TloonaApplication TloonaVersion
     set TloonaVersion [Tloona::Fs::getStarkitVersion $TloonaRoot]
+    
+    ::Tmw::Splash::Message "Opening Logfile"
+    ::Tmw::Splash::Progress 35
     Tloona::openLog
+    
+    ::Tmw::Splash::Message "Initializing Icons"
+    ::Tmw::Splash::Progress 40
     Tloona::initIcons
+    
+    ::Tmw::Splash::Message "Loading User Options"
+    ::Tmw::Splash::Progress 45
     Tloona::loadUserOptions
     catch {ttk::style theme use $UserOptions(Theme)}
-    
+
     wm withdraw .
     if {$tcl_platform(platform) == "windows"} {
         # set a nice icon
@@ -252,6 +290,9 @@ proc ::main {args} {
             wm iconbitmap . -default [file join $TloonaRoot icons tide.ico]
         }
     }
+    
+    ::Tmw::Splash::Message "Creating Main Application"
+    ::Tmw::Splash::Progress 50
     # create the tooltip and completion box
     ::Tloona::Mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
             -filetabsize $UserOptions(FileNTabs) -progressincr 5 \
@@ -270,12 +311,16 @@ proc ::main {args} {
         $TloonaApplication component txtconpw sashpos 0 $sp
     }
     
+    ::Tmw::Splash::Message "Applying Window Settings"
+    ::Tmw::Splash::Progress 60
     # window settings
     foreach {thing} {browser console editor} {
         $TloonaApplication onViewWindow $thing $UserOptions(View,$thing)
     }
     
 
+    ::Tmw::Splash::Message "Opening previous session Files"
+    ::Tmw::Splash::Progress 70
     # open projects
     foreach {prj} $UserOptions(KitProjects) {
         if {![file exists $prj]} {
@@ -284,20 +329,31 @@ proc ::main {args} {
         $TloonaApplication openFile $prj 0
     }
     
+    ::Tmw::Splash::Message "Restoring previous Session"
+    set nf [llength $UserOptions(LastOpenDocuments)]
+    set ic [expr {int(30/$nf)}]
+    set pInc 70
     foreach {file} $UserOptions(LastOpenDocuments) {
         if {![file exists $file]} {
             continue
         }
+        ::Tmw::Splash::Message "Opening File [file tail $file]"
+        ::Tmw::Splash::Progress [incr pInc $ic]
         set fob [$TloonaApplication openFile $file 1]
     }
     
+    ::Tmw::Splash::Message "Opening given Files"
+    ::Tmw::Splash::Progress 98
     # open droped files from argv
     foreach {file} $args {
 	set fob [$TloonaApplication openFile $file 1]
     }
     #update
     
+    ::Tmw::Splash::Message "Setting Current File"
+    ::Tmw::Splash::Progress 100
     $TloonaApplication onCurrFile
+    ::Tmw::Splash::Destroy
 }
 
 eval ::main $argv

@@ -57,8 +57,8 @@ proc Tmw::SplashWin::LoadDefaultImages {} {
     variable AnimateImages
     variable RootDir
     
-    set nImg 1
-    set imgFile [file join $RootDir starkit.gif]
+    set nImg 0
+    set imgFile [file join $RootDir tcllogo.gif]
     while {1} {
         set script "image create photo img[set nImg] "
         append script "-format \{gif -index $nImg \} "
@@ -104,6 +104,7 @@ proc Tmw::SplashWin::Create {args} {
         pack .s.progress -side top -expand y -fill x
     }
     Center .s
+    wm overrideredirect .s 0
     wm attributes .s -topmost 1
     wm resizable .s 0 0
     wm deiconify .s
@@ -162,5 +163,4 @@ proc Tmw::SplashWin::Destroy {args} {
 
 
 package provide tmw::splashwin 1.0
-
 
