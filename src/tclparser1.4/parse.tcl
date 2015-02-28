@@ -57,7 +57,8 @@ namespace eval ::Parser {
                         return $cnode
                     }
                     *type -
-                    *widget {
+                    *widget -
+                    *widgetadaptor {
                         set cnode [Snit::createType $node $clsName $clsDef $clsTkn \
                             [list $defOff $defEnd]]
                         $cnode configure -byterange $byteRange
