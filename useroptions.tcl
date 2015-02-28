@@ -100,6 +100,9 @@ set ::UserOptions(KitBrowser,SortSeq) {
     macro
     variable
     class
+    itk_components
+    public_component
+    private_component
     snit_options
     snit_option
     snit_delegates
