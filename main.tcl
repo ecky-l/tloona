@@ -333,7 +333,7 @@ proc ::main {args} {
     
     ::Tmw::Splash::Message "Restoring previous Session"
     set nf [llength $UserOptions(LastOpenDocuments)]
-    set ic [expr {int(30/$nf)}]
+    set ic [expr {($nf > 0) ? int(30/$nf) : 30 }]
     set pInc 70
     foreach {file} $UserOptions(LastOpenDocuments) {
         if {![file exists $file]} {
