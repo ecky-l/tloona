@@ -66,8 +66,12 @@ namespace eval ::Parser {
         public method updateVariables {} {
             set vs [getVariables 1]
             foreach {m} [getProcs] {
+                set pNode [findChildren -name $m]
+                if {$pNode == ""} {
+                    continue
+                }
                 foreach {v} $vs {
-                    $m addVariable $v
+                    $pNode addVariable $v 0 1
                 }
             }
             
@@ -274,11 +278,11 @@ namespace eval ::Parser::TclOO {
         while {1} {
             # if this step fails, we must not proceed
             if {[catch {::parse command $content {0 end}} res]} {
-                return
+                break
             }
             set codeTree [lindex $res 3]
             if {$codeTree == ""} {
-                return
+                break
             }
             # get and adjust offset and line
             set cmdRange [lindex $res 1]

@@ -523,7 +523,7 @@ namespace eval ::Parser::Tcl::ParseLocal {
             set res [::parse command $sDef {0 end}]
             set ct [lindex $res 3]
             if {$ct == ""} {
-                return
+                break
             }
             
             incr off [lindex [lindex [lindex [lindex [lindex $ct end] end] 0] 1] 0]

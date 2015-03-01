@@ -106,11 +106,11 @@ class ::Tloona::Completor {
         set _Bindings(FocusOut) [bind $textwin <FocusOut>]
         set _Bindings(Key-Escape) [bind $textwin <Key-Esc>]
         
-        bind $textwin <Key-Up> "[code $this _select up]; break"
-        bind $textwin <Key-Down> "[code $this _select down]; break"
-        bind $textwin <Key-Return> "[code $this _insert]; break"
-        bind $textwin <KeyRelease> [code $this _update %K]
-        bind $textwin <Key-Escape> [code $this hide]
+        bind $textwin <Key-Up> "[code $this _select up] ; break"
+        bind $textwin <Key-Down> "[code $this _select down] ; break"
+        bind $textwin <Key-Return> "[code $this _insert] ; break"
+        bind $textwin <KeyRelease> "[code $this _update %K] ; break"
+        bind $textwin <Key-Escape> "[code $this hide] ; break"
         
         set script "if \{\[focus\] != \"[component list]\"\} \{$this hide\}\n"
         bind $textwin <FocusOut> [list after 5000 $script]
@@ -164,16 +164,16 @@ class ::Tloona::Completor {
         set act [$L index active]
         $L selection clear $act
         switch -- $updown {
-            "Up" -
-            "up" {
+            Up -
+            up {
                 incr act -1
                 if {$act < 0} {
                     set act [$L index end]
                 }
             }
             
-            "Down" -
-            "down" {
+            Down -
+            down {
                 incr act
                 if {$act >= [$L index end]} {
                     set act 0
@@ -183,28 +183,34 @@ class ::Tloona::Completor {
         
         $L activate $act
         $L selection set $act
+        $L see $act
         
-        focus -force $L
+        #focus -force $L
     }
     
     private method _update {key} {
         set lchar [$textwin get "insert -1c" "insert"]
-        
         switch -- $key {
             Shift_L -
             Shift_R -
-            Alt_L {
+            Alt_L  {
                 # do nothing
             }
             
             Up -
-            Down -
+            Down - 
+            up -
+            down {
+                return
+            }
+            
             Control_L -
-            Control_R {
+            Control_R -
+            Control {
                 return
             }
             space -
-            less {
+            less - ?? {
                 if {$forced} {
                     return
                 }

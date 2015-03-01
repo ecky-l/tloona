@@ -151,7 +151,6 @@ class ::Tloona::TclFile {
         }
         
         set ry [expr {$ry + [lindex $bbox 3]}]
-        
         array set atmp $::UserOptions(TclSyntax)
         component completor setItems $realCmds
         component completor configure -background white \
@@ -649,7 +648,7 @@ class ::Tloona::TclFile {
         set accel [regsub {Meta} $accel M1]
         bind $T <[set accel]-space> [code $this showCmdCompl 1]
         bind $T <[set accel]-Return> "[code $this sendCode];break"
-        
+
         bind $T <Key-Up> [code $this updateCurrentNode]
         bind $T <Key-Down> [code $this updateCurrentNode]
         bind $T <Key-Left> [code $this updateCurrentNode]

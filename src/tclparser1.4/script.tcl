@@ -272,13 +272,7 @@ class ::Parser::Script {
             }
         }
         
-        # TODO: this code doesn't work anymore. With multiple threads it is
-        # TODO: tricky to use child interpreters, as is to create threads from
-        # TODO: sub threads. Find another way to get commands and variables
-        # TODO: from packages, maybe parsing them?
-        
         return $_Variables
-        #return [concat $rres $_Variables]
     }
             
     public method removeVariables {} {

@@ -16,10 +16,16 @@ catch {
 }
 
 namespace eval ::Parser {
+    
+    ## \brief A snit type (class) node. It behaves slightly other than a class node
     class SnitTypeNode {
         inherit ClassNode
         constructor {args} {chain {*}$args} {}
+        
+        public method updatePTokens {} {
+        }
     }
+    
     class SnitWidgetNode {
         inherit SnitTypeNode
         constructor {args} {chain {*}$args} {}
@@ -80,16 +86,26 @@ namespace eval ::Parser::Snit {
             $clsNode configure -isvalid 1 -definition $clsDef \
                 -defbrange $defRange -token class
         } else {
-            set cmd [expr {
-                [string match *widget $token] ? 
-                    "::Parser::SnitWidgetNode" : 
-                        "::Parser::SnitTypeNode"
-            }]
-            set clsNode [$cmd ::#auto -expanded 0 -name $clsName -isvalid 1 \
-                -definition $clsDef -defbrange $defRange -token $token]
+            switch -glob -- $token {
+            *widget -
+            *widgetadaptor {
+                set clsNode [::Parser::SnitWidgetNode ::#auto -expanded 0 \
+                    -name $clsName -isvalid 1 -definition $clsDef \
+                    -defbrange $defRange -token $token]
+                $clsNode addVariable win 0 1
+            }
+            default {
+                set clsNode [::Parser::SnitTypeNode ::#auto -expanded 0 \
+                    -name $clsName -isvalid 1 -definition $clsDef \
+                    -defbrange $defRange -token $token]
+            }
+            }
             $nsNode addChild $clsNode
         }
-        
+
+        $clsNode addVariable self 0 1
+        $clsNode addVariable options 0 1
+
         return $clsNode
     }
     
@@ -419,11 +435,11 @@ namespace eval ::Parser::Snit {
         while {1} {
             # if this step fails, we must not proceed
             if {[catch {::parse command $content {0 end}} res]} {
-                return
+                break
             }
             set codeTree [lindex $res 3]
             if {$codeTree == ""} {
-                return
+                break
             }
             # get and adjust offset and line
             set cmdRange [lindex $res 1]
@@ -450,6 +466,7 @@ namespace eval ::Parser::Snit {
                     set csNode [parseConstructor $node $codeTree $content defOff]
                     $csNode configure -byterange $cmdRange
                     ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
+                    $node addMethod $csNode
                 }
                 
                 destructor {
@@ -457,15 +474,16 @@ namespace eval ::Parser::Snit {
                     set dNode [parseDestructor $node $codeTree $content defOff]
                     $dNode configure -byterange $cmdRange
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
+                    $node addMethod $csNode
                 }
                 
                 variable -
                 typevariable {
                     set vNode [::Parser::Tcl::parseVar $node $codeTree $content $off]
                     if {$vNode != ""} {
-                        $vNode configure -byterange $cmdRange
+                        $vNode configure -byterange $cmdRange -type private_variable
+                        $node addVariable [$vNode cget -name] 0 1
                     }
-                    $vNode configure -type private_variable
                 }
                 
                 component -
@@ -474,6 +492,7 @@ namespace eval ::Parser::Snit {
                     set compNode [parseComponent $node $codeTree $content $off dBdOff]
                     if {$compNode != ""} {
                         $compNode configure -byterange $cmdRange
+                        $node addVariable [$compNode cget -name] 0 1
                     }
                 }
                 
@@ -490,6 +509,7 @@ namespace eval ::Parser::Snit {
                     set optNode [parseOption $node $codeTree $content $off dBdOff]
                     if {$optNode != ""} {
                         $optNode configure -byterange $cmdRange
+                        $node addVariable options([lindex [$optNode cget -name] 0]) 0 1
                     }
                 }
                 
@@ -502,11 +522,6 @@ namespace eval ::Parser::Snit {
         }
         
         $node updateVariables
-        if {[$node cget -isitk]} {
-            $node addVariable itk_interior 0 1
-            $node addVariable itk_option 0 1
-        }
-        $node addVariable self 0 1
     }
     
     

@@ -176,11 +176,11 @@ namespace eval ::Parser {
         while {1} {
             # if this step fails, we must not proceed
             if {[catch {::parse command $content {0 end}} res]} {
-                return
+                break
             }
             set codeTree [lindex $res 3]
             if {$codeTree == ""} {
-                return
+                break
             }
             # get and adjust offset and line
             set cmdRange [lindex $res 1]
