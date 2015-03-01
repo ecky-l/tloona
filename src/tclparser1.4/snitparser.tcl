@@ -329,14 +329,16 @@ namespace eval ::Parser::Snit {
         lappend dargs -definition $def
         
         set clsNode [$node findParent -type class]
-        set cmpn [$clsNode lookup Delegates]
+        #set cmpn [$clsNode lookup Delegates]
+        set cmpn [$clsNode findChildren -name Delegates]
         if {$cmpn == ""} {
             set cmpn [$node addChild [::Parser::Script ::#auto \
-                -type snit_delegates -name "Delegates" -expanded 0]]
+                -type snit_delegates -name Delegates -expanded 0]]
         }
         $cmpn configure -isvalid 1
         
-        set result [$cmpn lookup $cName]
+        #set result [$cmpn lookup $cName]
+        set result [$cmpn findChildren -type $dtype -name $cName]
         if {$result == ""} {
             set result [::Parser::SnitDelegateNode ::#auto \
                 -displayformat {"%s %s" -name -definition}]

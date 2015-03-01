@@ -205,6 +205,45 @@ class ::itree::Node {
         }
         return $res
     }
+    
+    ## \brief Find children that match certain properties
+    #
+    # The properties to find are specified by args and must be valid properties
+    # for the child nodes. One special argument -context must not be a valid 
+    # property for any child node and specifies the context for child nodes to
+    # do a recursive search. The recusrion is only triggered if the properties
+    # in the list given as -context argument match the child properties (but
+    # independent from the search result itself). If no -context argument is
+    # given, the recursive search is done over all nodes.
+    public method findChildren {args} {
+        set result {}
+        
+        foreach {child} [getChildren] {
+            set found 1
+            foreach {k v} $args {
+                set found [expr {$found && [$child cget $k] == $v}]
+            }
+            if {$found} {
+                lappend result $child
+            }
+            
+            if {[dict exist $args -context]} {
+                # recursive search only in context nodes
+                set foundc 1
+                foreach {k v} [dict get $args -context] {
+                    set foundc [expr {$foundc && [$child cget $k] == $v}]
+                }
+                if {$foundc} {
+                    lappend result {*}[$child findChildren {*}$args]
+                }
+            } else {
+                lappend result {*}[$child findChildren {*}$args]
+            }
+        }
+        
+        return $result
+    }
+    
 }
 
 body ::itree::Node::lookup {token {context {}}} {
