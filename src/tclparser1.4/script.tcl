@@ -321,12 +321,20 @@ class ::Parser::Script {
         }
             
         if {![lcontain $_Procedures $compName]} {
-            lappend _Procedures $compName \
-                [$procNode cget -arglist] ""
+            lappend _Procedures $compName [$procNode cget -arglist] ""
         }
             
         foreach {child} $_Children {
             $child addProc $procNode
+        }
+    }
+    
+    ## \brief Add a procedure (method) name.
+    # 
+    # This is displayed in autocompletion, but not useful otherwise.
+    public method addProcName {pName} {
+        if {![lcontain $_Procedures $pName]} {
+            lappend _Procedures $pName {} {}
         }
     }
         

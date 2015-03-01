@@ -67,7 +67,7 @@ namespace eval ::Parser {
             set vs [getVariables 1]
             foreach {m} [getProcs] {
                 set pNode [findChildren -name $m]
-                if {$pNode == ""} {
+                if {$pNode == "" || ![itcl::is object $pNode]} {
                     continue
                 }
                 foreach {v} $vs {

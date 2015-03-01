@@ -105,7 +105,15 @@ namespace eval ::Parser::Snit {
 
         $clsNode addVariable self 0 1
         $clsNode addVariable options 0 1
-
+        
+        $clsNode addProcName myvar
+        $clsNode addProcName mytypevar
+        $clsNode addProcName mymethod
+        $clsNode addProcName mytypemethod
+        $clsNode addProcName myproc
+        $clsNode addProcName install
+        $clsNode addProcName installhull
+        
         return $clsNode
     }
     
