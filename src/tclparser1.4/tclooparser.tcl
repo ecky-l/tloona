@@ -76,6 +76,21 @@ namespace eval ::Parser {
             }
             
         }
+        
+        ## \brief Update all methods with command names
+        public method updateCommands {} {
+            set cs [getProcs]
+            foreach {p} $cs {
+                set pNode [findChildren -name $p]
+                if {$pNode == "" || ![itcl::is object $pNode]} {
+                    continue
+                }
+                foreach {pp} $cs {
+                    $pNode addProcName $pp
+                }
+            }
+        }
+        
     }
     
     ## \brief A specialized proc for representing methods and class procs

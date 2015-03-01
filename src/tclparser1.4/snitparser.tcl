@@ -459,7 +459,8 @@ namespace eval ::Parser::Snit {
             switch -glob -- $token {
                 typemethod -
                 proc {
-                    ::Parser::Tcl::parseProc $node $codeTree $content $cmdRange $off
+                    set pNode [::Parser::Tcl::parseProc $node $codeTree $content $cmdRange $off]
+                    $node addProc $pNode
                 }
                 
                 method {
@@ -530,6 +531,7 @@ namespace eval ::Parser::Snit {
         }
         
         $node updateVariables
+        $node updateCommands
     }
     
     
