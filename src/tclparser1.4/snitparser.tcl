@@ -92,7 +92,6 @@ namespace eval ::Parser::Snit {
                 set clsNode [::Parser::SnitWidgetNode ::#auto -expanded 0 \
                     -name $clsName -isvalid 1 -definition $clsDef \
                     -defbrange $defRange -token $token]
-                $clsNode addVariable win 0 1
             }
             default {
                 set clsNode [::Parser::SnitTypeNode ::#auto -expanded 0 \
@@ -102,7 +101,14 @@ namespace eval ::Parser::Snit {
             }
             $nsNode addChild $clsNode
         }
-
+        
+        switch -glob -- $token {
+        *widget -
+        *widgetadaptor {
+            $clsNode addVariable win 0 1
+        }
+        }
+        
         $clsNode addVariable self 0 1
         $clsNode addVariable options 0 1
         
