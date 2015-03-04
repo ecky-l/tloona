@@ -252,6 +252,7 @@ namespace eval ::Parser::TclOO {
             set $tkn [m-parse-token $content $cTree $idx]
         }
         lassign [m-parse-defrange $cTree $mdo] defOff dEnd
+        set methBody [string trim $methBody "\{\}"]
         set accLev public
         if {![regexp {^[a-z]} $methName]} {
             set accLev protected
@@ -269,6 +270,9 @@ namespace eval ::Parser::TclOO {
         }
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
             -defoffset [expr {$defOff - $strt}]
+        
+        # setup local variables for code completion
+        ::Parser::parse $mNode [expr {$defOff + $offset}] $methBody
         
         return $mNode
     }

@@ -612,6 +612,9 @@ namespace eval ::Parser::Itcl {
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
             -defoffset [expr {$defOff - $strt}]
         
+        # setup local variables for code completion
+        ::Parser::parse $mNode [expr {$defOff + $offset}] $methBody
+        
         return $mNode
     }
     

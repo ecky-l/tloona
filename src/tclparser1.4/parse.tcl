@@ -287,9 +287,11 @@ namespace eval ::Parser {
                 if {$vNode != ""} {
                     $vNode configure -byterange $cmdRange
                 }
+                Tcl::ParseLocal::_variable $node $codeTree $content $off
             }
             
-            set - foreach - for - if - switch - while - lassign {
+            set - foreach - for - if - switch - while - lassign -
+            upvar - global {
                 Tcl::ParseLocal::_$token $node $codeTree $content $off
             }
             

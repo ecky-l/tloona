@@ -154,6 +154,7 @@ class ::Tmw::Console {
         if {[llength $fnt] < 3} {
             lappend fnt ""
         }
+        
         colorize Keywords [lindex $Colors(Keywords) 0] \
             [lset fnt 2 [lindex $Colors(Keywords) 1]]
     }

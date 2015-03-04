@@ -273,6 +273,7 @@ namespace eval ::Parser::Snit {
             set $tkn [m-parse-token $content $cTree $idx]
         }
         lassign [m-parse-defrange $cTree 3] dOff dEnd
+        set methBody [string trim $methBody "\{\}"]
         set accLev [expr {
             [string is upper [string index $methName 0]] ? "private" : "public"
         }]
@@ -290,6 +291,8 @@ namespace eval ::Parser::Snit {
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
             -defoffset [expr {$dOff - $strt}]
         
+        # parse the content to find variables
+        ::Parser::parse $mNode [expr {$dOff + $offset}] $methBody
         return $mNode
     }
     

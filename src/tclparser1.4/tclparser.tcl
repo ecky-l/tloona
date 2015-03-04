@@ -286,18 +286,12 @@ namespace eval ::Parser::Tcl {
         }
         
         set rtns [namespace qualifiers $procName]
-        #set nsAll [regsub -all {::} [string trimleft $procName :] " "]
-        #set procName [lpop nsAll]
         set procBody [string trim $procBody "\{\}"]
         set argList [lindex $argList 0]
-        #set node [::Parser::Util::getNamespace $node $nsAll]
         
         set nsNode [::Parser::Util::getNamespace $node \
             [lrange [split [regsub -all {::} $procName ,] ,] 0 end-1]]
         set procName [namespace tail $procName]
-        # add the procedure name to the top node, so that
-        # it is accessible from there
-        #set topNode [$node getTopnode ::Parser::Script]
         
         set pn [$nsNode lookup $procName]
         if {$pn == "" || ![$pn isa ::Parser::ProcNode]} {
@@ -435,6 +429,25 @@ namespace eval ::Parser::Tcl {
 }
 
 namespace eval ::Parser::Tcl::ParseLocal {
+    
+    ::sugar::proc _global {node cTree content off} {
+        set varName [m-parse-token $content $cTree 1]
+        $node addVariable $varName {}
+    }
+    
+    ::sugar::proc _variable {node cTree content off} {
+        foreach {tkn idx} {varName 1 varDef 2} {
+            set $tkn [m-parse-token $content $cTree $idx]
+        }
+        
+        lassign [m-parse-defrange $cTree 1] doff
+        $node addVariable $varName [expr {$doff + $off}]
+    }
+    
+    ::sugar::proc _upvar {node cTree content off} {
+        set varName [m-parse-token $content $cTree 1]
+        $node addVariable $varName {}
+    }
     
     ::sugar::proc _set {node cTree content off} {
         foreach {tkn idx} {varName 1 varDef 2} {
