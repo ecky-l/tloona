@@ -21,7 +21,7 @@ Description :
 ==
 
 Release 1.5 : :
- * Enhanced snit parser
+ * Enhanced snit parser and code completion feature
  * Move to git
  * changed version handling. A global variable tloona_version is set
    to the slave interpreter. The version is read from this file
