@@ -10,7 +10,7 @@ namespace eval ::Tloona::Fs {}
 # in ApplicationName : <appname>. This is useful for deployment
 proc ::Tloona::Fs::getStarkitApplicationName {baseDir} {
     set appName [file tail [file root $baseDir]]
-    set fh [open [file join $baseDir ReleaseNotes.txt] r]
+    set fh [open [file join $baseDir README.txt] r]
     while {[gets $fh line] >= 0} {
         if {[regexp ^ApplicationName $line] && [llength [split $line]] >= 3} {
             set appName [lindex [split $line] 2]
@@ -30,7 +30,7 @@ proc ::Tloona::Fs::getStarkitApplicationName {baseDir} {
 # starting with a #
 proc ::Tloona::Fs::getStarkitVersion {baseDir} {
     set version ""
-    set fh [open [file join $baseDir ReleaseNotes.txt] r]
+    set fh [open [file join $baseDir README.txt] r]
     while {[gets $fh line] >= 0} {
         if {[regexp ^Release $line] && [llength [split $line]] >= 2} {
             set version [lindex [split $line] 1]
