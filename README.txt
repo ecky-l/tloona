@@ -1,32 +1,34 @@
 ApplicationName : Tloona
+
 ==
 
 Description :
-    Tloona is an IDE for Tcl/Tk. Its main features are a syntax highlighted editor,
-    a code browser and a command "REPL". Projects are directories with the ending 
-    .vfs, which can later be deployed via Tclkits (nevertheless all directories can
-    be opened as projects). Procedures, classes etc. can be send to the integrated 
-    REPL or to another interpreter via the comm Package. Both of these features are
-    very useful for dynamic development and testing.
-    The project was inspired by Eclipse and Lisp/SLIME, so the graphical environment
-    is a mixture of parts of an Eclipse IDE and the SLIME environment for Emacs. 
-    This makes it a very good fit for the development of small to large Tcl/Tk 
-    applications, desktop and web. Nevertheless it is also useful for tiny 
-    administration scripts.
-    
-    Tloona runs with ActiveTcl 8.4 or 8.5 (http://www.activestate.com/activetcl). 
-    The dependencies can be installed via teacup, which can be done with the script
-    "install_dependencies.tcl" in the main directory of Tloona. Then click on 
-    "main.tcl" to run the program.
+    Tloona is an advanced editor for Tcl/Tk. Main features are project management, 
+				extensive code browsing, syntax highlighting / command expansion, and a command 
+    REPL (Read/Eval/Print Loop). Directories with .vfs extension are threated as 
+    Projects and can be deployed as starkits or starpacks. Procedures, classes, 
+    namespace definitions etc. can be send to the REPL or to another interpreter 
+    for agile and dynamic development. Even the Tclhttpd web server can be started
+    inside the REPL and .tml files are supported to a certain grade.
+    The project was inspired by Eclipse and Lisp/SLIME.
+
+    Tloona is deployed as a starkit and works with ActiveTcl 8.5 or Tclkit 8.5, on 
+    Windows and Mac OSX out of the box. It should also work on Linux with a decent 
+    ActiveTcl 8.5 installation, but binary dependencies are not included in the 
+    starkit (due to the fact that the author is not in the mood to test another 
+    platform) 
+
 ==
 
-Release 1.5 : Date 2015/03/07 :
+Release 1.5.0 : Date 2015/03/07 :
+ * Does _not_ run with latest versions of Tcl 8.6 (due to Itcl/Itk bugs)
+ * Updated Description and Release Notes
+ * Polishing and bug fixing
  * Enhanced snit parser and code completion feature
+ * Included tcl package and lib dependencies for Mac OSX and Win32 in the starkit
  * Move to git
  * changed version handling. A global variable tloona_version is set
    to the slave interpreter. The version is read from this file
- * included sdx. Deployment of starkit/starpack files is much easier now
-   and includes versioning
 ==
 
 Release 1.4.2 : Date 2013/08/01 : 
