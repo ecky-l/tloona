@@ -3,32 +3,33 @@ ApplicationName : Tloona
 ==
 
 Description :
-    Tloona is an advanced editor for Tcl/Tk. Main features are project management, 
-				extensive code browsing, syntax highlighting / command expansion, and a command 
-    REPL (Read/Eval/Print Loop). Directories with .vfs extension are threated as 
-    Projects and can be deployed as starkits or starpacks. Procedures, classes, 
-    namespace definitions etc. can be send to the REPL or to another interpreter 
-    for agile and dynamic development. Even the Tclhttpd web server can be started
-    inside the REPL and .tml files are supported to a certain grade.
-    The project was inspired by Eclipse and Lisp/SLIME.
+Tloona is an advanced editor for Tcl/Tk. Main features are project management, 
+extensive code browsing, syntax highlighting / command expansion, and a command 
+REPL (Read/Eval/Print Loop). Directories with .vfs extension are threated as 
+Projects and can be deployed as starkits or starpacks. Procedures, classes, 
+namespace definitions etc. can be send to the REPL or to another interpreter 
+for agile and dynamic development. Even the Tclhttpd web server can be started
+inside the REPL and .tml files are supported to a certain grade.
+The project was inspired by Eclipse and Lisp/SLIME.
 
-    Tloona is deployed as a starkit and works with ActiveTcl 8.5 or Tclkit 8.5, on 
-    Windows and Mac OSX out of the box. It should also work on Linux with a decent 
-    ActiveTcl 8.5 installation, but binary dependencies are not included in the 
-    starkit (due to the fact that the author is not in the mood to test another 
-    platform) 
+Tloona is deployed as a starkit and works with ActiveTcl 8.5 or Tclkit 8.5, on 
+Windows and Mac OSX out of the box. It should also work on Linux with a decent 
+ActiveTcl 8.5 installation, but binary dependencies are not included in the 
+starkit (due to the fact that the author is not in the mood to test another 
+platform) 
 
 ==
 
 Release 1.5.0 : Date 2015/03/07 :
  * Does _not_ run with latest versions of Tcl 8.6 (due to Itcl/Itk bugs)
- * Updated Description and Release Notes
- * Polishing and bug fixing
+ * Startup Splash screen
  * Enhanced snit parser and code completion feature
  * Included tcl package and lib dependencies for Mac OSX and Win32 in the starkit
+ * Polishing and bug fixing
  * Move to git
  * changed version handling. A global variable tloona_version is set
    to the slave interpreter. The version is read from this file
+ * Updated Description and Release Notes
 ==
 
 Release 1.4.2 : Date 2013/08/01 : 
