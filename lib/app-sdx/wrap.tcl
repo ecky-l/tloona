@@ -250,6 +250,7 @@ proc mkFileStart {filename} {
   fconfigure $fd -translation binary
   seek $fd -16 end
   binary scan [read $fd 16] IIII a b c d
+  close $fd
 
  #puts [format %x-%d-%x-%d $a $b $c $d]
 
