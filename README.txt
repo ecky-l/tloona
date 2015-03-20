@@ -20,6 +20,11 @@ platform)
 
 ==
 
+Release 1.5.1 : Date 2015/03/20 :
+ * Updated Itcl to 3.4.2 and Itk to 3.4.1
+ * Does _not_ run with Tcl 8.5, but instead with Tcl 8.6
+==
+
 Release 1.5.0 : Date 2015/03/07 :
  * Does _not_ run with latest versions of Tcl 8.6 (due to Itcl/Itk bugs)
  * Startup Splash screen
