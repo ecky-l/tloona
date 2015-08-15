@@ -90,7 +90,7 @@ namespace eval ::Tmw::Fs {
         foreach {file} $dirList {
             # skip the following files
             switch -- [file tail $file] {
-                . - .. - .svn - .DS_Store {
+                . - .. - .svn - .git - .DS_Store {
                     continue
                 }
             }
@@ -128,7 +128,7 @@ namespace eval ::Tmw::Fs {
                                 -displayformat {"%s (%s)" -name -dirname}]
                             $thing addChild [::Parser::Script ::#auto -name dummy \
                                 -displayformat {%s -name}]
-                        }                
+                        }
                     }
                     $rootObj addChild $thing
                 }
@@ -153,7 +153,7 @@ namespace eval ::Tmw::Fs {
         foreach {child} $chBefore {
             # if a file contains a parsed code tree, ignore it. We only
             # want to have files and directories here. Code trees are 
-            # subject to be managed by other parties
+            # managed by other parties
             if {[$child isa ::Tmw::Fs::FileSystem] || 
                     [$child isa ::Tmw::Fs::FSContent]} {
                 $child configure -isvalid 0

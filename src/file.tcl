@@ -58,11 +58,13 @@ class ::Tloona::TclFile {
     }
     
     # @c Creates a code tree that represents this file.
-    public method createTree {} {
+    public method createTree {args} {
         if {[getTree] != ""} {
             return
         }
-        setTree [::Parser::Script ::#auto -type "script"]
+        
+        #setTree [::Parser::Script ::#auto -type "script"]
+        setTree [::Parser::Script ::#auto -type "script" {*}$args]
         if {[cget -filename] != ""} {
             reparseTree
         }

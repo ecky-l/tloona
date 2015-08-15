@@ -20,10 +20,14 @@ platform)
 
 ==
 
+Release 1.5.2 : Date 2015/03/20 :
+ * Fixed create file on right click in directory in project browser
+ * Enabled CD to directory inside starkit project directories
+ * Fixed code sending to console for TclOO methods and defines
+
 Release 1.5.1 : Date 2015/03/20 :
  * Updated Itcl to 3.4.2 and Itk to 3.4.1
  * Does _not_ run with Tcl 8.5, but instead with Tcl 8.6
-==
 
 Release 1.5.0 : Date 2015/03/07 :
  * Does _not_ run with latest versions of Tcl 8.6 (due to Itcl/Itk bugs)
@@ -35,14 +39,12 @@ Release 1.5.0 : Date 2015/03/07 :
  * changed version handling. A global variable tloona_version is set
    to the slave interpreter. The version is read from this file
  * Updated Description and Release Notes
-==
 
 Release 1.4.2 : Date 2013/08/01 : 
  * Runs with Tcl/Tk 8.6
  * Partial Support for TclOO (oo::define, class, methods, constructor)
  * Critical fix for expand {*} syntax with new version of Tclparser
  * Many bugfixes
-==
 
 Release 1.4.0 : Date 2013/07/14 : 
  * Partial support for snit in Code browser and the "send to REPL" feature

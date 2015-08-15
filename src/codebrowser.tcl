@@ -359,6 +359,8 @@ class ::Tloona::ProjectBrowser {
     inherit ::Tloona::CodeBrowser
     
     ## \brief a piece of code that is executed to open files
+    itk_option define -newfilecmd newFileCmd Command ""
+    ## \brief a piece of code that is executed to open files
     itk_option define -openfilecmd openFileCmd Command ""
     ## \brief a piece of code that is executed to close files
     itk_option define -closefilecmd closeFileCmd Command ""
@@ -484,113 +486,146 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         return
     }
     set script ""
-    switch -glob -- [$node cget -type] {
+    set tokenType [$node cget -type]
+    switch -glob -- $tokenType {
+        
+    *method - constructor - destructor {
+        set clNode [$node getParent]
+        set tktyp method
+        set tknam [$node cget -name]
+        set tkargs [list [$node cget -arglist]]
+        append tkdef \{ [string trim [$node cget -definition] "{}"] \}
+        
+        switch -glob -- $tokenType {
         *method {
-            set clNode [$node getParent]
-            switch -glob -- [$clNode cget -token] {
-                *type -
-                *widget* {
-                    # obviously a snit type. handle appropriately
-                    append script ::snit::method " " 
-                    append script [getNSQ $clNode] " " [$node cget -name] " " 
-                    append script [list [$node cget -arglist]] " " 
-                    append script \{ [string trim [$node cget -definition] "{}"] \}
-                }
-                default {
-                    append script "::itcl::body "
-                    append script [getNSQ $node] " [list [$node cget -arglist]] {"
-                    append script [string trim [$node cget -definition] "{}"]
-                    append script "}"
-                }
-            }
         }
-        
-        constructor -
+        constructor {
+            set tktyp constructor
+            set tknam ""
+        }
         destructor {
-            set clNode [$node getParent]
-            append script ::itcl::body " " [getNSQ $clNode] :: [$node cget -type] " "
-            append script [list [$node cget -arglist]] " " 
-            append script \{ [string trim [$node cget -definition] "{}"] \}
+            set tktyp destructor
+            set tknam ""
+            set tkargs ""
+        }
         }
         
-        macro {
-            append script "::sugar::macro [$node cget -name] [list [$node cget -arglist]] {"
+        switch -glob -- [$clNode info class] {
+        *SnitTypeNode - *SnitWidgetNode {
+            # obviously a snit type. handle appropriately. Need to redefine constructor/destructor
+            switch -- $tokenType {
+            constructor {
+                set tktyp method
+                set tknam $tokenType
+            }
+            destructor {
+                set tktyp method
+                set tknam $tokenType
+                set tkargs "{ }"
+            }
+            }
+            append script ::snit::[set tktyp] " [getNSQ $clNode] $tknam $tkargs $tkdef"  
+        }
+        *TclOOClassNode {
+            append script ::oo::define " [getNSQ $clNode] $tktyp $tknam $tkargs $tkdef"
+        }
+        *ItclClassNode {
+            append script "::itcl::body "
+            append script [getNSQ $node] " $tkargs $tkdef"
+        }
+        }
+    }
+    
+    macro {
+        append script "::sugar::macro [$node cget -name] [list [$node cget -arglist]] {"
+        append script [string trim [$node cget -definition] "{}"]
+        append script "}"
+    }
+    
+    proc {
+        append script [expr {[$node cget -sugarized] ? "::sugar::proc " : "proc "}]
+        append script [getNSQ $node] " [list [$node cget -arglist]] {"
+        append script [string trim [$node cget -definition] "{}"]
+        append script "}"
+    }
+    
+    *variable {
+        set clNode [$node getParent]
+        switch -glob -- [$clNode info class] {
+        *SnitTypeNode - *SnitWidgetNode {
+        }
+        *TclOOClassNode {
+            append script ::oo::define " [getNSQ $clNode] variable "
+            append script [$node cget -name] " "
             append script [string trim [$node cget -definition] "{}"]
-            append script "}"
         }
-        
-        proc {
-            append script [expr {[$node cget -sugarized] ? "::sugar::proc " : "proc "}]
-            append script [getNSQ $node] " [list [$node cget -arglist]] {"
-            append script [string trim [$node cget -definition] "{}"]
-            append script "}"
+        *ItclClassNode {
+            # ???
+            #if {[$node cget -configcode] != ""} {
+            #    append script " " 
+            #    append script \{ [string trim [$node cget -configcode] "{}"] \}
+            #}
+            #if {[$node cget -cgetcode] != ""} {
+            #    append script " " 
+            #    append script \{ [string trim [$node cget -cgetcode] "{}"] \}
+            #}
         }
-        
-        *variable {
-            # this can be done directly from the file definition
-            # Get the definition of this node in the file and return
-            #append script "proc "
-            if {[$node isa ::Parser::XotclAttributeNode]} {
-                # If this is an attribute of XOTcl class, we will likely
-                # want to send the class definition itself, since Attributes
-                # can not be sent
-                set node [$node getParent]
-            }
-            append script "variable " [getNSQ $node] " " \{
-            append script [string trim [$node cget -definition] "{}"] \}
-            if {[$node cget -configcode] != ""} {
-                append script " " \{ [string trim [$node cget -configcode] "{}"] \}
-            }
-            if {[$node cget -cgetcode] != ""} {
-                append script " " \{ [string trim [$node cget -cgetcode] "{}"] \}
-            }
-        }
-        
-        namespace -
-        webcmd -
-        xo_* {
-            # this can be done directly from the file definition
-            # Get the definition of this node in the file and return
-            #append script "proc "
-            if {[$node isa ::Parser::XotclAttributeNode]} {
-                # If this is an attribute of XOTcl class, we will likely
-                # want to send the class definition itself, since Attributes
-                # can not be sent
-                set node [$node getParent]
-                
-            }
-            if {$file == {}} {
-                return
-            }
-            return [$file flashCode $node]
-        }
-        
-        class {
-            # build up the node definition
-            # get fully qualified name
-            set name [$node cget -name]
-            set parent [$node getParent]
-            while {$parent != "" && [$parent isa ::Parser::StructuredFile]} {
-                set name [$parent cget -name]::[set name]
-                set parent [$parent getParent]
-            }
-            
-            if {$file != {}} {
-                $file flashCode $node
-            }
-            append script [$node cget -token] " " $name " " \{ 
-            append script [string trim [$node cget -definition] "{}"]
-            append script \}
-        }
-        
-        package {
-            append script [$node cget -definition]
-        }
-        
         default {
-            # not implemented
+            append script variable " [getNSQ $node] " 
+            append script [string trim [$node cget -definition] "{}"]
+        }
+        
+        }
+    }
+    
+    namespace -
+    webcmd -
+    xo_* {
+        # this can be done directly from the file definition
+        # Get the definition of this node in the file and return
+        #append script "proc "
+        if {[$node isa ::Parser::XotclAttributeNode]} {
+            # If this is an attribute of XOTcl class, we will likely
+            # want to send the class definition itself, since Attributes
+            # can not be sent
+            set node [$node getParent]
+            
+        }
+        if {$file == {}} {
             return
         }
+        return [$file flashCode $node]
+    }
+    
+    class {
+        # build up the node definition
+        set name [$node cget -name]
+        switch -glob -- [$node info class] {
+        *SnitTypeNode - *SnitWidgetNode {
+            append script ::snit:: [namespace tail [$node cget -token]] " "
+            append script [getNSQ $node] " "
+            append script \{ [string trim [$node cget -definition] "{}"] \}
+        }
+        *TclOOClassNode {
+            append script ::oo::class " create [getNSQ $node] "
+            append script \{ [string trim [$node cget -definition] "{}"] \}
+        }
+        *ItclClassNode {
+            append script ::itcl::class " [getNSQ $node] "
+            append script \{ [string trim [$node cget -definition] "{}"] \}
+        }
+        }
+    }
+    
+    package {
+        append script [$node cget -definition]
+    }
+    
+    default {
+        # not implemented
+        return
+    }
+    
     }
     
     # flash the code for consistency

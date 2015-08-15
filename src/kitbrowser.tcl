@@ -218,6 +218,27 @@ class ::Tloona::KitBrowser {
         }
     }
     
+    ## \brief callback handler for new Tclscript menu entry
+    public method onFileNew {parentItem} {
+        set fileName [Tmw::input [cget -mainwindow] "File Name:" okcancel]
+        if {$fileName == ""} {
+            return
+        }
+        set uri [file join [$parentItem cget -name] $fileName]
+        if {[file exists $uri]} {
+            Tmw::message [cget -mainwindow] "File exists" ok "File $fileName already exists here!"
+            return
+        }
+        
+        set fh [open $uri w]
+        puts $fh "## $fileName (created by Tloona here)"
+        close $fh
+        
+        ::Tmw::Fs::rebuild $parentItem 1 nf of
+        add [$parentItem lookup $uri] 1 1
+   	    set cls [eval $itk_option(-openfilecmd) $uri 0]
+    }
+    
     ## \brief Change directory in the slave console that is configured
     public method onCdConsoleThere {item} {
         $mainwindow component console eval [list cd [$item cget -name]] 1
@@ -320,6 +341,8 @@ class ::Tloona::KitBrowser {
             if {[$realItem extracted]} {
                 .kitcmenu add command -label "CD Console There" -image $Tmw::Icons(FileOpen) \
                     -command [code $this onCdConsoleThere $realItem] -compound left
+                .kitcmenu add command -label "New File..." -image $Tmw::Icons(FileNew) \
+                    -command [code $this onFileNew $realItem] -compound left
                 .kitcmenu add command -label "Refresh" -image $Tmw::Icons(ActReload) \
                     -command [code $this refresh] -compound left
                 .kitcmenu add command -label "Deploy..." -image $Tmw::Icons(KitFile) \
@@ -344,9 +367,10 @@ class ::Tloona::KitBrowser {
                 }
                 directory {
                     if {[$tno extracted]} {
-                        .kitcmenu add command \
-                            -label "New Tcl/Itcl script" \
-                            -command [code $this onNewTclScript $realItem]
+                        .kitcmenu add command -label "CD Console There" -image $Tmw::Icons(FileOpen) \
+                            -command [code $this onCdConsoleThere $realItem] -compound left
+                        .kitcmenu add command -label "New File..." -image $Tmw::Icons(FileNew) \
+                            -command [code $this onFileNew $realItem] -compound left
                     } else {
                         .kitcmenu add command \
                             -label "Add file/directory from Filesystem..." \

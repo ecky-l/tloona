@@ -49,11 +49,9 @@ namespace eval ::Parser {
                 switch -glob -- $clsTkn {
                     *class {
                         # We have an Itcl class
-                        set cnode [Itcl::createClass $node $clsName \
-                            $clsDef [list $defOff $defEnd]]
+                        set cnode [Itcl::createClass $node $clsName $clsDef [list $defOff $defEnd]]
                         $cnode configure -byterange $byteRange
-                        Itcl::parseClassDef $cnode [expr {$off + $defOff}] \
-                            [$cnode cget -definition]
+                        Itcl::parseClassDef $cnode [expr {$off + $defOff}] [$cnode cget -definition]
                         return $cnode
                     }
                     *type -
@@ -99,8 +97,7 @@ namespace eval ::Parser {
             # or XOTcl classes
             if {[string eq $clsCreate create] && [string match *class $clsTkn]} {
                lassign [m-parse-defrange $cTree 3] defOff defEnd
-               set cnode [TclOO::createClass $node $clsName \
-                   $clsDef [list $defOff $defEnd]]
+               set cnode [TclOO::createClass $node $clsName $clsDef [list $defOff $defEnd]]
                $cnode configure -byterange $byteRange
                TclOO::parseClassDef $cnode [expr {$off + $defOff}] [$cnode cget -definition]
                return $cnode

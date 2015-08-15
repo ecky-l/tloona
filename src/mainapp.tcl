@@ -731,7 +731,7 @@ class Tloona::Mainapp {
             }
         }
     }
-        
+    
     # @c Opens a file, checks by extension which typeof file.
     # @c If createTree is true, a tree is created using the
     # @c fileObj createTree method.
@@ -764,17 +764,18 @@ class Tloona::Mainapp {
                     # the code tree does not exist yet. Create it, but
                     # only if this is a file that was not opened from
                     # an existing vfs project
-                    if {$fileInPrj} {
+                    if {$fileInPrj && $cTree != {}} {
                         component kitbrowser refreshFile $cTree
                         $fCls setTree $cTree
                     } else {
-                        $fCls createTree
+                        $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
                     }
                 } elseif {$fileInPrj} {
                     component kitbrowser refreshFile $cTree
                     $fCls setTree $cTree
                 }
                 $fCls updateHighlights
+                
                 $fCls addToBrowser [component codebrowser]
                 if {$fileInPrj} {
                     $fCls addToBrowser [component kitbrowser]
@@ -809,9 +810,6 @@ class Tloona::Mainapp {
                 set fType [lindex [fileutil::fileType $uri] 0]
                 if {[string equal $fType text]} {
                     if {[set fileObj [isOpen $uri]] != ""} {
-                        Tmw::message $TloonaApplication \
-                            "File already open" ok \
-                            "The file $uri exists already"
                         component textnb select $fileObj
                         return
                     }
@@ -828,8 +826,7 @@ class Tloona::Mainapp {
         set _InitDir [file dirname $uri]
         return $fCls
     }
-
-        
+    
     # @c Adds a comm id
     public method addCommID {id} {
         if {[lsearch $CommIDs $id] >= 0} {
