@@ -241,7 +241,8 @@ namespace eval ::Parser {
             }
             
             define - *oo::define {
-                TclOO::parseDefine $node $codeTree $content $cmdRange $off
+                # not yet working
+                #TclOO::parseDefine $node $codeTree $content $cmdRange $off
             }
             
             Attribute -
