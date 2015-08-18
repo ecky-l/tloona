@@ -134,7 +134,7 @@ namespace eval ::Parser::TclOO {
             $nsNode addChild $clsNode
         }
         $clsNode configure -isvalid 1 -definition [string trim $clsDef "{}"] \
-            -defbrange $defRange -token class 
+            -defbrange $defRange -token class -inherits {} -inheritstring {}
         return $clsNode
     }
     
@@ -283,8 +283,10 @@ namespace eval ::Parser::TclOO {
         if {$vNode ne ""} {
             set t private_variable
             set n [string index [$vNode cget -name] 0]
-            if {[string is lower [string index $n 0]]} {
+            if {[string is lower $n]} {
                 set t public_variable
+            } elseif {[string is upper $n]} {
+                set t protected_variable
             }
             $vNode configure -type $t
         }
@@ -316,7 +318,7 @@ namespace eval ::Parser::TclOO {
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
-                superclass {
+                superclass - Superclass {
                     parseInherit $node $codeTree $content
                 }
                 

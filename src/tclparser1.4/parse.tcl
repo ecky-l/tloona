@@ -86,13 +86,11 @@ namespace eval ::Parser {
             }
         } elseif {[llength $cTree] == 4} {
             # Scrape out TclOO class with definition.
-            puts yyyayyy
             foreach {tkn idx} {clsTkn 0 clsCreate 1 clsName 2 clsDef 3} {
                 set range [lindex [lindex $cTree $idx] 1]
                 set $tkn [::parse getstring $content \
                     [list [lindex $range 0] [lindex $range 1]]]
             }
-            
             # if this condition holds true, we have a TclOO class with
             # definition. Otherwise we fall through and parse NX classes
             # or XOTcl classes
