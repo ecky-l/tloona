@@ -1,6 +1,13 @@
 ## otree.tcl (created by Tloona here)
 ## The itree::Node as tcloo implementation
 
+#proc ::oo::define::variable {args} {
+#    set c [lindex [info level -1] 1]
+#    puts huh,$args,$c,[info o namespace $c],[info commands ${c}::*]
+#    tailcall [info o namespace $c]::my variable {*}$args
+#}
+
+
 namespace eval ::oo {
 
 ## \brief A mixin object that defines "public variable" behaviour of Itcl.
@@ -67,18 +74,108 @@ class create confcget {
     
 }
 
-## \brief Helper class to install the ccget object in every ::oo::class
-class create confcgetc {
-    method create {args} {
-        set r [next {*}$args]
-        ::oo::define $r mixin confcget
-        return $r
+## \brief A meta class mixin for default variable assignment
+#
+# When defining classes, it is almost always very convenient to assigns 
+# default values, like 
+# 
+# 'variable varname value'
+# 'variabel varname {}'
+#
+# These default values should be assigned during object construction 
+# and use, so that it is not necessary to have [a] useful defaults at
+# hand if nothing else was defined and [b] not always check for existence
+# of an object variable before using it.
+# 
+# Since TclOO does not support this concept, we have to tweak it to do so.
+# Here is a way via an object that is designed to be mixed in meta classes
+# or the ::oo::class command itself:
+# 
+# 'oo::define oo::class mixin defaultvars'
+# 
+# It provides a new command 'Variable' (note the uppercase first letter!) 
+# as an object command and an accompanying ::oo::define::Variable. Both 
+# together are used in '::oo::class create' resp '::oo::define ... Variable'
+# statements to install the variable and its default into the class.
+# The variables with defaults are then installed into every new object
+# that is created from this class.
+class create defaultvars {
+    variable _Defaults
+    
+    constructor {args} {
+        set _Defaults {}
+        
+        #::oo::define [self] mixin confcget
+        
+        #set mymethods [lmap x [info o methods [self] -all] {
+        #    expr {($x in {create destroy new vardefault}) ? [continue] : $x}
+        #}]
+        lmap cmd [info commands ::oo::define::*] {
+            set cmd [namespace tail $cmd]
+            oo::define [self class] method \
+                $cmd {args} "oo::define \[self\] $cmd {*}\$args"
+        }
+        
+        set myns [self namespace]::ns
+        
+        interp alias {} ::oo::define::Variable {} [self] Variable
+        interp alias {} [set myns]::Variable {} [self] Variable
+        
+        foreach {cmd} [info o methods [self] -all] {
+            if {$cmd ni {new create destroy}} {
+                interp alias {} [set myns]::[set cmd] {} [self] $cmd
+            }
+        }
+        tailcall namespace eval $myns {*}$args
     }
+    
+    ## \brief installs the variables defined by class in the object
+    method new {args} {
+        set o [next {*}$args]
+        my InstallVars $o {*}[info class variables [self]]
+        return $o
+    }
+    
+    method Variable {args} {
+        ::oo::define [self] variable [lindex $args 0]
+        if {[llength $args] == 2} {
+            lappend _Defaults {*}$args
+        }
+        lmap o [info class inst [self]] {
+            my InstallVars $o [lindex $args 0]
+        }
+        return [lindex $args 0]
+    }
+    
+    method VarDefault {var valPtr} {
+        upvar $valPtr val
+        if {[dict exists $_Defaults $var]} {
+            set val [dict get $_Defaults $var]
+            return 1
+        }
+        return 0
+    }
+    
+    method InstallVars {obj args} {
+        set ov [info obj vars $obj]
+        set ns [namespace which $obj]
+        lmap v [lmap x $args {expr {($x in $ov) ? [continue] : $x}}] {
+            if {[my VarDefault $v val]} {
+                namespace eval $ns [list variable $v $val]
+            } else {
+                namespace eval $ns [list variable $v]
+            }
+        }
+    }
+    
+    export Variable
 }
+
+
 
 # from here on, *every* class that is created in this interp is capable
 # to do the "public variable style" of Itcl.
-define class mixin confcgetc
+define class mixin defaultvars
 
 } ;# namespace ::oo
 
@@ -86,61 +183,53 @@ define class mixin confcgetc
 namespace eval ::otree {
 
 ::oo::class create Node {
+    superclass ::oo::confcget
     
     ## \brief the node name, which is also displayed
-    variable name
+    Variable name ""
 
     ## \brief image: an image to display in front of the name.
-    variable image
+    Variable image balla
     
     ## \brief depth of this node in a tree hierarchy
-    variable level
+    Variable level 0
     
     ## \brief Display format list. 
     # Contains a string as accepted by [format] (e.g. %s) followed by 
     # the attributes that are to be displayed, e.g. -name. E.g. {%s -name}. 
     # The resulting string is displayed as the node's name in a tree display
-    variable displayformat
+    Variable displayformat ""
     
     ## \brief indicates whether the node is displayed
-    variable displayed
+    Variable displayed no
     
     ## \brief A type associated with the node. Makes image display in a browser easy
-    variable type
+    Variable type
     
     ## \brief Whether the item is expanded on a display
-    variable expanded
+    Variable expanded
     
     ## \brief columnData that is associated with an item.
     # When the node is displayed in a Ttk browser, this is the data that goes in the 
     # columns. The list must match the column count.
-    variable coldata
+    Variable coldata
     
     ## \brief indicates that this node should be deleted when it is removed from its parent.
-    variable dynamic
+    Variable dynamic
     
     ## \brief the child nodes
-    variable Children
+    Variable Children {}
     
     ## \brief The parent node
-    variable Parent
-    
-    constructor {args} {
-        set name ""
-        set image ""
-        set level 0
-        set displayformat {}
-        set displayed no
-        set type ""
-        set expanded no
-        set coldata {}
-        set dynamic no
-        set Children {}
-        set Parent {}
-    }
+    Variable Parent {}
     
     destructor {
         my removeChildren
+    }
+    
+    method getname {} {
+        my variable name
+        return $name
     }
     
     method setParent {other} {
