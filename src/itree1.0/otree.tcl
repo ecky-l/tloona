@@ -47,6 +47,8 @@ namespace eval ::otree {
     ## \brief The parent node
     Variable Parent {}
     
+    Variable _PrivateVar ""
+    
     destructor {
         my removeChildren
     }
@@ -76,6 +78,11 @@ namespace eval ::otree {
             }
         }
     }
+}
+
+::oo::class create Cnode {
+    Superclass ::otree::Node
+    Variable x ""
 }
 
 } ;# namespace ::otree

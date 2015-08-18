@@ -97,29 +97,38 @@ namespace eval ::tcloolib {
     ## \brief Installs handlers for oo::define before creating the class
     constructor {args} {
         set _Defaults {}
-        lmap cmd [info commands ::oo::define::*] {
-            set cmd [namespace tail $cmd]
-            oo::define [self class] method \
-                $cmd {args} "oo::define \[self\] $cmd {*}\$args"
-        }
-        
-        set myns [self namespace]::ns
         interp alias {} ::oo::define::Variable {} [self] Variable
-        interp alias {} [set myns]::Variable {} [self] Variable
-        
-        foreach {cmd} [info o methods [self] -all] {
-            if {$cmd ni {new create destroy}} {
-                interp alias {} [set myns]::[set cmd] {} [self] $cmd
-            }
-        }
-        tailcall namespace eval $myns {*}$args
+        interp alias {} ::oo::define::Superclass {} [self] Superclass
+        next {*}$args
     }
     
     ## \brief installs the variables defined by class in the object
     method new {args} {
         set o [next {*}$args]
-        my InstallVars $o {*}[info class variables [self]]
+        my installVars $o {*}[info class variables [self]]
         return $o
+    }
+    
+    ## \brief Installs variables from superclass in this class
+    #
+    # This definer can be used instead of [superclass] to have
+    # the variables from the superclass defined with defaults in
+    # this class and all its objects.
+    # Filter private variables by preceeding underscore _
+    method Superclass {args} {
+        ::oo::define [self] superclass {*}$args
+        
+        set filterExpr {expr { [string comp -l 1 $x _] ? $x : [continue] }}
+        lmap c [info cl superclass [self]] {
+            lmap v [lmap x [info cl var $c] $filterExpr] {
+                if {[$c varDefault $v val]} {
+                    ::oo::define [self] Variable $v $val
+                } else {
+                    ::oo::define [self] Variable $v
+                }
+            }
+        }
+        return ""
     }
     
     ## \brief The Variable with default command.
@@ -131,10 +140,10 @@ namespace eval ::tcloolib {
     method Variable {args} {
         ::oo::define [self] variable [lindex $args 0]
         if {[llength $args] == 2} {
-            lappend _Defaults {*}$args
+            dict set _Defaults {*}$args
         }
         lmap o [info class inst [self]] {
-            my InstallVars $o [lindex $args 0]
+            my installVars $o [lindex $args 0]
         }
         return ""
     }
@@ -143,7 +152,7 @@ namespace eval ::tcloolib {
     #
     # If there is one, returns true and sets the value in valPtr
     # Otherwise leaves valPtr as it is and returns false.
-    method VarDefault {var valPtr} {
+    method varDefault {var valPtr} {
         upvar $valPtr val
         if {[dict exists $_Defaults $var]} {
             set val [dict get $_Defaults $var]
@@ -153,11 +162,11 @@ namespace eval ::tcloolib {
     }
     
     ## \brief Installs variables from the args list in an object obj.
-    method InstallVars {obj args} {
+    method installVars {obj args} {
         set ov [info obj vars $obj]
         set ns [namespace which $obj]
         lmap v [lmap x $args {expr {($x in $ov) ? [continue] : $x}}] {
-            if {[my VarDefault $v val]} {
+            if {[my varDefault $v val]} {
                 namespace eval $ns [list variable $v $val]
             } else {
                 namespace eval $ns [list variable $v]
@@ -165,8 +174,9 @@ namespace eval ::tcloolib {
         }
     }
     
-    export Variable
-}
+    export Variable Superclass
+    
+} ;# defaultvars
 
 
 ## \brief use the named mixin
@@ -180,9 +190,6 @@ proc usemixin {name} {
     tailcall ::oo::define ::oo::class mixin [namespace current]::[set name]
 }
 
-# from here on, *every* class that is created in this interp can have
-# variable defaults via the [Variable] definer
-#define class mixin defaultvars
 
 } ;# namespace ::oo
 
