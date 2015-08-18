@@ -555,20 +555,12 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         *SnitTypeNode - *SnitWidgetNode {
         }
         *TclOOClassNode {
-            append script ::oo::define " [getNSQ $clNode] variable "
+            append script ::oo::define " [getNSQ $clNode] [$node cget -token] "
             append script [$node cget -name] " "
             append script [string trim [$node cget -definition] "{}"]
         }
         *ItclClassNode {
-            # ???
-            #if {[$node cget -configcode] != ""} {
-            #    append script " " 
-            #    append script \{ [string trim [$node cget -configcode] "{}"] \}
-            #}
-            #if {[$node cget -cgetcode] != ""} {
-            #    append script " " 
-            #    append script \{ [string trim [$node cget -cgetcode] "{}"] \}
-            #}
+            # not possible
         }
         default {
             append script variable " [getNSQ $node] " 

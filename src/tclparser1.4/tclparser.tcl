@@ -85,6 +85,10 @@ namespace eval ::Parser {
         inherit ::Parser::Script
         
         public {
+            ## \brief The token that defined this variable. 
+            # Can be different from "variable"
+            variable token variable
+            
             # @v displayformat: overrides the display format for tests
             variable displayformat {"%s = %s" -name -shortdefinition}
             # @v definition: overrides the variable definition
@@ -340,7 +344,6 @@ namespace eval ::Parser::Tcl {
             }
             set $tkn [m-parse-token $content $cTree $idx]
         }
-        
         set nsNode [::Parser::Util::getNamespace $node \
             [lrange [split [regsub -all {::} $vName ,] ,] 0 end-1]]
         set vName [namespace tail $vName]
@@ -350,7 +353,7 @@ namespace eval ::Parser::Tcl {
                 -definition $vDef -name $vName -isvalid 1]
             $nsNode addChild $vNode
         }
-        $vNode configure -definition $vDef -name $vName -isvalid 1
+        $vNode configure -token $varDef -definition $vDef -name $vName -isvalid 1
         return $vNode
     }
     

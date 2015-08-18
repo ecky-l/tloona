@@ -281,7 +281,12 @@ namespace eval ::Parser::TclOO {
     ::sugar::proc parseVar {node cTree content off {mdo 0}} {
         set vNode [::Parser::Tcl::parseVar $node $cTree $content $off $mdo]
         if {$vNode ne ""} {
-            $vNode configure -type protected_variable
+            set t private_variable
+            set n [string index [$vNode cget -name] 0]
+            if {[string is lower [string index $n 0]]} {
+                set t public_variable
+            }
+            $vNode configure -type $t
         }
         return $vNode
     }
@@ -337,7 +342,7 @@ namespace eval ::Parser::TclOO {
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
                 
-                variable {
+                variable - Variable {
                     set vNode [parseVar $node $codeTree $content $off 0]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange

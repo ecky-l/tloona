@@ -102,14 +102,9 @@ class create confcget {
 class create defaultvars {
     variable _Defaults
     
+    ## \brief Installs handlers for oo::define before creating the class
     constructor {args} {
         set _Defaults {}
-        
-        #::oo::define [self] mixin confcget
-        
-        #set mymethods [lmap x [info o methods [self] -all] {
-        #    expr {($x in {create destroy new vardefault}) ? [continue] : $x}
-        #}]
         lmap cmd [info commands ::oo::define::*] {
             set cmd [namespace tail $cmd]
             oo::define [self class] method \
@@ -117,7 +112,6 @@ class create defaultvars {
         }
         
         set myns [self namespace]::ns
-        
         interp alias {} ::oo::define::Variable {} [self] Variable
         interp alias {} [set myns]::Variable {} [self] Variable
         
@@ -136,6 +130,12 @@ class create defaultvars {
         return $o
     }
     
+    ## \brief The Variable with default command.
+    #
+    # Is executed with a definition script after [create] (from the 
+    # constructor) or with calls to oo::define <cls> Variable. 
+    # Arranges for the default to be installed in all existing 
+    # or new instances of this class.
     method Variable {args} {
         ::oo::define [self] variable [lindex $args 0]
         if {[llength $args] == 2} {
@@ -144,9 +144,13 @@ class create defaultvars {
         lmap o [info class inst [self]] {
             my InstallVars $o [lindex $args 0]
         }
-        return [lindex $args 0]
+        return ""
     }
     
+    ## \brief Checks whether there is a default value.
+    #
+    # If there is one, returns true and sets the value in valPtr
+    # Otherwise leaves valPtr as it is and returns false.
     method VarDefault {var valPtr} {
         upvar $valPtr val
         if {[dict exists $_Defaults $var]} {
@@ -156,6 +160,7 @@ class create defaultvars {
         return 0
     }
     
+    ## \brief Installs variables from the args list in an object obj.
     method InstallVars {obj args} {
         set ov [info obj vars $obj]
         set ns [namespace which $obj]
@@ -173,8 +178,8 @@ class create defaultvars {
 
 
 
-# from here on, *every* class that is created in this interp is capable
-# to do the "public variable style" of Itcl.
+# from here on, *every* class that is created in this interp can have
+# variable defaults via the [Variable] definer
 define class mixin defaultvars
 
 } ;# namespace ::oo
