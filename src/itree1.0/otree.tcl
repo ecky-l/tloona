@@ -78,6 +78,10 @@ namespace eval ::otree {
             }
         }
     }
+    
+    method getChildren {} {
+        return $Children
+    }
 }
 
 ::oo::class create Cnode {
