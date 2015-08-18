@@ -22,6 +22,7 @@ platform)
 
 Release 1.5.3 : Date 2015/08/20 :
  * Bugfixes
+ * support for self defined tcloo commands (Variable definer)
 
 Release 1.5.2 : Date 2015/03/20 :
  * Fixed create file on right click in directory in project browser
