@@ -93,10 +93,12 @@ namespace eval ::tcloolib {
 # that is created from this class.
 ::oo::class create defaultvars {
     variable _Defaults
+    variable _SetGet
     
     ## \brief Installs handlers for oo::define before creating the class
     constructor {args} {
         set _Defaults {}
+        set _SetGet {}
         interp alias {} ::oo::define::Variable {} [self] Variable
         interp alias {} ::oo::define::Superclass {} [self] Superclass
         next {*}$args
@@ -122,7 +124,7 @@ namespace eval ::tcloolib {
         lmap c [info cl superclass [self]] {
             lmap v [lmap x [info cl var $c] $filterExpr] {
                 if {[$c varDefault $v val]} {
-                    ::oo::define [self] Variable $v $val
+                    ::oo::define [self] Variable $v {*}$val
                 } else {
                     ::oo::define [self] Variable $v
                 }
@@ -137,15 +139,41 @@ namespace eval ::tcloolib {
     # constructor) or with calls to oo::define <cls> Variable. 
     # Arranges for the default to be installed in all existing 
     # or new instances of this class.
+    # For private and protected variables there is additional support
+    # for automatic getter and setter generation. If one or both of
+    # the switches {-set, -get} are in the arguments after the value,
+    # methods {"setVarname", "getVarname"} are created. The name is
+    # constructed from the varname (mind: uppercase first letter for 
+    # peotected, underscore _ for private). This happens only if there
+    # are no methods of the same name already defined.
     method Variable {args} {
         ::oo::define [self] variable [lindex $args 0]
-        if {[llength $args] == 2} {
-            dict set _Defaults {*}$args
+        if {[llength $args] >= 2} {
+            dict set _Defaults [lindex $args 0] [lrange $args 1 end]
         }
+        
+        # install getters and setters for private/protected variables
+        set vn [string index [lindex $args 0] 0]
+        if {[string match $vn _] || [string is upper $vn] 
+                && [llength $args] >=3} {
+            set rem [lrange $args 2 end]
+            set varName [lindex $args 0]
+            if {[lsearch $rem -get] >= 0 && 
+                    [lsearch [info cl methods [self]] get[set varName]] < 0} {
+                ::oo::define [self] method \
+                    get[set varName] {} " return \$$varName "
+            }
+            if {[lsearch $rem -set] >= 0 &&
+                    [lsearch [info cl methods [self]] set[set varName]] < 0} {
+                ::oo::define [self] method \
+                    set[set varName] {value} " set $varName \$value "
+            }
+        }
+        
         lmap o [info class inst [self]] {
             my installVars $o [lindex $args 0]
         }
-        return ""
+        return
     }
     
     ## \brief Checks whether there is a default value.
@@ -167,7 +195,7 @@ namespace eval ::tcloolib {
         set ns [namespace which $obj]
         lmap v [lmap x $args {expr {($x in $ov) ? [continue] : $x}}] {
             if {[my varDefault $v val]} {
-                namespace eval $ns [list variable $v $val]
+                namespace eval $ns [list variable $v [lindex $val 0]]
             } else {
                 namespace eval $ns [list variable $v]
             }

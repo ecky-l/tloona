@@ -613,6 +613,10 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         append script [$node cget -definition]
     }
     
+    tcltest {
+        append script [$node cget -testcmd]
+    }
+    
     default {
         # not implemented
         return

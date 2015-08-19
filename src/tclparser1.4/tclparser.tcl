@@ -140,6 +140,8 @@ namespace eval ::Parser {
         constructor {args} {chain {*}$args} {}
         
         public {
+            ## \brief contains the complete test command
+            variable testcmd {}
             # @v description: Test description
             variable description ""
             # @v setupbrange: the byte range of the setup code

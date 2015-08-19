@@ -316,7 +316,7 @@ namespace eval ::Parser {
                 }
             }
             
-            tcltest::test -
+            *tcltest::test -
             test {
                 set setupOff 0
                 set bodyOff 0
@@ -324,7 +324,8 @@ namespace eval ::Parser {
                 set testNode [Tcl::parseTest $node $codeTree $content \
                     setupOff bodyOff cleanupOff]
                 if {$testNode != ""} {
-                    $testNode configure -byterange $cmdRange
+                    $testNode configure -byterange $cmdRange \
+                        -testcmd [::parse getstring $content [lindex $res 1]]
                     parse $testNode [expr {$off + $setupOff}] [$testNode cget -setupdef]
                     parse $testNode [expr {$off + $bodyOff}] [$testNode cget -definition]
                     parse $testNode [expr {$off + $cleanupOff}] [$testNode cget -cleanupdef]
