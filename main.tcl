@@ -3,7 +3,7 @@
 #
 # an integrated development environment for Tcl/Tk
 ################################################################################
-
+#catch {console show}
 set TloonaVersion {}
 
 set ::TloonaRoot [file normalize [file dirname [info script]]]
