@@ -22,7 +22,7 @@ platform)
 
 Release 1.5.3 : Date 2015/08/20 :
  * Bugfixes
- * support for self defined tcloo commands (Variable definer)
+ * support for some self defined tcloo commands ( (class), (variable), (superclass), (constructor) )
  * support for sending tcltest to consoles or other (comm) interp
 
 Release 1.5.2 : Date 2015/03/20 :
