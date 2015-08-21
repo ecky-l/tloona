@@ -31,7 +31,6 @@ namespace eval ::Parser {
     ::sugar::proc parseClass {node cTree content byteRange off} {
         #upvar $defOffPtr defOff
         set nTk [llength $cTree]
-        
         if {[llength $cTree] == 3} {
             # either an Itcl class or a TclOO/XOTcl class without definition
             # We try to find out:
@@ -65,10 +64,6 @@ namespace eval ::Parser {
                         return $cnode
                     }
                 }
-            } elseif {[string match *class $clsTkn] && [string eq $clsName create]} {
-                set cnode [TclOO::createClass $node $clsDef {} {}]
-                $cnode configure -byterange $byteRange
-                return $cnode
             } elseif {[string match *Class $clsTkn]} {
                 # XOTcl
                 set cnode [Xotcl::parseClass $node $cTree $content defOff slotOff]
@@ -94,7 +89,8 @@ namespace eval ::Parser {
             # if this condition holds true, we have a TclOO class with
             # definition. Otherwise we fall through and parse NX classes
             # or XOTcl classes
-            if {[string eq $clsCreate create] && [string match *class $clsTkn]} {
+            if {[string eq $clsCreate create] && 
+                    ([string match *class $clsTkn] || [string match *(class) $clsTkn])} {
                lassign [m-parse-defrange $cTree 3] defOff defEnd
                set cnode [TclOO::createClass $node $clsName $clsDef [list $defOff $defEnd]]
                $cnode configure -byterange $byteRange
@@ -230,6 +226,8 @@ namespace eval ::Parser {
             *itcl::class -
             *itcl::widget -
             *oo::class -
+            *tcloolib::(class) -
+            (class) -
             Class -
             *xotcl::Class - 
             *nx::Class {

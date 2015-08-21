@@ -487,10 +487,13 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     }
     set script ""
     set tokenType [$node cget -type]
+    
     switch -glob -- $tokenType {
         
     *method - constructor - destructor {
         set clNode [$node getParent]
+        puts tkt,$tokenType,[$clNode info class]
+        
         set tktyp method
         set tknam [$node cget -name]
         set tkargs [list [$node cget -arglist]]
@@ -527,6 +530,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script ::snit::[set tktyp] " [getNSQ $clNode] $tknam $tkargs $tkdef"  
         }
         *TclOOClassNode {
+            set tktyp [$node cget -token]
             append script ::oo::define " [getNSQ $clNode] $tktyp $tknam $tkargs $tkdef"
         }
         *ItclClassNode {
@@ -535,6 +539,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         }
         }
     }
+    
     
     macro {
         append script "::sugar::macro [$node cget -name] [list [$node cget -arglist]] {"

@@ -64,6 +64,9 @@ class ::Parser::Script {
         eval configure $args
     }
     
+    ## \brief the script token (first word of the script), if any
+    public variable token ""
+    
     public variable name ""
         # @v defbrange: byte range for the definition
     public variable defbrange {}

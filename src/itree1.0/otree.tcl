@@ -4,50 +4,49 @@
 #package require tcloolib 0.1
 source ../tcloolib/tcloolib.tcl
 
-tcloolib::usemixin defaultvars
+#tcloolib::usemixin defaultvars
 
 namespace eval ::otree {
 
-::oo::class create node {
-    superclass ::tcloolib::confcget
+::tcloolib::(class) create node {
     
     ## \brief the node name, which is also displayed
-    Variable name ""
+    (variable) name ""
 
     ## \brief image: an image to display in front of the name.
-    Variable image balla
+    (variable) image balla
     
     ## \brief depth of this node in a tree hierarchy
-    Variable level 0
+    (variable) level 0
     
     ## \brief Display format list. 
     # Contains a string as accepted by [format] (e.g. %s) followed by 
     # the attributes that are to be displayed, e.g. -name. E.g. {%s -name}. 
     # The resulting string is displayed as the node's name in a tree display
-    Variable displayformat ""
+    (variable) displayformat ""
     
     ## \brief indicates whether the node is displayed
-    Variable displayed no
+    (variable) displayed no
     
     ## \brief A type associated with the node. Makes image display in a browser easy
-    Variable type
+    (variable) type
     
     ## \brief Whether the item is expanded on a display
-    Variable expanded
+    (variable) expanded
     
     ## \brief columnData that is associated with an item.
     # When the node is displayed in a Ttk browser, this is the data that goes in the 
     # columns. The list must match the column count.
-    Variable coldata
+    (variable) coldata
     
     ## \brief indicates that this node should be deleted when it is removed from its parent.
-    Variable dynamic 0
+    (variable) dynamic 0
     
     ## \brief the child nodes
-    Variable Children {}
+    (variable) Children {}
     
     ## \brief The parent node
-    Variable Parent {} -get -set
+    (variable) Parent {} -get -set
     
     destructor {
         my removeChildren
@@ -171,9 +170,9 @@ namespace eval ::otree {
     }
 }
 
-::oo::class create cnode {
-    Superclass ::otree::node
-    Variable x ""
+::tcloolib::(class) create cnode {
+    (superclass) ::otree::node
+    (variable) x ""
 }
 
 } ;# namespace ::otree

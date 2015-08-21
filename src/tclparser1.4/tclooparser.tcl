@@ -318,7 +318,7 @@ namespace eval ::Parser::TclOO {
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
-                superclass - Superclass {
+                superclass - (superclass) {
                     parseInherit $node $codeTree $content
                 }
                 
@@ -330,10 +330,10 @@ namespace eval ::Parser::TclOO {
                     $node addMethod $mNode
                 }
                 
-                constructor {
+                constructor - (constructor) {
                     set defOff 0
                     set csNode [parseConstructor $node $codeTree $content 0 defOff]
-                    $csNode configure -byterange $cmdRange
+                    $csNode configure -token $token -byterange $cmdRange
                     ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
                 }
                 
@@ -344,7 +344,7 @@ namespace eval ::Parser::TclOO {
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
                 
-                variable - Variable {
+                variable - (variable) {
                     set vNode [parseVar $node $codeTree $content $off 0]
                     if {$vNode != ""} {
                         $vNode configure -byterange $cmdRange
