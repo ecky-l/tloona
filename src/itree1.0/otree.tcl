@@ -14,7 +14,7 @@ namespace eval ::otree {
     (variable) name ""
 
     ## \brief image: an image to display in front of the name.
-    (variable) image balla
+    (variable) image {}
     
     ## \brief depth of this node in a tree hierarchy
     (variable) level 0

@@ -4,19 +4,15 @@ namespace eval ::tcloolib {
 
 ## \brief A mixin object that defines "public variable" behaviour of Itcl.
 # 
-# Every Itcl object defines methods [configure] and [cget], which are used
-# to set and get the values of public variables. This is done by calls like
+# Defines methods [configure] and [cget], which are used to set and get the 
+# values of public variables. This is done by calls like
 # [obj configure -varname1 value -varname2 value] and [obj cget -varname] 
-# respectively (note the dash in front of the variable name). The configuration
+# respectively (with a dash in front of the variable name). The configuration
 # or cget occurs on an object variable name without the dash.
-# 
-# This style is so helpful that I don't want to miss it :-). I also think that
-# it can safely be applied to the ::oo::class object, as long as you know what
-# configure and cget means
 # 
 # Constructors can also be called with the variables, and usually there is a 
 # traditional call to [eval configure $args] in every constructor of an Itcl
-# object. Since this has been very repetitive all the time, we can now let
+# object. Since this has been repetitive all the time, we can now let
 # the mixin object do it automatically.
 ::oo::class create confcget {
     
@@ -26,12 +22,12 @@ namespace eval ::tcloolib {
     # If not (the list is not even or any of the keys does not contain 
     # a dash as first character), then no configuration is done!
     constructor {args} {
-        if {[self next] != {}} {
-            next {*}$args
-        }
         if { [llength $args] % 2 == 0
                && [lsearch [lmap _x [dict keys $args] {string comp -l 1 $_x -}] 1] < 0 } {
             my configure {*}$args
+        }
+        if {[self next] != {}} {
+            next {*}$args
         }
     }
     
@@ -66,7 +62,7 @@ namespace eval ::tcloolib {
     
 }
 
-## \brief A meta class mixin for default variable assignment
+## \brief A meta class for default variable assignment and inheritance
 #
 # When defining classes, it is almost always very convenient to assigns 
 # default values, like 
@@ -74,23 +70,12 @@ namespace eval ::tcloolib {
 # 'variable varname value'
 # 'variabel varname {}'
 #
-# These default values should be assigned during object construction 
-# and use, so that it is not necessary to have [a] useful defaults at
-# hand if nothing else was defined and [b] not always check for existence
-# of an object variable before using it.
-# 
-# Since TclOO does not support this concept, we have to tweak it to do so.
-# Here is a way via an object that is designed to be mixed in meta classes
-# or the ::oo::class command itself:
-# 
-# 'oo::define oo::class mixin defaultvars'
-# 
-# It provides a new command 'Variable' (note the uppercase first letter!) 
-# as an object command and an accompanying ::oo::define::Variable. Both 
-# together are used in '::oo::class create' resp '::oo::define ... Variable'
-# statements to install the variable and its default into the class.
-# The variables with defaults are then installed into every new object
-# that is created from this class.
+# These default values should be assigned during object construction, so
+# that they are available in every method if not defined to be something 
+# else and it is not always necessary to check for existence before using
+# the variables.
+# Additionally the variables and defaults shall be installed automatically
+# in derived classes (but not in mixins)
 ::oo::class create (class) {
     superclass ::oo::class
     variable _Defaults
@@ -123,10 +108,10 @@ namespace eval ::tcloolib {
     
     ## \brief Installs variables from superclass in this class
     #
-    # This definer can be used instead of [superclass] to have
-    # the variables from the superclass defined with defaults in
-    # this class and all its objects.
-    # Filter private variables by preceeding underscore _
+    # Can be used instead of [superclass] to have the variables from 
+    # superclass and defaults defined in this class and all its objects.
+    # Private variables are denoted by preceeding underscore _ and
+    # filtered out here.
     method (superclass) {args} {
         ::oo::define [self] superclass {*}$args
         
@@ -149,9 +134,7 @@ namespace eval ::tcloolib {
     # vars from the class definition and installs the corresponding defaults
     # into the newly created object.
     # If a constructor is defined, it needs access to the variables and defaults.
-    # But since [new] or [create] must call the constructor first to create the
-    # object, the variables haven't been installed at this point. Therefore we
-    # prepend code to install the variables in front of the constructor body, so
+    # Prepend code to install the variables in front of the constructor body, so
     # that the variable defaults are installed first, before anything else. 
     method (constructor) {args} {
         append cbody apply " \{ " 
@@ -164,14 +147,14 @@ namespace eval ::tcloolib {
     ## \brief The Variable with default command.
     #
     # Is executed with a definition script after [create] (from the 
-    # constructor) or with calls to oo::define <cls> Variable. 
+    # constructor) or with calls to oo::define <cls> (variable). 
     # Arranges for the default to be installed in all existing 
     # or new instances of this class.
     # For private and protected variables there is additional support
     # for automatic getter and setter generation. If one or both of
     # the switches {-set, -get} are in the arguments after the value,
     # methods {"setVarname", "getVarname"} are created. The name is
-    # constructed from the varname (mind: uppercase first letter for 
+    # constructed from the varname (uppercase first letter for 
     # peotected, underscore _ for private). This happens only if there
     # are no methods of the same name already defined.
     method (variable) {args} {
@@ -233,18 +216,6 @@ namespace eval ::tcloolib {
     export (variable) (superclass) (constructor)
     
 } ;# defaultvars
-
-
-## \brief use the named mixin
-#
-# Some (one) of the classes are designed to be mixins for oo::class. 
-# If they are mixed in to oo::class, this will last forever, until 
-# the interp is deleted or the mixin is removed.
-# This procedure makes it easy to use a particular mixin by name.
-#proc usemixin {name} {
-#    set name [namespace tail $name]
-#    tailcall ::oo::define ::oo::class mixin [namespace current]::[set name]
-#}
 
 
 } ;# namespace ::oo
