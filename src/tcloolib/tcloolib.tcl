@@ -92,10 +92,34 @@ namespace eval ::tcloolib {
         next {*}$args
     }
     
-    ## \brief install variable defaults in case there is no (constructor)
+    ## \brief Delete locally created objects
+    method DoGC {obj name1 name2 op} {
+        if {[info obj isa object $obj]} {
+            $obj destroy
+        }
+        uplevel [list trace remove variable $name1 \
+            {write unset} [list [namespace origin my] DoGC $obj]]
+    }
+    
+    ## \brief create named or local objects 
+    #
+    # If the first argument in args is -local an object is created using 
+    # [new] and uplevel assigned to the variable in the second argument
+    # in args. Additionally a variable write/unset trace is created which
+    # makes sure that the object is destroyed when the call frame returns.
     method create {args} {
+        if {[string match -local [lindex $args 0]]} {
+            set varName [lindex $args 1]
+            upvar $varName obj
+            set obj [my new {*}[lrange $args 2 end]]
+            my installVars $obj [self] {*}[info class variables [self]]
+            uplevel [list trace add variable $varName \
+                {write unset} [list [namespace origin my] DoGC $obj]]
+            return
+        }
         set o [next {*}$args]
         my installVars $o [self] {*}[info class variables [self]]
+        
         return $o
     }
     
