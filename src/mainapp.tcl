@@ -1085,34 +1085,10 @@ class Tloona::Mainapp {
         set cnb [component consolenb]
         
         Tmw::console $cnb.console -wrap none -font {"Lucida Sans Typewriter" 13} \
-            -colors {
-                Keywords {darkred normal}
-                Braces {darkorange2 normal}
-                Brackets {red normal}
-                Parens {maroon4 normal}
-                Options {darkorange3 normal}
-                Digits {darkviolet normal}
-                Strings {magenta normal}
-                Vars {green4 normal}
-                Comments {blue normal}
-            } -vimode y -slavemode yes
+            -colors $UserOptions(TclSyntax) -vimode y -slavemode yes
             
-        #itk_component add console {
-#            ::Tmw::console $cnb.console -wrap none -vimode y
-#        }
-        
-        #itk_component add console {
-        #    Tmw::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
-        #        -font $UserOptions(ConsoleFont)
-        #}
-            
-        #set C [component console]
-        set C $cnb.console
-        # associate the widget switch command with the console
-        #bind [$C component textwin].t <Control-Tab> "[code $this switchWidgets];break"
-        bind $C <Control-Tab> "[code $this switchWidgets];break"
-        #set _DefaultInterp [$C createInterp 1]
-        $cnb add $C -text "Console"
+        bind $cnb.console <Control-Tab> "[code $this switchWidgets];break"
+        $cnb add $cnb.console -text "Console"
     }
         
     # @c open a Tcl/Itcl file
