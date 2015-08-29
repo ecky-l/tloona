@@ -492,7 +492,6 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         
     *method - constructor - destructor {
         set clNode [$node getParent]
-        puts tkt,$tokenType,[$clNode info class]
         
         set tktyp method
         set tknam [$node cget -name]

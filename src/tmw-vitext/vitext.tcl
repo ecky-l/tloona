@@ -164,10 +164,6 @@ snit::widgetadaptor Tmw::ViText {
         $self configurelist $args
     }
     
-    destructor {
-        puts "bye"
-    }
-    
     ## \brief Puts the text widget into command mode
     #
     # Sets up the key bindings that are handled for VI command mode.

@@ -4,10 +4,8 @@
 package require tmw::platform 1.0
 package require tmw::icons 1.0
 package require tloona::kitbrowser 1.0
-#package require tloona::codebrowser 1.0
 package require tloona::projectoutline 1.0
-package require tmw::slaveconsole 1.0
-package require tmw::backendconsole 1.0
+package require tmw::console 2.0
 package require tloona::file 1.0
 package require fileutil 1.7
 package require parser::parse 1.0
@@ -931,7 +929,8 @@ class Tloona::Mainapp {
     # @c switch between widgets inside the application
     protected method switchWidgets {} {
         set cfw [$_CurrFile component textwin].t
-        set consw [component console component textwin].t
+        #set consw [component console component textwin].t
+        set consw [component consolenb].console
         if {[string match [focus] $cfw]} {
             focus -force $consw
         } elseif {[string match [focus] $consw]} {
@@ -1085,16 +1084,34 @@ class Tloona::Mainapp {
         # disable this for now... just overhead
         set cnb [component consolenb]
         
-        itk_component add console {
-            Tmw::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
-                -font $UserOptions(ConsoleFont)
-        }
+        Tmw::console $cnb.console -wrap none -font {"Lucida Sans Typewriter" 13} \
+            -colors {
+                Keywords {darkred normal}
+                Braces {darkorange2 normal}
+                Brackets {red normal}
+                Parens {maroon4 normal}
+                Options {darkorange3 normal}
+                Digits {darkviolet normal}
+                Strings {magenta normal}
+                Vars {green4 normal}
+                Comments {blue normal}
+            } -vimode y -slavemode yes
             
-        set C [component console]
+        #itk_component add console {
+#            ::Tmw::console $cnb.console -wrap none -vimode y
+#        }
         
+        #itk_component add console {
+        #    Tmw::slaveconsole $cnb.console -colors $UserOptions(TclSyntax) \
+        #        -font $UserOptions(ConsoleFont)
+        #}
+            
+        #set C [component console]
+        set C $cnb.console
         # associate the widget switch command with the console
-        bind [$C component textwin].t <Control-Tab> "[code $this switchWidgets];break"
-        set _DefaultInterp [$C createInterp 1]
+        #bind [$C component textwin].t <Control-Tab> "[code $this switchWidgets];break"
+        bind $C <Control-Tab> "[code $this switchWidgets];break"
+        #set _DefaultInterp [$C createInterp 1]
         $cnb add $C -text "Console"
     }
         
@@ -1297,7 +1314,8 @@ class Tloona::Mainapp {
         if {$script == {}} {
             return
         }
-        component console eval $script 1
+        [component consolenb].console eval $script 1
+        #component console eval $script 1
     }
     
 }
