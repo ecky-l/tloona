@@ -80,6 +80,7 @@ namespace eval ::tcloolib {
     superclass ::oo::class
     variable _Defaults
     variable _SetGet
+    variable _RefVars
     
     ## \brief Installs handlers for oo::define before creating the class
     constructor {args} {
@@ -94,37 +95,71 @@ namespace eval ::tcloolib {
     
     ## \brief Delete locally created objects
     method DoGC {obj name1 name2 op} {
-        if {[info obj isa object $obj]} {
-            $obj destroy
-        }
-        uplevel [list trace remove variable $name1 \
-            {write unset} [list [namespace origin my] DoGC $obj]]
-    }
-    
-    ## \brief create named or local objects 
-    #
-    # If the first argument in args is -local an object is created using 
-    # [new] and uplevel assigned to the variable in the second argument
-    # in args. Additionally a variable write/unset trace is created which
-    # makes sure that the object is destroyed when the call frame returns.
-    method create {args} {
-        if {[string match -local [lindex $args 0]]} {
-            set varName [lindex $args 1]
-            upvar $varName obj
-            set obj [my new {*}[lrange $args 2 end]]
-            my installVars $obj [self] {*}[info class variables [self]]
-            uplevel [list trace add variable $varName \
+        if {![info obj isa object $obj]} {
+            uplevel [list trace remove variable $name1 \
                 {write unset} [list [namespace origin my] DoGC $obj]]
             return
         }
-        set o [next {*}$args]
-        my installVars $o [self] {*}[info class variables [self]]
         
-        return $o
+        # look for other references to the object. This is not quite stable
+        foreach {var} [uplevel info vars] {
+            if {![uplevel info exists $var]} {
+                continue
+            }
+            if {[uplevel array exists $var]} {
+                # maybe
+            } elseif {[uplevel set $var] eq $obj} {
+                if {[lsearch [dict get $_RefVars $obj] $var] >= 0} {
+                    continue
+                }
+                dict lappend _RefVars $obj $var
+                uplevel [list trace add variable $var \
+                    {write unset} [list [namespace origin my] DoGC $obj]]
+            }
+        }
+        
+        set rv [dict get $_RefVars $obj]
+        set idx [lsearch $rv $name1]
+        if {$idx >= 0} {
+            dict set _RefVars $obj [lreplace $rv $idx $idx]
+            uplevel [list trace remove variable $name1 \
+                {write unset} [list [namespace origin my] DoGC $obj]]
+        }
+        if {[dict get $_RefVars $obj] == {}} {
+            dict unset _RefVars $obj
+            $obj destroy
+        }
+    }
+    
+    ## \brief Some experimentation for GC objects
+    #
+    # GC can occur by destroying an object as soon as all references (variables)
+    # that point to it are unset. Start here with a write/unset trace on the 
+    # first variable for the object, which does GC (see DoGC).
+    # Once the trace is added, it is easy. The hard part is to keep track of 
+    # all variables that point to the object, especially on global / namespace 
+    # level and when objects are part of other objects. Because of this it is
+    # not really functional right now.
+    method creategc {args} {
+        set varName [lindex $args 0]
+        upvar $varName obj
+        set obj [my new {*}[lrange $args 1 end]]
+        my installVars $obj [self] {*}[info class variables [self]]
+        dict set _RefVars $obj $varName
+        uplevel [list trace add variable $varName \
+            {write unset} [list [namespace origin my] DoGC $obj]]
+        return $obj
     }
     
     ## \brief install variable defaults in case there is no (constructor)
     method new {args} {
+        set o [next {*}$args]
+        my installVars $o [self] {*}[info class variables [self]]
+        return $o
+    }
+    
+    ## \brief create named or local objects 
+    method create {args} {
         set o [next {*}$args]
         my installVars $o [self] {*}[info class variables [self]]
         return $o
