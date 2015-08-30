@@ -37,7 +37,7 @@ snit::widget ::Tmw::Console {
     option -historyfile ~/.tmwsh.history
     option -maxhistory 1000
     
-    option {-slavemode slavemode Slavemode} -default n -configuremethod ConfigSlavemode
+    option {-mode mode Mode} -default n -configuremethod ConfigMode
     variable SlaveInterp {}
     
     ## \brief The text window to type in
@@ -119,8 +119,8 @@ snit::widget ::Tmw::Console {
         grid $vscroll -row 0 -column 1 -padx 0 -pady 0 -sticky nes
         $self InsertPrompt
         
-        if {![dict exist $args -slavemode]} {
-            lappend args -slavemode no
+        if {![dict exist $args -mode]} {
+            lappend args -mode default
         }
         $self configurelist $args
         
@@ -136,20 +136,15 @@ snit::widget ::Tmw::Console {
         $self colorize Keywords [lindex $clr 0]
         
         $self highlight 1.0 end
-        $self loadHistory
+        $self LoadHistory
         
     }
     
     ## \brief Apply the configured colors to the textwin component
     method colorize {hclass color} {
-        set T $textwin
-        set nothing 0
-        set err 0
-        set a b
-        
         switch -- $hclass {
         Keywords {
-            ::ctext::addHighlightClass $T $hclass $color [$self getCommands]
+            ::ctext::addHighlightClass $textwin $hclass $color [$self getCommands]
         }
         Braces - Brackets - Parens {
             ::ctext::addHighlightClassForSpecialChars $textwin \
@@ -162,9 +157,6 @@ snit::widget ::Tmw::Console {
         Vars {
             ::ctext::addHighlightClassWithOnlyCharStart $textwin \
                     $hclass $color "\$"
-        }
-        default {
-            return
         }
         }
         
@@ -182,16 +174,19 @@ snit::widget ::Tmw::Console {
         set err 0
         set errInfo ""
         set result ""
-        if {$SlaveInterp != {}} {
+        switch -glob -- $options(-mode) {
+        slave {
             set err [catch {$SlaveInterp eval $cmd} result]
             if {$err} {
                 set errInfo [$SlaveInterp eval {set errorInfo}] 
             }
-        } else {
+        }
+        default {
             set err [catch {uplevel #0 $cmd} result]
             if {$err} {
                 set errInfo [uplevel #0 set errorInfo] 
             }
+        }
         }
         
         if {$err} {
@@ -328,15 +323,155 @@ snit::widget ::Tmw::Console {
         }
     }
     
+    ## \brief Setup the interp aliases for console mode
+    # 
+    # Some regular commands need to be specialized for handling in the 
+    # attached console, namely puts, gets and exit (maybe more that I
+    # cannot think of right now). We setup aliases for those commands 
+    # to perform the specialized operations.
+    method SetupAliases {} {
+        set renameScript {
+            rename ::puts ::__puts__
+            rename ::exit ::__exit__
+            rename ::gets ::__gets__
+        }
+        set aliasFcn {{self interp} {
+            interp alias $interp puts {} $self putsAlias
+            interp alias $interp exit {} $self exitAlias
+            interp alias $interp gets {} $self getsAlias
+        }}
+        
+        switch -glob -- $options(-mode) {
+        slave {
+            $SlaveInterp eval $renameScript
+            apply $aliasFcn $self $SlaveInterp
+        }
+        default {
+            uplevel #0 $renameScript
+            apply $aliasFcn $self {}
+        }
+        }
+    }
+    
+    ## \brief Handles the puts command. 
+    #
+    # If the channel is stdout (or not specified), we want to direct the
+    # output to the console window. Therefore the real puts command has been
+    # renamed to __puts__ in the attached interpreter and is only called
+    # if the channel is something else than stdout.
+    method putsAlias {args} {
+        if {[llength $args] > 3} {
+            error "invalid arguments"
+        }
+
+        # for real __puts__ below
+        set realArgs $args
+        set newline "\n"
+        if {[string match "-nonewline" [lindex $args 0]]} {
+            set newline ""
+            set args [lreplace $args 0 0]
+        }
+        
+        if {[llength $args] == 1} {
+            set chan stdout
+            set string [lindex $args 0]$newline
+        } else {
+            set chan [lindex $args 0]
+            set string [lindex $args 1]$newline
+        }
+        
+        if [regexp (stdout|stderr) $chan] {
+            foreach {line} [lrange [split $string \n] 0 end-1] {
+                append line \n
+                $textwin mark gravity limit right
+                $textwin fastinsert limit $line output
+                $textwin see limit
+                update
+                $textwin mark gravity limit left
+            }
+            return
+        }
+        
+        switch -glob -- $options(-mode) {
+        slave {
+            $SlaveInterp eval __puts__ $realArgs
+        }
+        default {
+            __puts__ {*}$realArgs
+        }
+        }
+    }
+    
+    ## \brief Handles the gets command.
+    #
+    # As with puts, we want to capture stdin from the console's text window
+    # and evaluated (set variable in gets <var>) in the attached interp.
+    method getsAlias {args} {
+        if {[llength $args] < 1 || [llength $args] > 2} {
+            error "wrong # of args, should be gets channel ?var?"
+        }
+        if {[string match [lindex $args 0] stdin]} {
+            set origRet [bind $textwin <Return>]
+            bind $textwin <Return> "[mymethod GetsStdin]; break"
+            vwait ::getsVar
+            set result [string range $::getsVar 0 end-1] ;# remove trailing \n
+            unset ::getsVar
+            $textwin see limit
+            bind $textwin <Return> $origRet
+            
+            # if a variable name was specified, set the variable
+            if {[llength $args] == 2} {
+                $self eval [list set [lindex $args 1] $result]
+                set result [string length $result]
+            }
+            return $result
+        }
+        
+        # if we reached here, there is another channel to read
+        switch -glob -- $options(-mode) {
+        slave {
+            $SlaveInterp eval __gets__ $args
+        }
+        default {
+            __gets__ {*}$args
+        }
+        }
+    }
+    
+    ## \brief Handles the exit command.
+    # 
+    # Real exit should only be performed when the console is attached to
+    # the main interpreter.
+    method exitAlias {args} {
+        $self SaveHistory
+        switch -glob -- $options(-mode) {
+        slave {
+            interp delete $SlaveInterp
+            interp create $SlaveInterp
+            $self SetupAliases
+            $self delete 1.0 end
+        }
+        default {
+            __exit__
+        }
+        }
+        return
+    }
+    
+    
+    ##
+    # private methods
+    ##
+    
     ## \brief Save the history, usually called on exit
-    method saveHistory {} {
+    method SaveHistory {} {
         set fh [open $options(-historyfile) w]
         puts $fh $options(-history)
         close $fh
     }
     
     ## \brief Load history file
-    method loadHistory {} {
+    method LoadHistory {} {
         if {![file exist $options(-historyfile)]} {
             set options(-history) {}
             return
@@ -345,52 +480,6 @@ snit::widget ::Tmw::Console {
         set options(-history) [read $fh]
         close $fh
     }
-    
-    ## \brief Setup the interp aliases for console mode
-    # 
-    # This must be procedures with the object as first argument,
-    # different from Itk widgets [scope] command. [puts] and [gets]
-    # should write/read to the text window for appropriate commands
-    # and behave normal for channels other than stdout/stdin. [exit]
-    # should save the history before the real exit.
-    # For slave and anyhow remote consoles, this method should be
-    # overridden to rename and set the aliases in the slave console
-    # or elsewhere
-    method setAliases {interp} {
-        if {$interp != {}} {
-            $interp eval {
-                rename ::puts ::__puts__
-                rename ::exit ::__exit__
-                rename ::gets ::__gets__
-            }
-        } else {
-            rename ::puts ::__puts__
-            rename ::exit ::__exit__
-            rename ::gets ::__gets__
-        }
-        interp alias $interp puts {} ::Tmw::Console::putsAlias $self
-        interp alias $interp exit {} ::Tmw::Console::exitAlias $self
-        interp alias $interp gets {} ::Tmw::Console::getsAlias $self
-    }
-    
-    ## \brief The exit command. 
-    #
-    # Per default exists the application, but may be overridden
-    method exitConsole {args} {
-        if {$SlaveInterp != {}} {
-            interp delete $SlaveInterp
-            interp create $SlaveInterp
-            $self setAliases $SlaveInterp
-            $self delete 1.0 end
-        } else {
-            ::__exit__
-        }
-        return
-    }
-    
-    ##
-    # private methods
-    ##
     
     # @c Small helper procedure to gets stdin in slave interpreter
     method GetsStdin {args} {
@@ -409,7 +498,7 @@ snit::widget ::Tmw::Console {
     }
     
     ## \brief configure whether this console operates a slave interpreter
-    method ConfigSlavemode {opt val} {
+    method ConfigMode {opt val} {
         set options($opt) $val
         
         # a proc for retrieval of all commands in namespaces
@@ -423,23 +512,22 @@ snit::widget ::Tmw::Console {
         append script "  \}\n"
         append script "\}\n"
         
-        if {$val} {
+        switch -- $val {
+        slave {
             set SlaveInterp [interp create]
             $SlaveInterp eval $script
-        } else {
+        }
+        default {
             if {$SlaveInterp != {}} {
                 interp delete $SlaveInterp
                 set SlaveInterp {}
             }
         }
+        }
+        
         uplevel #0 $script
-        $self setAliases $SlaveInterp
+        $self SetupAliases
     }
-    
-    #method ConfigPrompt {opt val} {
-    #    set options($opt) $val
-    #    $textwin configure -linestart [string length $val]
-    #}
     
     ## \brief Callback binding for backspace. 
     # 
@@ -527,17 +615,6 @@ snit::widget ::Tmw::Console {
             $textwin highlight "insert" "insert +10c"
         }
         }
-        #$self InsertHScroll
-    }
-    
-    method InsertHScroll {} {
-        set xv [$textwin xview]
-        grid $hscroll -row 1 -column 0 -padx 0 -pady 0 -sticky wes
-        #if {[lindex $xv 0] != 0 || [lindex $xv 1] != 1} {
-        #    grid $hscroll -row 1 -column 0 -padx 0 -pady 0 -sticky wes
-        #} else {
-        #    grid forget $hscroll
-        #}
     }
     
     ## \brief configmethod for colors
@@ -548,74 +625,6 @@ snit::widget ::Tmw::Console {
             $self colorize $k [lindex $v 0]
         }
         
-    }
-    
-    ##
-    # Procs
-    ##
-    proc putsAlias {textwin args} {
-        if {[llength $args] > 3} {
-            error "invalid arguments"
-        }
-
-        # for real __puts__ below
-        set realArgs $args
-        set newline "\n"
-        if {[string match "-nonewline" [lindex $args 0]]} {
-            set newline ""
-            set args [lreplace $args 0 0]
-        }
-        
-        if {[llength $args] == 1} {
-            set chan stdout
-            set string [lindex $args 0]$newline
-        } else {
-            set chan [lindex $args 0]
-            set string [lindex $args 1]$newline
-        }
-        
-        if [regexp (stdout|stderr) $chan] {
-            foreach {line} [lrange [split $string \n] 0 end-1] {
-                append line \n
-                $textwin mark gravity limit right
-                $textwin fastinsert limit $line output
-                $textwin see limit
-                update
-                $textwin mark gravity limit left
-            }
-        } else {
-            eval __puts__ $realArgs
-        }
-    }
-    
-    proc getsAlias {textwin args} {
-        if {[llength $args] < 1 || [llength $args] > 2} {
-            error "wrong # of args, should be gets channel ?var?"
-        }
-        if {[string match [lindex $args 0] stdin]} {
-            set origRet [bind $textwin <Return>]
-            bind $textwin <Return> "[mymethod GetsStdin]; break"
-            vwait ::getsVar
-            set result [string range $::getsVar 0 end-1] ;# remove trailing \n
-            unset ::getsVar
-            $textwin see limit
-            bind $textwin <Return> $origRet
-            
-            # if a variable name was specified, set the variable
-            if {[llength $args] == 2} {
-                eval [list set [lindex $args 1] $result]
-                set result [string length $result]
-            }
-            return $result
-        }
-        
-        # if we reached here, there is another channel to read
-        eval __gets__ $args
-    }
-    
-    proc exitAlias {textwin} {
-        $textwin saveHistory
-        $textwin exitConsole
     }
     
 }
@@ -645,6 +654,6 @@ package provide tmw::console 2.0
 #            Strings {magenta normal}
 #            Vars {green4 normal}
 #            Comments {blue normal}
-#    } -vimode y
+#    } -vimode y -mode default
 #pack .c -expand y -fill both
 #

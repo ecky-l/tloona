@@ -930,7 +930,8 @@ class Tloona::Mainapp {
     protected method switchWidgets {} {
         set cfw [$_CurrFile component textwin].t
         #set consw [component console component textwin].t
-        set consw [component consolenb].console
+        set consw [component consolenb].console.textwin.t
+        #puts [winfo children [component consolenb].console]
         if {[string match [focus] $cfw]} {
             focus -force $consw
         } elseif {[string match [focus] $consw]} {
@@ -1085,9 +1086,9 @@ class Tloona::Mainapp {
         set cnb [component consolenb]
         
         Tmw::console $cnb.console -wrap none -font {"Lucida Sans Typewriter" 13} \
-            -colors $UserOptions(TclSyntax) -vimode y -slavemode yes
+            -colors $UserOptions(TclSyntax) -vimode y -mode slave
             
-        bind $cnb.console <Control-Tab> "[code $this switchWidgets];break"
+        bind $cnb.console.textwin <Control-Tab> "[code $this switchWidgets];break"
         $cnb add $cnb.console -text "Console"
     }
         
