@@ -119,8 +119,24 @@ snit::widgetadaptor Tmw::ViText {
             }
             $W see insert            
         }} $win]
-        set options(-wordcmd) [list apply {{W} {
-            ::tk::TextSetCursor $W [::tk::TextNextWord $W insert]+1displayindices
+        set options(-wordcmd) [list apply {{W op count} {
+            switch -- $op {
+            move {
+                ::tk::TextSetCursor $W \
+                    [::tk::TextNextWord $W insert]+[set count]displayindices
+            }
+            d {
+                $W tag add sel [$W index insert] \
+                    [::tk::TextNextWord $W insert]+[set count]displayindices
+                tk_textCut $W
+            }
+            c {
+                $W tag add sel [$W index insert] \
+                    [::tk::TextNextWord $W insert]+[set count]displayindices
+                tk_textCut $W
+                $W setInsertMode
+            }
+            }
             $W see insert
         }} $win]
         set options(-backcmd) [list apply {{W} {
@@ -221,20 +237,32 @@ snit::widgetadaptor Tmw::ViText {
     
     ## \brief Handles the input key/char in command mode
     method HandleKey {key char} {
+        set repeats [expr {($RepeatBuf == {}) ? 1 : $RepeatBuf}]
         switch -- $key {
-        l - w - dollar {
-            uplevel #0 $CmdBindings($key)
-            after idle [mymethod AdjustCursorPosEOL]
-        }
-        i - a - A - h - j - k - b {
-            if {$RepeatBuf != {}} {
-                for {set i 0} {$i < $RepeatBuf} {incr i} {
-                    uplevel #0 $CmdBindings($key)
-                }
+        w {
+            if {$KeyCommand != {}} {
+                uplevel #0 $CmdBindings($key) $KeyCommand $repeats
+                set KeyCommand {}
             } else {
-                uplevel #0 $CmdBindings($key)
+                uplevel #0 $CmdBindings($key) move $repeats
+                after idle [mymethod AdjustCursorPosEOL]
             }
             set RepeatBuf {}
+        }
+        
+        h - j - k - l - b {
+            for {set i 0} {$i < $repeats} {incr i} {
+                uplevel #0 $CmdBindings($key)
+            }
+            after idle [mymethod AdjustCursorPosEOL]
+            set RepeatBuf {}
+        }
+        
+        i - a - A - dollar {
+            uplevel #0 $CmdBindings($key)
+            if {$key eq "dollar"} {
+                after idle [mymethod AdjustCursorPosEOL]
+            }
         }
         0 {
             if {$RepeatBuf == {}} {
@@ -244,8 +272,8 @@ snit::widgetadaptor Tmw::ViText {
                 append RepeatBuf 0
             }
         }
-        d - y {
-            if {$KeyCommand == $key} {
+        d - y - c {
+            if {$KeyCommand == $key && $key ne "c"} {
                 uplevel #0 $CmdBindings($key) $options(-linestart)
                 set LastCutYank line
                 set KeyCommand {}
@@ -367,7 +395,7 @@ snit::widgetadaptor Tmw::ViText {
         set dk { -wordcmd <Control-Right> -backcmd <Control-Left>}
         set ck { -wordcmd w -backcmd b }
         set CmdBindings([dict get $ck $option]) $value
-        bind $win [dict get $dk $option] "$value ; break"
+        bind $win [dict get $dk $option] "$value move 1 ; break"
     }
     
     method ConfigCursor {option value} {
