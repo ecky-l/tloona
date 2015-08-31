@@ -22,6 +22,7 @@ platform)
 
 Release 1.5.4 : Date 2015/08/29 :
  * bugfix token definition for TclOO parser
+ * integrated new, vimode enabled snit Tmw::console
 
 Release 1.5.3 : Date 2015/08/20 :
  * Bugfixes
