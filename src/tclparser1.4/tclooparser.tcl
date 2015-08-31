@@ -325,7 +325,7 @@ namespace eval ::Parser::TclOO {
                 method {
                     set defOff 0
                     set mNode [parseMethod $node $codeTree $content $off 0 defOff]
-                    $mNode configure -byterange $cmdRange
+                    $mNode configure -token $token -byterange $cmdRange
                     ::Parser::parse $mNode $off [$mNode cget -definition]
                     $node addMethod $mNode
                 }
@@ -340,14 +340,14 @@ namespace eval ::Parser::TclOO {
                 destructor {
                     set defOff 0
                     set dNode [parseDestructor $node $codeTree $content 0 defOff]
-                    $dNode configure -byterange $cmdRange
+                    $dNode configure -token $token -byterange $cmdRange
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
                 
                 variable - (variable) {
                     set vNode [parseVar $node $codeTree $content $off 0]
                     if {$vNode != ""} {
-                        $vNode configure -byterange $cmdRange
+                        $vNode configure -token $token -byterange $cmdRange
                     }
                 }
                 

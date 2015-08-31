@@ -20,6 +20,9 @@ platform)
 
 ==
 
+Release 1.5.4 : Date 2015/08/29 :
+ * bugfix token definition for TclOO parser
+
 Release 1.5.3 : Date 2015/08/20 :
  * Bugfixes
  * support for some self defined tcloo commands ( (class), (variable), (superclass), (constructor) )
