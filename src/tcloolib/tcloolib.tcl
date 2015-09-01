@@ -80,7 +80,6 @@ namespace eval ::tcloolib {
     superclass ::oo::class
     variable _Defaults
     variable _SetGet
-    variable _RefVars
     
     ## \brief Installs handlers for oo::define before creating the class
     constructor {args} {
@@ -93,76 +92,60 @@ namespace eval ::tcloolib {
         next {*}$args
     }
     
-    ## \brief Delete locally created objects
-    method DoGC {obj name1 name2 op} {
-        if {![info obj isa object $obj]} {
-            uplevel [list trace remove variable $name1 \
-                {write unset} [list [namespace origin my] DoGC $obj]]
-            return
-        }
-        
-        # look for other references to the object. This is not quite stable
-        foreach {var} [uplevel info vars] {
-            if {![uplevel info exists $var]} {
-                continue
-            }
-            if {[uplevel array exists $var]} {
-                # maybe
-            } elseif {[uplevel set $var] eq $obj} {
-                if {[lsearch [dict get $_RefVars $obj] $var] >= 0} {
-                    continue
-                }
-                dict lappend _RefVars $obj $var
-                uplevel [list trace add variable $var \
-                    {write unset} [list [namespace origin my] DoGC $obj]]
-            }
-        }
-        
-        set rv [dict get $_RefVars $obj]
-        set idx [lsearch $rv $name1]
-        if {$idx >= 0} {
-            dict set _RefVars $obj [lreplace $rv $idx $idx]
-            uplevel [list trace remove variable $name1 \
-                {write unset} [list [namespace origin my] DoGC $obj]]
-        }
-        if {[dict get $_RefVars $obj] == {}} {
-            dict unset _RefVars $obj
+    method DoCmdGC {oldname newname op} {
+        if {[info obj isa object $obj]} {
+            trace remove command $obj {rename delete} \
+                [list [namespace origin my] DoGC $obj]
             $obj destroy
         }
     }
     
-    ## \brief Some experimentation for GC objects
+    ## \brief Delete locally created objects
+    method DoVarGC {obj name1 name2 op} {
+        if {[info obj isa object $obj]} {
+            $obj destroy
+        }
+        uplevel [list trace remove variable $name1 \
+            {write unset} [list [namespace origin my] DoVarGC $obj]]
+    }
+    
+    ## \brief Create an object that is linked to a variable
     #
-    # GC can occur by destroying an object as soon as all references (variables)
-    # that point to it are unset. Start here with a write/unset trace on the 
-    # first variable for the object, which does GC (see DoGC).
-    # Once the trace is added, it is easy. The hard part is to keep track of 
-    # all variables that point to the object, especially on global / namespace 
-    # level and when objects are part of other objects. Because of this it is
-    # not really functional right now.
-    method creategc {args} {
-        set varName [lindex $args 0]
+    # Works like create, but instead of a command name, the first argument is 
+    # a variable name. It can then be used like any other Tcl variable.
+    # Additionally, a variable {write unset} trace is added which automatically
+    # destroys the object when the variable is overwritten or unset. This has
+    # the side effect that an object which was created using [varcreate] inside
+    # a procedure or method is automatically destroyed when the variable is
+    # local (but not when the variable is global, it is a namespace variable or
+    # hooked up by upvar / namespace upvar). It has also the effect that the
+    # objects destructor is called when the object was varcreate'd in a slave
+    # interpreter and this interp is deleted.
+    # However, other variables that point to the object are not traced, so this
+    # is not a full GC
+    method varcreate {varName args} {
         upvar $varName obj
-        set obj [my new {*}[lrange $args 1 end]]
+        set obj [my new {*}$args]
         my installVars $obj [self] {*}[info class variables [self]]
-        dict set _RefVars $obj $varName
         uplevel [list trace add variable $varName \
-            {write unset} [list [namespace origin my] DoGC $obj]]
-        return $obj
+            {write unset} [list [namespace origin my] DoVarGC $obj]]
+        return
     }
     
     ## \brief install variable defaults in case there is no (constructor)
     method new {args} {
-        set o [next {*}$args]
-        my installVars $o [self] {*}[info class variables [self]]
-        return $o
+        set obj [next {*}$args]
+        trace add command $obj {rename delete} [list [namespace origin my] DoCmdGC $obj]
+        my installVars $obj [self] {*}[info class variables [self]]
+        return $obj
     }
     
     ## \brief create named or local objects 
     method create {args} {
-        set o [next {*}$args]
-        my installVars $o [self] {*}[info class variables [self]]
-        return $o
+        set obj [next {*}$args]
+        trace add command $obj {rename delete} [list [namespace origin my] DoCmdGC $obj]
+        my installVars $obj [self] {*}[info class variables [self]]
+        return $obj
     }
     
     ## \brief Installs variables from superclass in this class
