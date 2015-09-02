@@ -122,19 +122,25 @@ snit::widgetadaptor Tmw::ViText {
         set options(-wordcmd) [list apply {{W op count} {
             switch -- $op {
             move {
-                ::tk::TextSetCursor $W \
-                    [::tk::TextNextWord $W insert]+[set count]displayindices
+                #::tk::TextSetCursor $W \
+                #    [::tk::TextNextWord $W insert]+[set count]displayindices
+                for {set i 0} {$i < $count} {incr i} {
+                    ::tk::TextSetCursor $W [::tk::TextNextWord $W insert]
+                }
             }
-            d {
-                $W tag add sel [$W index insert] \
-                    [::tk::TextNextWord $W insert]+[set count]displayindices
+            d - c {
+                #$W tag add sel [$W index insert] \
+                #    [::tk::TextNextWord $W insert]+[set count]displayindices
+                set ci [$W index insert]
+                set ce $ci
+                for {set i 0} {$i < $count} {incr i} {
+                    set ce [::tk::TextNextWord $W $ce]
+                }
+                $W tag add sel $ci $ce
                 tk_textCut $W
-            }
-            c {
-                $W tag add sel [$W index insert] \
-                    [::tk::TextNextWord $W insert]+[set count]displayindices
-                tk_textCut $W
-                $W setInsertMode
+                if {$op eq "c"} {
+                    $W setInsertMode
+                }
             }
             }
             $W see insert
