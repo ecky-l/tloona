@@ -84,9 +84,16 @@ snit::widgetadaptor Tmw::ViText {
     # and used in paste events. 
     variable LastCutYank {}
     
+    variable WordDispi 0
+    
     constructor {args} {
         installhull using ctext
         $win configure -exportselection y
+        
+        if {$::tcl_platform(platform) eq "unix"} {
+            set WordDispi 1
+        }
+        
         set options(-upcmd) [list apply {{W} {
             ::tk::TextSetCursor $W [::tk::TextUpDownLine $W -1]
             $W see insert
@@ -120,22 +127,20 @@ snit::widgetadaptor Tmw::ViText {
             $W see insert            
         }} $win]
         set options(-wordcmd) [list apply {{W op count} {
+            set addIdx [$W getWordDispi]displayindices
             switch -- $op {
             move {
-                #::tk::TextSetCursor $W \
-                #    [::tk::TextNextWord $W insert]+[set count]displayindices
                 for {set i 0} {$i < $count} {incr i} {
-                    ::tk::TextSetCursor $W [::tk::TextNextWord $W insert]
+                    ::tk::TextSetCursor $W [::tk::TextNextWord $W insert]+[set addIdx]
                 }
             }
             d - c {
-                #$W tag add sel [$W index insert] \
-                #    [::tk::TextNextWord $W insert]+[set count]displayindices
                 set ci [$W index insert]
                 set ce $ci
                 for {set i 0} {$i < $count} {incr i} {
                     set ce [::tk::TextNextWord $W $ce]
                 }
+                set ce [set ce]+[set addIdx]
                 $W tag add sel $ci $ce
                 tk_textCut $W
                 if {$op eq "c"} {
@@ -184,6 +189,11 @@ snit::widgetadaptor Tmw::ViText {
         set CmdBindings(Y) $options(-yanklinecmd)
         
         $self configurelist $args
+    }
+    
+    ## \brief Return the additional index for beginning of word when moving
+    method getWordDispi {} {
+        set WordDispi
     }
     
     ## \brief Puts the text widget into command mode
