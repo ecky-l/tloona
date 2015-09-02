@@ -96,7 +96,15 @@ snit::widget ::Tmw::Console {
         grid rowconfigure $win 0 -weight 1
         grid columnconfigure $win 0 -weight 1
         
-        bind $textwin <KeyRelease> [mymethod HandleInputChar %A]
+        bind $textwin <KeyPress> [list apply {{thisWin key char} {
+            switch -- $char {
+                \{ - \[ - ( {
+                    # these chars are not handled in the KeyRelease binding
+                    after 1 [list $thisWin handleInputChar $key $char]
+                }
+            }
+        }} $self %K %A]
+        #bind $textwin <KeyRelease> [mymethod handleInputChar %K %A]
         bind $textwin <Return> "[mymethod evalTypeIn]; break"
         
         $textwin configure -linestart limit -lineend end-1c \
@@ -138,6 +146,26 @@ snit::widget ::Tmw::Console {
         $self highlight 1.0 end
         $self LoadHistory
         
+    }
+    
+    ## \brief Does some additional processing on special input chars
+    #
+    # Inserts matching braces, parens and brackets, inserts a horizontal scrollbar
+    method handleInputChar {key char} {
+        set matchings { \{ \} \[ \] ( ) }
+        $textwin fastinsert insert [dict get $matchings $char]
+        $textwin mark set insert "insert -1c"
+        $textwin highlight "insert" "insert +10c"
+            
+        #__puts__ lalala,$char,$key
+        #switch -- $char {
+        #\{ - ( - \[ {
+        #    set matchings { \{ \} \[ \] ( ) }
+        #    $textwin fastinsert insert [dict get $matchings $char]
+        #    $textwin mark set insert "insert -1c"
+        #    $textwin highlight "insert" "insert +10c"
+        #}
+        #}
     }
     
     ## \brief Apply the configured colors to the textwin component
@@ -601,20 +629,6 @@ snit::widget ::Tmw::Console {
         $textwin tag add sel $startIdx end-1c
         tk_textCopy $textwin
         $textwin tag remove sel $startIdx end-1c
-    }
-    
-    ## \brief Does some additional processing on special input chars
-    #
-    # Inserts matching braces, parens and brackets, inserts a horizontal scrollbar
-    method HandleInputChar {char} {
-        switch -- $char {
-        \{ - ( - \[ {
-            set matchings { \{ \} \[ \] ( ) }
-            $textwin fastinsert insert [dict get $matchings $char]
-            $textwin mark set insert "insert -1c"
-            $textwin highlight "insert" "insert +10c"
-        }
-        }
     }
     
     ## \brief configmethod for colors
