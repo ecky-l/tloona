@@ -156,16 +156,6 @@ snit::widget ::Tmw::Console {
         $textwin fastinsert insert [dict get $matchings $char]
         $textwin mark set insert "insert -1c"
         $textwin highlight "insert" "insert +10c"
-            
-        #__puts__ lalala,$char,$key
-        #switch -- $char {
-        #\{ - ( - \[ {
-        #    set matchings { \{ \} \[ \] ( ) }
-        #    $textwin fastinsert insert [dict get $matchings $char]
-        #    $textwin mark set insert "insert -1c"
-        #    $textwin highlight "insert" "insert +10c"
-        #}
-        #}
     }
     
     ## \brief Apply the configured colors to the textwin component
