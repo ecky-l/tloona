@@ -52,6 +52,7 @@ if {$tcl_platform(platform) == "windows"} {
 
 }
 
+set ::UserOptions(ConsoleWrap) word
 # the time that a selected code fragment flashes
 set ::UserOptions(FlashTime) 1000
 # file options

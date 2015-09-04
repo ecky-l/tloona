@@ -1085,7 +1085,8 @@ class Tloona::Mainapp {
         # disable this for now... just overhead
         set cnb [component consolenb]
         
-        Tmw::console $cnb.console -wrap none -font $UserOptions(ConsoleFont) \
+        Tmw::console $cnb.console -wrap $UserOptions(ConsoleWrap) \
+            -font $UserOptions(ConsoleFont) \
             -colors $UserOptions(TclSyntax) -vimode y -mode slave
             
         bind $cnb.console.textwin <Control-Tab> "[code $this switchWidgets];break"
