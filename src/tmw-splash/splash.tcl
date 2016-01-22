@@ -27,10 +27,13 @@ proc Tmw::Splash::_Center {path} {
     set h [winfo reqheight $path]
     set sw [winfo screenwidth  $path]
     set sh [winfo screenheight $path]
-    set x0 [expr {([winfo screenwidth  $path] - $w)/2 - [winfo vrootx $path]}]
-    set y0 [expr {([winfo screenheight $path] - $h)/2 - [winfo vrooty $path]}]
+    set vrx [expr {[winfo vrootx $path] < 0 ? 0 : [winfo vrootx $path]}]
+    set vry [expr {[winfo vrooty $path] < 0 ? 0 : [winfo vrooty $path]}]
+    set x0 [expr {($sw - $w)/2 - $vrx}]
+    set y0 [expr {($sh - $h)/2 - $vry}]
     set x "+$x0"
     set y "+$y0"
+    
     if {$::tcl_platform(platform) != "windows"} {
         if { ($x0 + $w) > $sw } {
             set x "-0"

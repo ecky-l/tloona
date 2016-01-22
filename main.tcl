@@ -12,6 +12,7 @@ set ::TloonaApplication .tloona
 set env(ITCL_LIBRARY) [file join $::TloonaRoot lib Itcl3.4]
 set env(ITK_LIBRARY) [file join $::TloonaRoot lib Itk3.4]
 
+::tcl::tm::add [file join $::TloonaRoot lib]
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
 
 package require tmw::splash 1.0
