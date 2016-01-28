@@ -20,6 +20,9 @@ platform)
 
 ==
 
+Release 1.5.5 : Date 2016/01/25 :
+ * Fixed Splash position on windows
+
 Release 1.5.4 : Date 2015/08/29 :
  * bugfix token definition for TclOO parser
  * integrated new, vimode enabled snit Tmw::console
