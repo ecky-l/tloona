@@ -1,6 +1,6 @@
 # need to be commented
 
-lappend auto_path src lib
+#lappend auto_path src lib
 
 package require snit 2.3.2
 package require tmw::vitext 1.0
@@ -9,6 +9,21 @@ package require tmw::vitext 1.0
 namespace eval ::Tmw {
     namespace export console
     
+## \brief A dictionary of results from remote interp return values
+# is updated with every remote comm execution
+variable ConsCommResult {}
+
+## \brief A dictionary with comm ids/console widget mappings.
+# used to call the exitAlias method from remote, when exit is called
+variable ConsCommIds {}
+
+## \brief called from remote on exit
+proc ConsCommExit {id args} {
+    namespace upvar ::Tmw ConsCommIds commIds
+    set cons [dict get $commIds $id]
+    $cons exitAlias {*}$args
+}
+
 }
 
 ## \brief A basic console widget. 
@@ -42,6 +57,7 @@ snit::widget ::Tmw::Console {
     
     ## \brief The communications ID if mode is comm
     variable CommInterp {}
+    variable CommId {}
     
     ## \brief The text window to type in
     component textwin -inherit yes
@@ -135,24 +151,13 @@ snit::widget ::Tmw::Console {
             if {[lindex $m 0] eq "comm"} {
                 package require comm
                 if {[llength $m] == 1} {
-                    set promptFcn AskForCommInterp
+                    set promptFcn AskForCommId
                 }
             }
         } else {
             lappend args -mode default
         }
         $self $promptFcn
-        
-        #if {![dict exist $args -mode]} {
-        #    lappend args -mode default
-        #    $self InsertPrompt
-        #} elseif {[lindex [dict get $args -mode] 0] eq "comm" 
-        #    && [llength [dict get $args -mode]] == 1} {
-        #    $self AskForCommInterp
-        #} else {
-        #    $self InsertPrompt
-        #}
-        
         $self configurelist $args
         
         # do this tag configurations later so that
@@ -223,10 +228,10 @@ snit::widget ::Tmw::Console {
             }
         }
         comm {
-            set err [catch {comm::comm send $CommInterp $cmd} result]
+            set err [catch {comm::comm send $CommId $cmd} result]
             if {$err} {
-                global __ConsCommResult__
-                set errInfo [dict get $__ConsCommResult__ -errorinfo] 
+                namespace upvar ::Tmw ConsCommResult commResult
+                set errInfo [dict get $commResult $CommId -errorinfo] 
             }
         }
         default {
@@ -248,12 +253,24 @@ snit::widget ::Tmw::Console {
             }
             $textwin fastinsert insert $result result
         }
-        if {[lindex $cmd 0] == "cd"} {
-            # update prompt
+        
+        set promptFcn InsertPrompt
+        switch -- [lindex $cmd 0] {
+        cd {
             $self configure -prompt "([file tail [pwd]]) % "
         }
+        exit {
+            if {$options(-mode) eq "comm"} {
+                set promptFcn AskForCommId
+            }
+        }
+        }
+        #if {[lindex $cmd 0] == "cd"} {
+        #    # update prompt
+        #    $self configure -prompt "([file tail [pwd]]) % "
+        #}
         
-        $self InsertPrompt
+        $self $promptFcn
         $textwin see insert
         $textwin mark set limit insert
         
@@ -348,16 +365,16 @@ snit::widget ::Tmw::Console {
             $self setInsertMode
         }
         
-        if {$options(-mode) eq "comm" && $CommInterp == {}} {
+        if {$options(-mode) eq "comm" && $CommId == {}} {
             set command [string trim $command]
             if {$command != {} && [string is int $command]} {
                 $self SetCommInterp $command
                 $textwin mark set limit insert
-                puts "Connected to Comm ID $command"
+                $CommInterp eval [list puts "Connected to Comm ID $command"]
                 $self InsertPrompt
                 return
             }
-            $self AskForCommInterp
+            $self AskForCommId
             return
         }
         
@@ -383,14 +400,18 @@ snit::widget ::Tmw::Console {
     
     ## \brief set the comm interp for remote interaction
     method SetCommInterp {id} {
+        namespace upvar ::Tmw ConsCommIds commIds ConsCommResult commResult
+        set CommId $id
+        dict set commIds $id $self
+        dict set commResult $id {}
+        
         ::comm::comm connect $id
         ::comm::comm send $id list
-        set CommInterp $id
         
         ::comm::comm hook reply {
-            global __ConsCommResult__
-            set __ConsCommResult__ [array get return]
-            dict set __ConsCommResult__ -ret $ret
+            namespace upvar ::Tmw ConsCommResult commResult
+            dict set commResult $id [array get return]
+            dict set commResult $id -ret $ret
         }
         
         set script {
@@ -416,6 +437,12 @@ snit::widget ::Tmw::Console {
                 if {[regexp (stdout|stderr) $xchan]} {
                     ::comm::comm send $id [uplevel subst $buffer]
                 }
+            }
+            exit {
+                # Send a notice to the controlling remote to reinitialize
+                # but do not exit
+                ::comm::comm send $id [list ConsCommExit [::comm::comm self]]
+                return
             }
             }
         }
@@ -447,6 +474,11 @@ snit::widget ::Tmw::Console {
         slave {
             $SlaveInterp eval $renameScript
             apply $aliasFcn $self $SlaveInterp
+        }
+        comm {
+            $CommInterp eval $renameScript
+            apply $aliasFcn $self $CommInterp
+            interp alias $CommInterp ConsCommExit {} ::Tmw::ConsCommExit
         }
         default {
             uplevel #0 $renameScript
@@ -534,7 +566,7 @@ snit::widget ::Tmw::Console {
             $SlaveInterp eval __gets__ $args
         }
         comm {
-            comm::comm send $CommInterp [list eval gets $args]
+            $CommInterp eval __gets__ $args
         }
         default {
             __gets__ {*}$args
@@ -549,14 +581,21 @@ snit::widget ::Tmw::Console {
     method exitAlias {args} {
         $self SaveHistory
         switch -glob -- $options(-mode) {
-        slave - comm {
+        slave {
             interp delete $SlaveInterp
             interp create $SlaveInterp
             $self SetupAliases
             $self delete 1.0 end
         }
+        comm {
+            namespace upvar ::Tmw ConsCommIds comIds ConsCommResult commResult
+            dict unset commIds $CommId
+            dict unset commResult $CommId
+            set CommId {}
+            $self delete 1.0 end
+        }
         default {
-            __exit__
+            __exit__ {*}$args
         }
         }
         return
@@ -602,7 +641,7 @@ snit::widget ::Tmw::Console {
     }
     
     ## \brief If the -mode is comm and no comm id is given, ask for one
-    method AskForCommInterp {} {
+    method AskForCommId {} {
         $textwin fastinsert insert "Connect to Comm ID: " prompt
         $textwin mark set limit insert
         $textwin mark gravity limit left
@@ -629,8 +668,10 @@ snit::widget ::Tmw::Console {
             $SlaveInterp eval $script
         }
         comm {
+            set CommInterp [interp create]
             package require comm
-            set CommInterp [lindex $val 1]
+            ::comm::comm config -interp $CommInterp
+            set CommId [lindex $val 1]
         }
         default {
             if {$SlaveInterp != {}} {
@@ -744,17 +785,17 @@ proc Tmw::slaveconsole {path args} {
 package provide tmw::console 2.0
 
 #
-Tmw::console .c -wrap none -font {"Lucida Sans Typewriter" 13} \
-    -colors {
-            Keywords {darkred normal}
-            Braces {darkorange2 normal}
-            Brackets {red normal}
-            Parens {maroon4 normal}
-            Options {darkorange3 normal}
-            Digits {darkviolet normal}
-            Strings {magenta normal}
-            Vars {green4 normal}
-            Comments {blue normal}
-    } -vimode y -mode comm
-pack .c -expand y -fill both
+#Tmw::console .c -wrap none -font {"Lucida Sans Typewriter" 13} \
+#    -colors {
+#            Keywords {darkred normal}
+#            Braces {darkorange2 normal}
+#            Brackets {red normal}
+#            Parens {maroon4 normal}
+#            Options {darkorange3 normal}
+#            Digits {darkviolet normal}
+#            Strings {magenta normal}
+#            Vars {green4 normal}
+#            Comments {blue normal}
+#    } -vimode y -mode comm
+#pack .c -expand y -fill both
 #

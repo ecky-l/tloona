@@ -20,6 +20,9 @@ platform)
 
 ==
 
+Release 1.6.0 : Date 2016/04/30 :
+ * new feature Remote Console, to attach remote Tcl Interp via comm
+
 Release 1.5.5 : Date 2016/01/25 :
  * Fixed Splash position on windows
 

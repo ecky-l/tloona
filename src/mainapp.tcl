@@ -1091,6 +1091,14 @@ class Tloona::Mainapp {
             
         bind $cnb.console.textwin <Control-Tab> "[code $this switchWidgets];break"
         $cnb add $cnb.console -text "Console"
+        
+        # create remote console
+        Tmw::console $cnb.commconsole -wrap $UserOptions(ConsoleWrap) \
+            -font $UserOptions(ConsoleFont) \
+            -colors $UserOptions(TclSyntax) -vimode y -mode comm
+            
+        bind $cnb.commconsole.textwin <Control-Tab> "[code $this switchWidgets];break"
+        $cnb add $cnb.commconsole -text "Remote Console"
     }
         
     # @c open a Tcl/Itcl file
@@ -1292,8 +1300,8 @@ class Tloona::Mainapp {
         if {$script == {}} {
             return
         }
-        [component consolenb].console eval $script 1
-        #component console eval $script 1
+        set cons [component consolenb select]
+        $cons eval $script 1
     }
     
 }
