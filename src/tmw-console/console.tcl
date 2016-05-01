@@ -1,6 +1,6 @@
 # need to be commented
 
-lappend auto_path src lib
+#lappend auto_path src lib
 
 package require snit 2.3.2
 package require tmw::vitext 1.0
@@ -249,8 +249,8 @@ snit::widget ::Tmw::Console {
         }
         }
         
-        if {[dict exist $args -showoutput] 
-                && ![dict get $args -showoutput]} {
+        if {[dict exist $args -displayresult] 
+                && ![dict get $args -displayresult]} {
             return $result
         }
         $self displayResult $cmd $result $errInfo {*}$args
@@ -272,6 +272,10 @@ snit::widget ::Tmw::Console {
                 append result [lindex [split $cmd \n] 0] " ..." \n
             }
             $textwin fastinsert insert $result result
+        }
+        
+        if {[dict exist $args -noprompt] && [dict get $args -noprompt]} {
+            return
         }
         
         # adjust the prompt if directory changed
@@ -297,7 +301,6 @@ snit::widget ::Tmw::Console {
         
         $self $promptFcn
         $textwin mark set limit insert
-        #$textwin see insert
         
         set clr [dict get $options(-colors) Keywords]
         $self colorize Keywords [lindex $clr 0]
@@ -392,6 +395,7 @@ snit::widget ::Tmw::Console {
         
         if {$options(-mode) eq "comm" && $CommId == {}} {
             $textwin mark set insert end
+            $textwin see insert
             set command [string trim $command]
             if {$command != {} && [string is int $command]} {
                 
@@ -448,27 +452,6 @@ snit::widget ::Tmw::Console {
             set cmdl [string trimright [lindex $buffer 0] \n]
             set cmdArgs [lrange $cmdl 1 end]
             switch -- [lindex $cmdl 0] {
-            
-            puts {
-                set xchan stdout
-                if {[llength $cmdArgs] > 1} {
-                    switch -- [lindex $cmdArgs 0] {
-                    -nonewline {
-                        if {[llength [lrange $cmdArgs 1 end]] > 1} {
-                            set xchan [lindex $cmdArgs 1]
-                        }
-                    }
-                    default {
-                        set xchan [lindex $cmdArgs 0]
-                    }
-                    }
-                }
-                
-                if {[regexp (stdout|stderr) $xchan]} {
-                    ::comm::comm send $id [uplevel subst $buffer]
-                }
-            }
-            
             gets {
                 if {[llength $cmdArgs] > 1 && [lindex $cmdArgs 0] eq "stdin"} {
                     # gets stdin is to be acquired in remote console
@@ -477,14 +460,12 @@ snit::widget ::Tmw::Console {
                     return
                 }
             }
-            
             exit {
                 # Send a notice to the controlling remote to reinitialize
                 # but do not exit
                 ::comm::comm send $id [list ConsCommExit [::comm::comm self]]
                 return
             }
-            
             }
         }
         }
@@ -494,9 +475,63 @@ snit::widget ::Tmw::Console {
         set cwd [::comm::comm send $id pwd]
         $self configure -prompt "([file tail $cwd]) % "
         
+        $self SetupCommAliases $id
+        
         set CommId $id
         dict set commIds $id $self
         dict set commResult $id {}
+    }
+    
+    ## \brief Setup some command aliases in the comm interpreter.
+    # 
+    # The aliases are needed for seemless and comfortable interaction with
+    # this console widget, e.g. to puts the output inside the console. They
+    # are created in a way that should not affect functionality in the remote
+    # interp, i.e. most less invasive. That means that the command interface
+    # has to be constant and equal with the original command interface and
+    # the side effecty must be kept at a bare minimum.
+    # The aliases keep in place, even if the client connection is detached.
+    method SetupCommAliases {id} {
+        
+        set renCmd [::comm::comm send $id {info commands *__puts__}]
+        if {[llength $renCmd] == 0} {
+            ::comm::comm send $id {
+            rename ::puts ::__puts__
+            proc ::puts {args} {
+                uplevel ::__puts__ $args
+                
+                if {[catch {package present comm} r]} {
+                    return
+                }
+                
+                set xchan stdout
+                if {[llength $args] > 1} {
+                    switch -- [lindex $args 0] {
+                    -nonewline {
+                        if {[llength [lrange $args 1 end]] > 1} {
+                            set xchan [lindex $args 1]
+                        }
+                    }
+                    default {
+                        set xchan [lindex $args 0]
+                    }
+                    }
+                }
+                if {[regexp (stdout|stderr) $xchan]} {
+                    foreach {cid} [::comm::comm interp] {
+                        if {$cid eq [::comm::comm self]} {
+                            continue
+                        }
+                        ::comm::comm send $cid [concat \
+                            puts [uplevel subst [list $args]]]
+                    }
+                }
+                
+                return
+            }
+            }
+        }
+        
     }
     
     ## \brief Setup the interp aliases for console mode
@@ -594,6 +629,8 @@ snit::widget ::Tmw::Console {
         if {[string match [lindex $args 0] stdin]} {
             set origRet [bind $textwin <Return>]
             bind $textwin <Return> "[mymethod GetsStdin]; break"
+            $textwin mark set insert end
+            $textwin see insert
             vwait ::getsVar
             set result [string range $::getsVar 0 end-1] ;# remove trailing \n
             unset ::getsVar
@@ -602,8 +639,9 @@ snit::widget ::Tmw::Console {
             
             # if a variable name was specified, set the variable
             if {[llength $args] == 2} {
-                $self eval [list set [lindex $args 1] $result]
+                $self eval [list set [lindex $args 1] $result] -displayresult no
                 set result [string length $result]
+                $self displayResult [concat gets $args] $result {} -noprompt y
             }
             return $result
         }
@@ -637,10 +675,13 @@ snit::widget ::Tmw::Console {
         }
         comm {
             namespace upvar ::Tmw ConsCommIds comIds ConsCommResult commResult
+            set cid $CommId
             dict unset commIds $CommId
             dict unset commResult $CommId
             set CommId {}
             $self delete 1.0 end
+            
+            after 2000 [list ::comm::comm shutdown $cid]
         }
         default {
             __exit__ {*}$args
@@ -836,17 +877,17 @@ proc Tmw::slaveconsole {path args} {
 package provide tmw::console 2.0
 
 #
-Tmw::console .c -wrap none -font {"Lucida Sans Typewriter" 13} \
-    -colors {
-            Keywords {darkred normal}
-            Braces {darkorange2 normal}
-            Brackets {red normal}
-            Parens {maroon4 normal}
-            Options {darkorange3 normal}
-            Digits {darkviolet normal}
-            Strings {magenta normal}
-            Vars {green4 normal}
-            Comments {blue normal}
-    } -vimode y -mode comm
-pack .c -expand y -fill both
+#Tmw::console .c -wrap none -font {"Lucida Sans Typewriter" 13} \
+#    -colors {
+#            Keywords {darkred normal}
+#            Braces {darkorange2 normal}
+#            Brackets {red normal}
+#            Parens {maroon4 normal}
+#            Options {darkorange3 normal}
+#            Digits {darkviolet normal}
+#            Strings {magenta normal}
+#            Vars {green4 normal}
+#            Comments {blue normal}
+#    } -vimode y -mode comm
+#pack .c -expand y -fill both
 #
