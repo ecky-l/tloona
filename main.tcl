@@ -24,7 +24,7 @@ Tmw::Splash::Message "Loading packages"
 
 Tmw::Splash::Message "Loading comm"
 Tmw::Splash::Progress 5
-package require comm 4.3
+package require comm 4.6
 Tmw::Splash::Message "Loading img::png"
 Tmw::Splash::Progress 7
 package require -exact img::png 1.4.2

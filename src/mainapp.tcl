@@ -1301,7 +1301,7 @@ class Tloona::Mainapp {
             return
         }
         set cons [component consolenb select]
-        $cons eval $script 1
+        $cons eval $script -showlines 1
     }
     
 }
