@@ -232,9 +232,13 @@ snit::widget ::Tmw::Console {
             }
         }
         comm {
-            if {$CommId == {}} {
+            if {$CommId == {} || $CommId ni [comm::comm interp]} {
+                set errInfo "Connection to $CommId Lost!"
+                $self UnsetCommId $CommId
+                $self displayResult exit "Error" $errInfo {*}$args
                 return
             }
+            
             set err [catch {comm::comm send $CommId $cmd} result]
             if {$err} {
                 namespace upvar ::Tmw ConsCommResult commResult
@@ -482,6 +486,19 @@ snit::widget ::Tmw::Console {
         dict set commResult $id {}
     }
     
+    ## \brief cleanup a comm ID
+    method UnsetCommId {id} {
+        namespace upvar ::Tmw ConsCommIds comIds ConsCommResult commResult
+        set cid $CommId
+        dict unset commIds $CommId
+        dict unset commResult $CommId
+        set CommId {}
+        
+        if {$id in [comm::comm interp]} {
+            after 2000 [list ::comm::comm shutdown $cid]
+        }
+    }
+    
     ## \brief Setup some command aliases in the comm interpreter.
     # 
     # The aliases are needed for seemless and comfortable interaction with
@@ -674,14 +691,8 @@ snit::widget ::Tmw::Console {
             $self delete 1.0 end
         }
         comm {
-            namespace upvar ::Tmw ConsCommIds comIds ConsCommResult commResult
-            set cid $CommId
-            dict unset commIds $CommId
-            dict unset commResult $CommId
-            set CommId {}
+            $self UnsetCommId $CommId
             $self delete 1.0 end
-            
-            after 2000 [list ::comm::comm shutdown $cid]
         }
         default {
             __exit__ {*}$args
