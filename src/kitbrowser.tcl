@@ -243,7 +243,6 @@ class ::Tloona::KitBrowser {
     public method onCdConsoleThere {item} {
         set cons [$mainwindow component consolenb select]
         $cons eval [list cd [$item cget -name]] -showlines 1
-        #[$mainwindow component consolenb].console eval [list cd [$item cget -name]] 1
     }
     
     # @r All Tcl files in a particular starkit
