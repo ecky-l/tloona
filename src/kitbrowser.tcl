@@ -241,7 +241,9 @@ class ::Tloona::KitBrowser {
     
     ## \brief Change directory in the slave console that is configured
     public method onCdConsoleThere {item} {
-        [$mainwindow component consolenb].console eval [list cd [$item cget -name]] 1
+        set cons [$mainwindow component consolenb select]
+        $cons eval [list cd [$item cget -name]] -showlines 1
+        #[$mainwindow component consolenb].console eval [list cd [$item cget -name]] 1
     }
     
     # @r All Tcl files in a particular starkit
