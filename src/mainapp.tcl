@@ -97,6 +97,8 @@ class Tloona::Mainapp {
         menuentry Code.Unindent -type command -toolbar maintoolbar \
             -image $Icons(UnIndent) -command [code $this onIndent 0] \
             -label "Unindent section"
+        menuentry Code.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
+            -command [code $this onExecFile] -label "Execute Script in console"
         menuentry View.Browser -type checkbutton -label "Project/Code Browser" \
             -command [code $this onViewWindow browser] -toolbar maintoolbar \
             -variable [scope _ViewProjectBrowser] -image $Icons(ViewBrowser)
@@ -532,7 +534,36 @@ class Tloona::Mainapp {
         $T tag remove sel $start $end
         $_CurrFile indentBlock $indent $start $end
     }
+    
+    ## \brief Callback for execute script to console
+    public method onExecFile {} {
+        if {$_CurrFile == {}} {
+            return
+        }
+        set T [$_CurrFile component textwin]
+        set script [$T get 1.0 end]
+        set cons [component consolenb select]
         
+        set errInfo {}
+        set result [$cons eval $script -displayresult n -errinfovar errInfo]
+        if {[string trim $result] != {}} {
+            $cons displayResult run $result $errInfo
+        } else {
+            set fname "(current buffer)"
+            foreach {fn fil hn} $_Files {
+                if {$fil eq $_CurrFile} {
+                    if {$hn} {
+                        set fname $fn
+                    }
+                    break
+                }
+            }
+            
+            $cons displayResult run "Sourced Script $fname" $errInfo
+        }
+        #$cons eval [list puts "Sourced "]
+    }
+    
     # @c callback that is triggered when the currently selected
     # @c file changes
     public method onCurrFile {{file ""}} {
@@ -929,9 +960,7 @@ class Tloona::Mainapp {
     # @c switch between widgets inside the application
     protected method switchWidgets {} {
         set cfw [$_CurrFile component textwin].t
-        #set consw [component console component textwin].t
-        set consw [component consolenb].console.textwin.t
-        #puts [winfo children [component consolenb].console]
+        set consw [component consolenb select].textwin.t
         if {[string match [focus] $cfw]} {
             focus -force $consw
         } elseif {[string match [focus] $consw]} {

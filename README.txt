@@ -23,6 +23,8 @@ platform)
 Release 1.6.1 : Date 2016/05/02 :
  * Bugfix for connection lost from remote comm interp
  * Enabled cd there in comm interp console
+ * Added "source complete script to console" feature
+ * switch between Tcl files and currently selected console via Ctrl-Tab works
 
 Release 1.6.0 : Date 2016/04/30 :
  * new feature Remote Console, to attach remote Tcl Interp via comm
