@@ -257,7 +257,11 @@ snit::widget ::Tmw::Console {
                 && ![dict get $args -displayresult]} {
             return $result
         }
-        $self displayResult $cmd $result $errInfo {*}$args
+        if {[string index [string trim $cmd] end] ne ";"} {
+            $self displayResult $cmd $result $errInfo {*}$args
+        } else {
+            $self displayResult $cmd {} $errInfo {*}$args
+        }
         return $result
     }
     

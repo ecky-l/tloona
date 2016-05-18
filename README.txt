@@ -20,6 +20,11 @@ platform)
 
 ==
 
+Release 1.6.2 : Date 2016/05/18 :
+ * Enhancement for dynamic REPLS: if semicolon is typed after a statement, the
+   result of that statement is not displayed. Useful if output should be prevented,
+   e.g. if the result is huge or binary
+
 Release 1.6.1 : Date 2016/05/02 :
  * Bugfix for connection lost from remote comm interp
  * Enabled cd there in comm interp console
