@@ -595,6 +595,7 @@ class Tloona::Mainapp {
     ## \brief close a REPL
     public method onCloseREPL {which} {
         set curr [component consolenb select]
+        $curr eval exit -displayresult no
         component consolenb forget $curr
     }
     
