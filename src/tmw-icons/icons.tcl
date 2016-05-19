@@ -15,6 +15,10 @@ namespace eval ::Tmw {
     set Icons(FileClose) [image create photo -file [file join $IconPath fileclose.png]]
     set Icons(FileSave) [image create photo -file [file join $IconPath filesave.png]]
     set Icons(ActExit) [image create photo -file [file join $IconPath actexit.png]]
+    
+    set Icons(ConsoleBlack) [image create photo -file [file join $IconPath console_black18.png]]
+    set Icons(ConsoleRed) [image create photo -file [file join $IconPath console_red18.png]]
+    set Icons(ConsoleClose) [image create photo -file [file join $IconPath console_close18.png]]
 
     set Icons(ActUndo) [image create photo -file [file join $IconPath actundo.png]]
     set Icons(ActRedo) [image create photo -file [file join $IconPath actredo.png]]

@@ -58,6 +58,7 @@ class Tloona::Mainapp {
     private variable _ViewTextNbOnly 0
     # @v _ViewConsole: indicates whether to view the console
     private variable _ViewConsole 1
+    
     # @v _ViewEditor: indicates whether to view the editor
     private variable _ViewEditor 1
     # @v _ViewConsoleOnly: indicates whether to view the console only
@@ -77,7 +78,8 @@ class Tloona::Mainapp {
         global Icons UserOptions
         createPanes
         createNavigators
-        createConsole
+        onNewREPL slave
+        onNewREPL comm
         
         # disable the debugger features for now... this does not work currently
         #createDebugTools
@@ -97,8 +99,6 @@ class Tloona::Mainapp {
         menuentry Code.Unindent -type command -toolbar maintoolbar \
             -image $Icons(UnIndent) -command [code $this onIndent 0] \
             -label "Unindent section"
-        menuentry Code.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
-            -command [code $this onExecFile] -label "Execute Script in console"
         menuentry View.Browser -type checkbutton -label "Project/Code Browser" \
             -command [code $this onViewWindow browser] -toolbar maintoolbar \
             -variable [scope _ViewProjectBrowser] -image $Icons(ViewBrowser)
@@ -108,6 +108,14 @@ class Tloona::Mainapp {
         menuentry View.Editor -type checkbutton -label "Text Editor" \
             -command [code $this onViewWindow editor] -toolbar maintoolbar \
             -variable [scope _ViewEditor] -image $Icons(ViewEditor)
+        menuentry REPL.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
+            -command [code $this onExecFile] -label "Execute Script in current REPL"
+        menuentry REPL.NewSlaveConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleBlack) \
+            -command [code $this onNewREPL slave] -label "New SlaveInterp REPL"
+        menuentry REPL.NewCommConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleRed) \
+            -command [code $this onNewREPL comm] -label "New CommInterp REPL"
+        menuentry REPL.CloseConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleClose) \
+            -command [code $this onCloseREPL comm] -label "Close current REPL"
         
         configure -title "Tloona - Tcl/Tk Development" \
             -status "ready [comm::comm self]"
@@ -564,6 +572,32 @@ class Tloona::Mainapp {
         #$cons eval [list puts "Sourced "]
     }
     
+    ## \brief Create a new REPL
+    public method onNewREPL {mode} {
+        global UserOptions
+        
+        # disable this for now... just overhead
+        set cnb [component consolenb]
+        set last [lindex [split [lindex [lsort [component consolenb tabs]] end] .] end]
+        set ni [string range $last 4 end]
+        if {$ni == {}} {
+            set ni 0
+        }
+        set repl repl[incr ni]
+        Tmw::console $cnb.$repl -wrap $UserOptions(ConsoleWrap) \
+            -font $UserOptions(ConsoleFont) \
+            -colors $UserOptions(TclSyntax) -vimode y -mode $mode
+            
+        bind $cnb.$repl.textwin <Control-Tab> "[code $this switchWidgets];break"
+        $cnb add $cnb.$repl -text "REPL ($mode)"
+    }
+    
+    ## \brief close a REPL
+    public method onCloseREPL {which} {
+        set curr [component consolenb select]
+        component consolenb forget $curr
+    }
+    
     # @c callback that is triggered when the currently selected
     # @c file changes
     public method onCurrFile {{file ""}} {
@@ -1014,7 +1048,6 @@ class Tloona::Mainapp {
         bind [component textnb] <Double-Button-1> [code $this showOnly textnb]
         bind [component textnb] <<NotebookTabChanged>> [code $this onCurrFile]
         bind [component consolenb] <Double-Button-1> [code $this showOnly console]
-        
     }
 
     ## \brief creates the navigation controls: code browser, project browser...
@@ -1105,29 +1138,6 @@ class Tloona::Mainapp {
             -mainwindow $itk_interior]
         component browsenb add $vi -text "Variables"
         component consolenb add $si -text "Call Frames"
-    }
-        
-    # @c creates the console
-    private method createConsole {} {
-        global UserOptions
-        
-        # disable this for now... just overhead
-        set cnb [component consolenb]
-        
-        Tmw::console $cnb.console -wrap $UserOptions(ConsoleWrap) \
-            -font $UserOptions(ConsoleFont) \
-            -colors $UserOptions(TclSyntax) -vimode y -mode slave
-            
-        bind $cnb.console.textwin <Control-Tab> "[code $this switchWidgets];break"
-        $cnb add $cnb.console -text "Console"
-        
-        # create remote console
-        Tmw::console $cnb.commconsole -wrap $UserOptions(ConsoleWrap) \
-            -font $UserOptions(ConsoleFont) \
-            -colors $UserOptions(TclSyntax) -vimode y -mode comm
-            
-        bind $cnb.commconsole.textwin <Control-Tab> "[code $this switchWidgets];break"
-        $cnb add $cnb.commconsole -text "Remote Console"
     }
         
     # @c open a Tcl/Itcl file
