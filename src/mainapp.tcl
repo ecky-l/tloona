@@ -99,6 +99,14 @@ class Tloona::Mainapp {
         menuentry Code.Unindent -type command -toolbar maintoolbar \
             -image $Icons(UnIndent) -command [code $this onIndent 0] \
             -label "Unindent section"
+        menuentry REPL.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
+            -command [code $this onExecFile] -label "Execute Script in current REPL"
+        menuentry REPL.NewSlaveConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleBlack) \
+            -command [code $this onNewREPL slave] -label "New SlaveInterp REPL"
+        menuentry REPL.NewCommConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleRed) \
+            -command [code $this onNewREPL comm] -label "New CommInterp REPL"
+        menuentry REPL.CloseConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleClose) \
+            -command [code $this onCloseREPL comm] -label "Close current REPL"
         menuentry View.Browser -type checkbutton -label "Project/Code Browser" \
             -command [code $this onViewWindow browser] -toolbar maintoolbar \
             -variable [scope _ViewProjectBrowser] -image $Icons(ViewBrowser)
@@ -108,14 +116,6 @@ class Tloona::Mainapp {
         menuentry View.Editor -type checkbutton -label "Text Editor" \
             -command [code $this onViewWindow editor] -toolbar maintoolbar \
             -variable [scope _ViewEditor] -image $Icons(ViewEditor)
-        menuentry REPL.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
-            -command [code $this onExecFile] -label "Execute Script in current REPL"
-        menuentry REPL.NewSlaveConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleBlack) \
-            -command [code $this onNewREPL slave] -label "New SlaveInterp REPL"
-        menuentry REPL.NewCommConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleRed) \
-            -command [code $this onNewREPL comm] -label "New CommInterp REPL"
-        menuentry REPL.CloseConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleClose) \
-            -command [code $this onCloseREPL comm] -label "Close current REPL"
         
         configure -title "Tloona - Tcl/Tk Development" \
             -status "ready [comm::comm self]"
@@ -597,6 +597,7 @@ class Tloona::Mainapp {
         set curr [component consolenb select]
         $curr eval exit -displayresult no
         component consolenb forget $curr
+        destroy $curr
     }
     
     # @c callback that is triggered when the currently selected
