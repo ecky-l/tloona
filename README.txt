@@ -25,6 +25,7 @@ Release 1.6.2 : Date 2016/05/20 :
    result of that statement is not displayed. Useful if output should be prevented,
    e.g. if the result is huge or binary
  * Added REPL menu, ability to create more REPLs and close them
+ * Bugfix for open .test files, error occured
 
 Release 1.6.1 : Date 2016/05/02 :
  * Bugfix for connection lost from remote comm interp

@@ -618,8 +618,13 @@ snit::widget ::Tmw::Console {
         }
         
         if [regexp (stdout|stderr) $chan] {
-            foreach {line} [lrange [split $string \n] 0 end-1] {
-                append line \n
+            set lstr [split $string \n]
+            set li [expr {[llength $lstr]-1}]
+            for {set i 0} {$i < [llength $lstr]} {incr i} {
+                set line [lindex $lstr $i]
+                if {$i < $li} {
+                    append line \n
+                }
                 $textwin mark gravity limit right
                 $textwin fastinsert limit $line output
                 $textwin see limit

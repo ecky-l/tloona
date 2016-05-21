@@ -808,17 +808,20 @@ class Tloona::Mainapp {
     public method openFile {uri createTree} {
         global TloonaApplication
         
+        if {[file isdirectory $uri]} {
+            if {[isOpen $uri] != ""} {
+                Tmw::message $TloonaApplication "Project exists" ok \
+                    "The project $uri exists already"
+                return
+            }
+            openKitFile $uri
+            return
+        }
+        
         set ending [file extension $uri]
         set fCls ""
         switch -- $ending {
-            ".tcl" -
-            ".tk" -
-            ".tm" -
-            ".itcl" -
-            ".itk" -
-            ".xotcl" -
-            ".test" -
-            ".ws3" {
+            .tcl - .tk - .tm - .itcl - .itk - .xotcl - .test - .ws3 {
                 if {[set fileObj [isOpen $uri]] != ""} {
                     component textnb select $fileObj
                     return
@@ -836,11 +839,19 @@ class Tloona::Mainapp {
                         $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
                     }
                 } elseif {$fileInPrj} {
-                    component kitbrowser refreshFile $cTree
-                    $fCls setTree $cTree
+                    if {$cTree != {}} {
+                        component kitbrowser refreshFile $cTree
+                        $fCls setTree $cTree
+                    } else {
+                        #$fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
+                    }
                 }
                 $fCls updateHighlights
                 
+                #if {[file tail $uri] eq "cgetcache.test"} {
+                #    package re debugo 1.0
+                #    bp
+                #}
                 $fCls addToBrowser [component codebrowser]
                 if {$fileInPrj} {
                     $fCls addToBrowser [component kitbrowser]
@@ -862,15 +873,15 @@ class Tloona::Mainapp {
             ".kit" -
             ".vfs" -
             default {
-                if {[file isdirectory $uri]} {
-                    if {[isOpen $uri] != ""} {
-                        Tmw::message $TloonaApplication "Project exists" ok \
-                            "The project $uri exists already"
-                        return
-                    }
-                    openKitFile $uri
-                    return
-                }
+                #if {[file isdirectory $uri]} {
+                #    if {[isOpen $uri] != ""} {
+                #        Tmw::message $TloonaApplication "Project exists" ok \
+                #            "The project $uri exists already"
+                #        return
+                #    }
+                #    openKitFile $uri
+                #    return
+                #}
                 
                 set fType [lindex [fileutil::fileType $uri] 0]
                 if {[string equal $fType text]} {

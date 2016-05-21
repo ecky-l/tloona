@@ -1,4 +1,4 @@
-package provide debug 1.0
+package provide debugo 1.0
 
 proc up {} {
     uplevel 2 {
@@ -14,7 +14,7 @@ proc down {} {
 proc bp {args} {
     array set aargs $args
     # conditional breakpoints
-    if {[info exists aargs(-if)] && ![expr $aargs(-if)]} {
+    if {[info exists aargs(-if)] && ![uplevel expr $aargs(-if)]} {
         return
     }
 
@@ -24,27 +24,26 @@ proc bp {args} {
     
     set fr  [info frame]
     array set frData [info frame [expr {$fr - 1}]]
-    set prompt "Debug ($frData(type) "
+    set rompt "Debug ($frData(type) "
     switch -- $frData(type) {
         source {
             set f [lindex [file split $frData(file)] end]
-            append prompt "$f:$frData(line) ($frData(proc))) "
+            append rompt "$f:$frData(line) ($frData(proc))) "
         }
         proc -
         eval {
-            append prompt "line:$frData(line) ($frData(cmd))) "
+            append rompt "line:$frData(line) ($frData(cmd))) "
         }
     }
-    
     while {1} {
-        puts -nonewline $prompt
+        puts -nonewline $rompt
         flush stdout
-        gets stdin line
-        append cmd $line\n
+        set line [gets stdin]
+        append cmd $line \n
         if {[info complete $cmd]} {
             set code [catch {uplevel #$level $cmd} result]
-            if {$code == 0 && [string length $result]} {
-                puts stdout $result
+            if {$code == 0 && [string length $result] > 0} {
+                puts $result
             } elseif {$code == 3} {
                 break
                 #error "aborted debugger"
@@ -57,7 +56,9 @@ proc bp {args} {
             #set prompt "Debug ($level) % "
             set cmd ""
         } else {
-            set prompt "    "
+            set rompt "    "
         }
-    }    
+        continue
+    }
+    return
 }

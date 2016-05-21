@@ -8,4 +8,5 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
+package ifneeded debugo 1.0 [list source [file join $dir debugo.tcl]]
 package ifneeded tdb 0.1 [list source [file join $dir tdb.tcl]]
