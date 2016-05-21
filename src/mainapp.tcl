@@ -828,34 +828,18 @@ class Tloona::Mainapp {
                 }
                 set fCls [openTclFile $uri 1]
                 set fileInPrj [isProjectPart $uri cTree]
-                if {$createTree} {
-                    # the code tree does not exist yet. Create it, but
-                    # only if this is a file that was not opened from
-                    # an existing vfs project
-                    if {$fileInPrj && $cTree != {}} {
-                        component kitbrowser refreshFile $cTree
-                        $fCls setTree $cTree
-                    } else {
-                        $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
-                    }
-                } elseif {$fileInPrj} {
-                    if {$cTree != {}} {
-                        component kitbrowser refreshFile $cTree
-                        $fCls setTree $cTree
-                    } else {
-                        #$fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
-                    }
-                }
-                $fCls updateHighlights
-                
-                #if {[file tail $uri] eq "cgetcache.test"} {
-                #    package re debugo 1.0
-                #    bp
-                #}
-                $fCls addToBrowser [component codebrowser]
                 if {$fileInPrj} {
-                    $fCls addToBrowser [component kitbrowser]
+                    if {$cTree == {}} {
+                        $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
+                        set cTree [$fCls getTree]
+                    } else {
+                        $fCls setTree $cTree
+                    }
+                    component kitbrowser refreshFile $cTree
                 }
+                
+                $fCls updateHighlights
+                $fCls addToBrowser [component codebrowser]
                 update
             }
             ".tml" -
@@ -873,16 +857,6 @@ class Tloona::Mainapp {
             ".kit" -
             ".vfs" -
             default {
-                #if {[file isdirectory $uri]} {
-                #    if {[isOpen $uri] != ""} {
-                #        Tmw::message $TloonaApplication "Project exists" ok \
-                #            "The project $uri exists already"
-                #        return
-                #    }
-                #    openKitFile $uri
-                #    return
-                #}
-                
                 set fType [lindex [fileutil::fileType $uri] 0]
                 if {[string equal $fType text]} {
                     if {[set fileObj [isOpen $uri]] != ""} {
