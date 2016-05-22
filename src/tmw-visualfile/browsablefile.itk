@@ -18,10 +18,24 @@ class ::Tmw::BrowsableFile {
     }
     
     public {
+        
         # @c adds the file to the given code browser
-        method addToBrowser {browser}
+        method addToBrowser {browser} {
+            if {![$browser exists $BrowserTree]} {
+                $browser add $BrowserTree 1 0
+            }
+            
+            if {[lsearch $BrowserDisplays $browser] < 0} {
+                lappend BrowserDisplays $browser
+            }
+        }
+        
         # @c removes this file from the given file browser
-        method removeFromBrowser {browser}
+        method removeFromBrowser {browser} {
+            $browser remove $BrowserTree
+            set idx [lsearch $BrowserDisplays $browser]
+            lvarpop BrowserDisplays $idx
+        }
         
         # @c Creates a code tree that represents this file.
         method createTree {}
@@ -84,20 +98,6 @@ class ::Tmw::BrowsableFile {
     
 }
 
-body ::Tmw::BrowsableFile::addToBrowser {browser} {
-    if {![$browser exists $BrowserTree]} {
-        $browser add $BrowserTree 1 0
-    }
-    if {[lsearch $BrowserDisplays $browser] < 0} {
-        lappend BrowserDisplays $browser
-    }
-}
-
-body ::Tmw::BrowsableFile::removeFromBrowser {browser} {
-    $browser remove $BrowserTree
-    set idx [lsearch $BrowserDisplays $browser]
-    lvarpop BrowserDisplays $idx
-}
 
 body ::Tmw::BrowsableFile::createTree {} {
     if {[getTree] != ""} {

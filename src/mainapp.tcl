@@ -622,7 +622,14 @@ class Tloona::Mainapp {
         # is the search toolbar showing in the new file?
         set _ShowSearchReplace [expr {[$_CurrFile showingSearch] ? 1 : 0}]
         onEditSearch
-    
+        
+        set fObj [$_CurrFile cget -browserobj]
+        puts huh,$fObj
+        if {$fObj != {} && [component kitbrowser exists $fObj]} {
+            component kitbrowser selection set $fObj
+            component kitbrowser see $fObj
+        }
+            
         # adjust code browser view
         if {[$_CurrFile isa ::Tmw::BrowsableFile]} {
             set fb [component codebrowser]
@@ -632,14 +639,6 @@ class Tloona::Mainapp {
                 if {[$fb children ""] != {}} {
                     $fb see [lindex [$fb children ""] 0]
                 }
-            }
-        
-            set fb [component kitbrowser]
-            set cTree [$_CurrFile getTree]
-            if {$cTree != "" && [$fb exists $cTree] 
-                    && [$fb cget -syncronize]} {
-                $fb selection set $cTree
-                $fb see $cTree
             }
         }
         
@@ -827,19 +826,18 @@ class Tloona::Mainapp {
                     return
                 }
                 set fCls [openTclFile $uri 1]
-                set fileInPrj [isProjectPart $uri cTree]
-                if {$fileInPrj} {
-                    if {$cTree == {}} {
-                        $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
-                        set cTree [$fCls getTree]
-                    } else {
-                        $fCls setTree $cTree
-                    }
-                    component kitbrowser refreshFile $cTree
+                set fileInPrj [isProjectPart $uri browserObj]
+                puts fck,$fileInPrj,$browserObj
+                if {$fileInPrj && $browserObj != {}} {
+                    $fCls configure -browserobj $browserObj
                 }
+                $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
                 
                 $fCls updateHighlights
                 $fCls addToBrowser [component codebrowser]
+                if {$fileInPrj} {
+                    $fCls addToFileBrowser [component kitbrowser]
+                }
                 update
             }
             ".tml" -
@@ -853,6 +851,10 @@ class Tloona::Mainapp {
                     return
                 }
                 set fCls [openWebFile $uri]
+                set fileInPrj [isProjectPart $uri browserObj]
+                if {$fileInPrj && $browserObj != {}} {
+                    $fCls configure -browserobj $browserObj
+                }
             }
             ".kit" -
             ".vfs" -
@@ -864,6 +866,10 @@ class Tloona::Mainapp {
                         return
                     }
                     set fCls [openPlainFile $uri]
+                    set fileInPrj [isProjectPart $uri browserObj]
+                    if {$fileInPrj && $browserObj != {}} {
+                        $fCls configure -browserobj $browserObj
+                    }
                     
                 } else {
                     puts "cannot handle this"
@@ -1079,18 +1085,6 @@ class Tloona::Mainapp {
         bind $V <Control-Button-1> [code $this selectCode %W %x %y 1]
         bind [component codebrowser] <<SortSeqChanged>> \
             [code $this setOption %W "CodeBrowser,Sort"]
-        
-        # The project outline
-        itk_component add projectoutline {
-            ::Tloona::projectoutline $bnb.projectoutline \
-                -sortsequence $UserOptions(CodeBrowser,SortSeq) \
-                -sortalpha $UserOptions(CodeBrowser,SortAlpha) \
-                -mainwindow $itk_interior
-        }
-        component projectoutline setNodeIcons $Icons(ScriptIcons)
-        component projectoutline addSendCmd [code $this sendToConsole]
-        $bnb add [component projectoutline] -text "Project Outline"
-        
     }
 
     # @c Creates debugging tools and inspection browsers
@@ -1190,7 +1184,7 @@ class Tloona::Mainapp {
                     continue
                 }
                 $cls setTree $file
-                $cls addToBrowser [component kitbrowser]
+                $cls addToFileBrowser [component kitbrowser]
                 $cls updateHighlights
             }
         }
@@ -1307,9 +1301,8 @@ class Tloona::Mainapp {
         upvar $treePtr tree
         set tree {}
         foreach {prj} [component kitbrowser getStarkits] {
-            set pn [$prj cget -name]
-            set pnl [string length $pn]
-            if {[string compare -length $pnl $pn $uri] == 0} {
+            set rn $uri
+            if {[string match [$prj cget -name]* $uri]} {
                 foreach {kid} [$prj getChildren yes] {
                     if {[$kid cget -name] == $uri} {
                         set tree $kid

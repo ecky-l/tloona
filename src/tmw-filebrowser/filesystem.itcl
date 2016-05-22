@@ -126,8 +126,6 @@ namespace eval ::Tmw::Fs {
                             $thing setTree [::Parser::Script ::#auto \
                                 -type "script" -file $file \
                                 -displayformat {"%s (%s)" -name -dirname}]
-                            $thing addChild [::Parser::Script ::#auto -name dummy \
-                                -displayformat {%s -name}]
                         }
                     }
                     $rootObj addChild $thing

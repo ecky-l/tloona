@@ -133,6 +133,10 @@ class ::Tmw::VisualFile {
     }
     
     public {
+        
+        ## \brief the browser object for the file. Used for display in file browsers (not code browsers)
+        variable browserobj {}
+        
         # @v mainwindow: the main window where the file lives
         variable mainwindow ""
         # @v filename: the filename
@@ -169,7 +173,25 @@ class ::Tmw::VisualFile {
         variable searchregex 0
         # @v SearchNocase: Search parameter for -nocase flag
         variable searchnocase 0
-    
+        
+        ## \brief add to a file browser
+        method addToFileBrowser {browser} {
+            if {![$browser exists $browserobj]} {
+                $browser add $browserobj 1 0
+            }
+            
+            if {[lsearch $FileBrowsers $browser] < 0} {
+                lappend FileBrowsers $browser
+            }
+        }
+        
+        ## \brief remove from a file browser
+        method removeFromFileBrowser {browser} {
+            $browser remove $browserobj
+            set idx [lsearch $FileBrowsers $browser]
+            lvarpop BrowserDisplays $idx
+        }
+        
         # @c saves the file. If file is given as argument,
         # @c it is set as the new filename. Otherwise, the
         # @c filename of this object is used. If no filename
@@ -268,6 +290,9 @@ class ::Tmw::VisualFile {
         variable WSearch ""
         # @v WReplace: the replace entry widget
         variable WReplace ""
+        
+        ## \brief List of file only browsers where this object appears
+        variable FileBrowsers {}
         
         method deleteCharBefore {index} {
             component textwin delete "$index -1c" "$index"

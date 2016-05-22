@@ -83,6 +83,10 @@ class ::Tloona::CodeOutline {
         }
         menu .outlinecmenu -tearoff no
         menu .outlinecmenu.commm -tearoff no
+        
+        .outlinecmenu add command -label "Send to Console" -command \
+                [code $this sendDefinition $realItem console ""]
+         
         .outlinecmenu add cascade -label "Send to Comm" -menu .outlinecmenu.commm
         if {[set mw [cget -mainwindow]] != "" &&
                 [$mw isa ::Tloona::Mainapp] && 

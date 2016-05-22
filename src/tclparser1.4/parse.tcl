@@ -237,9 +237,11 @@ namespace eval ::Parser {
                 }
             }
             
-            define - *oo::define {
+            define - objdefine - *oo::define - *oo::objdefine {
                 # not yet working
-                #TclOO::parseDefine $node $codeTree $content $cmdRange $off
+                if {$node == {} || [$node cget -type] eq "namespace"} {
+                    TclOO::parseDefine $node $codeTree $content $cmdRange $off
+                }
             }
             
             Attribute -

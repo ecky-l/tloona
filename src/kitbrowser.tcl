@@ -266,25 +266,25 @@ class ::Tloona::KitBrowser {
     # @c Overrides the selection method in Tmw::Browser.
     # @c In a kit browser, the selection should always be set to
     # @c a file or directory, never to a containing code tree
-    public method selection {args} {
-        if {[llength $args] == 0} {
-            eval chain $args
-        }
-        set selOp [lindex $args 0]
-        set items {}
-        foreach {item} [lindex $args 1] {
-            lappend items [$item getTopnode ::Parser::StructuredFile]
-        }
-        
-        eval chain $selOp $items
-    }
+#    public method selection {args} {
+#        if {[llength $args] == 0} {
+#            eval chain $args
+#        }
+#        set selOp [lindex $args 0]
+#        set items {}
+#        foreach {item} [lindex $args 1] {
+#            lappend items [$item getTopnode ::Parser::StructuredFile]
+#        }
+#        
+#        #eval chain $selOp $items
+#    }
         
     # @c Overrides see in Tmw::Browser. In Kit browsers, see does
     # @c never refer to inner code trees, it always refers to 
     # @c files or directories
-    public method see {item} {
-        chain [$item getTopnode ::Parser::StructuredFile]
-    }
+    #public method see {item} {
+        #chain [$item getTopnode ::Parser::StructuredFile]
+    #}
         
     # @c Overrides the expand method
     public method expand {open {item ""}} {
@@ -304,7 +304,7 @@ class ::Tloona::KitBrowser {
             set chds [[$item getTree] getChildren yes]
             if {[llength $chds] == 1 && [string equal [$chds cget -name] dummy]} {
                 $item removeChild $chds
-                $item parseFile [$item cget -name]
+                #$item parseFile [$item cget -name]
                 add $item 1 1
                 itcl::delete object $chds
             }

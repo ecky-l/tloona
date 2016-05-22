@@ -470,7 +470,9 @@ proc ::Tloona::getNSQ {node} {
     set name [$node cget -name]
     set parent [$node getParent]
     while {$parent != "" && [$parent isa ::Parser::StructuredFile]} {
-        set name [$parent cget -name]::[set name]
+        if {[$parent cget -type] ne "script"} {
+            set name [$parent cget -name]::[set name]
+        }
         set parent [$parent getParent]
     }
     set name ::[string trim $name :]

@@ -26,7 +26,11 @@ Release 1.6.2 : Date 2016/05/20 :
    e.g. if the result is huge or binary
  * Added REPL menu, ability to create more REPLs and close them
  * Bugfix for open .test files, error occured
-
+ * Removed building of code tree in Workspace browser. Tree is shown in Outline only
+   (faster, less buggy and cluttered)
+ * parser understands ::oo::define and ::oo::objdefine for methods and variables
+ * removed empty projectoutline window
+ 
 Release 1.6.1 : Date 2016/05/02 :
  * Bugfix for connection lost from remote comm interp
  * Enabled cd there in comm interp console
