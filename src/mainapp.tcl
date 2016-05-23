@@ -624,7 +624,6 @@ class Tloona::Mainapp {
         onEditSearch
         
         set fObj [$_CurrFile cget -browserobj]
-        puts huh,$fObj
         if {$fObj != {} && [component kitbrowser exists $fObj]} {
             component kitbrowser selection set $fObj
             component kitbrowser see $fObj
@@ -827,7 +826,6 @@ class Tloona::Mainapp {
                 }
                 set fCls [openTclFile $uri 1]
                 set fileInPrj [isProjectPart $uri browserObj]
-                puts fck,$fileInPrj,$browserObj
                 if {$fileInPrj && $browserObj != {}} {
                     $fCls configure -browserobj $browserObj
                 }
