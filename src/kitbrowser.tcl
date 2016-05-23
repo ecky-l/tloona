@@ -187,19 +187,19 @@ class ::Tloona::KitBrowser {
             return
         }
         
-        Tloona::wrapwizzard .wrapwizz -master $TloonaApplication
-        .wrapwizz setDeployDetails [$file cget -name]
-        
-        if {[.wrapwizz show] == "Cancel"} {
-            delete object .wrapwizz
-            return
-        }
-        
         set defst [$mw cget -status]
-        $mw configure -status "creating standalone runtime..."
-        $mw showProgress 1
-        
         try {
+            Tloona::wrapwizzard .wrapwizz -master $TloonaApplication
+            .wrapwizz setDeployDetails [$file cget -name]
+            
+            if {[.wrapwizz show] == "Cancel"} {
+                delete object .wrapwizz
+                return
+            }
+            
+            $mw configure -status "creating standalone runtime..."
+            $mw showProgress 1
+        
             set a [.wrapwizz getOptions]
             if {[dict exists $a -runtime] && [dict get $a -runtime] == {}} {
                 set m "Can not create a Starpack without a valid Tclkit runtime\n\n"
@@ -211,10 +211,16 @@ class ::Tloona::KitBrowser {
             set n [eval $file wrap [.wrapwizz getOptions] -varptr var]
             $this refresh
             Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
+        } trap README_NOT_EXIST {err errOpts} {
+            tk_messageBox -type ok -icon error -title "Deployment Error" \
+                -parent [namespace tail $this] -message $err
+        } trap {} {err errOpts} {
+            tk_messageBox -type ok -icon error -title "Error, Code: [dict get $errOpts -errorcode]" \
+                -parent [namespace tail $this] -message $err
         } finally {
             $mw showProgress 0
             $mw configure -status $defst
-            delete object .wrapwizz
+            catch { delete object .wrapwizz }
         }
     }
     

@@ -11,6 +11,10 @@ namespace eval ::Tloona::Fs {}
 # in ApplicationName : <appname>. This is useful for deployment
 proc ::Tloona::Fs::getStarkitApplicationName {baseDir} {
     set appName [file tail [file root $baseDir]]
+    set readMe [file join $baseDir README.txt]
+    if {![file exist $readMe]} {
+        throw README_NOT_EXIST "README.txt does not exist in this project. Please create one first."
+    }
     set fh [open [file join $baseDir README.txt] r]
     while {[gets $fh line] >= 0} {
         if {[regexp ^ApplicationName $line] && [llength [split $line]] >= 3} {
