@@ -20,12 +20,13 @@ platform)
 
 ==
 
-Release 1.6.2 : Date 2016/05/20 :
+Release 1.7.0 : Date 2016/05/23 :
  * Enhancement for dynamic REPLS: if semicolon is typed after a statement, the
    result of that statement is not displayed. Useful if output should be prevented,
    e.g. if the result is huge or binary
  * Added REPL menu, ability to create more REPLs and close them
  * Bugfix for open .test files, error occured
+ * Bugfix starkit creation, recovery after error
  * Removed building of code tree in Workspace browser. Tree is shown in Outline only
    (faster, less buggy and cluttered)
  * parser understands ::oo::define and ::oo::objdefine for methods and variables
