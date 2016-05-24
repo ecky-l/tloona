@@ -75,7 +75,7 @@ class Tloona::Mainapp {
     private variable CommIDs {}
         
     constructor {args} {
-        global Icons UserOptions
+        global Icons UserOptions TloonaVersion
         createPanes
         createNavigators
         onNewREPL slave
@@ -118,7 +118,7 @@ class Tloona::Mainapp {
             -variable [scope _ViewEditor] -image $Icons(ViewEditor)
         
         configure -title "Tloona - Tcl/Tk Development" \
-            -status "ready [comm::comm self]"
+            -status "Version $TloonaVersion"
         eval itk_initialize $args
     }
     
@@ -801,7 +801,7 @@ class Tloona::Mainapp {
     #
     # @a uri: file uri
     # @a createTree: create a tree?
-    # 
+    #
     # @r The file object. Type at least ::Parser::StructuredFile
     public method openFile {uri createTree} {
         global TloonaApplication UserOptions
