@@ -801,10 +801,10 @@ class Tloona::Mainapp {
     #
     # @a uri: file uri
     # @a createTree: create a tree?
-    #
+    # 
     # @r The file object. Type at least ::Parser::StructuredFile
     public method openFile {uri createTree} {
-        global TloonaApplication
+        global TloonaApplication UserOptions
         
         if {[file isdirectory $uri]} {
             if {[isOpen $uri] != ""} {
@@ -876,6 +876,7 @@ class Tloona::Mainapp {
             }
         }
         
+        $fCls configure -savelineendings $UserOptions(File,SaveLineEndings)
         component textnb select $fCls
         set _InitDir [file dirname $uri]
         return $fCls

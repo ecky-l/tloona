@@ -134,6 +134,9 @@ class ::Tmw::VisualFile {
     
     public {
         
+        ## \brief line ending for save. lf (unix), crlf (windows) or auto
+        variable savelineendings auto
+        
         ## \brief the browser object for the file. Used for display in file browsers (not code browsers)
         variable browserobj {}
         
@@ -358,6 +361,7 @@ body ::Tmw::VisualFile::saveFile {{file ""}} {
     set ctn [component textwin get 1.0 end]
     set ctn [string range $ctn 0 end-1]
     set fh [open $filename w]
+    fconfigure $fh -translation $savelineendings
     puts -nonewline $fh $ctn
     close $fh
     

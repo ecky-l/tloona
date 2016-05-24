@@ -17,7 +17,6 @@ set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::
 
 package require tmw::splash 1.0
 
-
 # create the splash screen
 Tmw::Splash::Create -topdir $::TloonaRoot -showprogress 1 -title Tloona
 Tmw::Splash::Message "Loading packages"
@@ -193,6 +192,10 @@ proc ::Tloona::loadUserOptions {} {
         uplevel 1 source [file join $TloonaRoot useroptions.tcl]
     } else {
         source $RcFile
+    }
+    
+    if {![info exists UserOptions(File,SaveLineEndings)]} {
+        set UserOptions(File,SaveLineEndings) auto
     }
 
     #error tttaaaagag

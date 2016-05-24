@@ -64,6 +64,7 @@ set ::UserOptions(File,MatchBrackets) 1
 set ::UserOptions(File,MatchBraces) 1
 set ::UserOptions(File,MatchQuotes) 1
 set ::UserOptions(File,Backup) 1
+set ::UserOptions(File,SaveLineEndings) auto
 # browser options
 set ::UserOptions(CodeBrowser,SortSeq) {
     package
