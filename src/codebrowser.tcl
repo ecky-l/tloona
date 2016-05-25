@@ -531,7 +531,10 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         }
         *TclOOClassNode {
             set tktyp [$node cget -token]
-            append script ::oo::define " [getNSQ $clNode] $tktyp $tknam $tkargs $tkdef"
+            set scopedCmd [expr {
+                ([$node cget -scope] eq "objdefine") ? "::oo::objdefine" : "::oo::define"
+            }]
+            append script $scopedCmd " [getNSQ $clNode] $tktyp $tknam $tkargs $tkdef"
         }
         *ItclClassNode {
             append script "::itcl::body "

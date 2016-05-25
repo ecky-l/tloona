@@ -64,6 +64,10 @@ class ::Parser::Script {
         eval configure $args
     }
     
+    ## \brief scope of the definition. Used by TclOO mainly, i.e. oo::define/oo::objdefine
+    # empty means default scope
+    public variable scope ""
+    
     ## \brief the script token (first word of the script), if any
     public variable token ""
     

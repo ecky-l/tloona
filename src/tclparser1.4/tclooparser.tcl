@@ -382,29 +382,30 @@ namespace eval ::Parser::TclOO {
             $nsNode addChild $clsNode
         }
         # get defined token and decide what to do
+        set cmd [namespace tail [m-parse-token $content $cTree 0]]
         set token [m-parse-token $content $cTree 2]
         switch -- $token {
         constructor {
             set defOff 0
             set csNode [parseConstructor $clsNode $cTree $content 2 defOff]
-            $csNode configure -byterange $cmdRange -bodyextern 1 -token $token
+            $csNode configure -byterange $cmdRange -bodyextern 1 -token $token -scope $cmd
             ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
         }
         destructor {
             set defOff 0
             set dNode [parseDestructor $clsNode $cTree $content 2 defOff]
-            $dNode configure -byterange $cmdRange -bodyextern 1 -token $token
+            $dNode configure -byterange $cmdRange -bodyextern 1 -token $token -scope $cmd
             ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
         }
         method {
             set defOff 0
             set mNode [parseMethod $clsNode $cTree $content $off 2 defOff]
-            $mNode configure -byterange $cmdRange -bodyextern 1 -token $token
+            $mNode configure -byterange $cmdRange -bodyextern 1 -token $token -scope $cmd
             ::Parser::parse $mNode [expr {$off + $defOff}] [$mNode cget -definition]
         }
         variable {
             set vNode [parseVar $clsNode $cTree $content $off 2]
-            $vNode configure -byterange $cmdRange -bodyextern 1 -token $token
+            $vNode configure -byterange $cmdRange -bodyextern 1 -token $token -scope $cmd
         }
         
         }
