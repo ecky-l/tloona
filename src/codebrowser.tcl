@@ -489,7 +489,6 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     }
     set script ""
     set tokenType [$node cget -type]
-    
     switch -glob -- $tokenType {
         
     *method - constructor - destructor {
