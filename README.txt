@@ -35,6 +35,7 @@ Release 1.7.0 : Date 2016/05/23 :
  * introduced lineendings save translation (can be set in ~/.tloonarc): lf for unix
    line endings, crlf for windows line endings, auto for automatic line endings
  * bugfix for sending ::oo::define and ::oo::objdefine commands to console
+ * minor parser enhancements: namespace eval's don't appear in procs/methods etc.
  
 Release 1.6.1 : Date 2016/05/02 :
  * Bugfix for connection lost from remote comm interp

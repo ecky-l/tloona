@@ -191,7 +191,33 @@ class ::itree::Node {
     #
     # @a token: the token to look up
     # @a context: list of context tokens
-    public method lookup {token {context {}}}
+    public method lookup {token {context {}}} {
+        foreach child $_Children {
+            if {$context != {}} {
+                if {[lindex $context 0] == [$child cget -name]} {
+                    return [$child lookup $token [lrange $context 1 end]]
+                }
+            } else  {
+                if {[$child cget -name] eq $token} {
+                    return $child
+                    #return $child
+                }
+            }
+        }
+    }
+    
+    public method lookupExpr {expr {context {}}} {
+        set e [regsub -all {%n} $expr {$n}]
+        foreach {n} $_Children {
+            if {$context != {}} {
+                if {[lindex $context 0] == [$n cget -name]} {
+                    return [$n lookupExpr $expr [lrange $context 1 end]]
+                }
+            } elseif {$e} {
+                return $n
+            }
+        }
+    }
     
     public method lookupAll {token {class ""}} {
         set res {}
@@ -245,22 +271,6 @@ class ::itree::Node {
     }
     
 }
-
-body ::itree::Node::lookup {token {context {}}} {
-    foreach child $_Children {
-        if {$context != {}} {
-            if {[lindex $context 0] == [$child cget -name]} {
-                return [$child lookup $token [lrange $context 1 end]]
-            }
-        } else  {
-            if {[$child cget -name] eq $token} {
-                return $child
-                #return $child
-            }
-        }
-    }
-}
-
 
 proc ::itree::node {path args} {
     uplevel ::itree::Node $path $args

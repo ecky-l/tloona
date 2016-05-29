@@ -466,6 +466,13 @@ namespace eval ::Parser::Snit {
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
+                
+                superclass {
+                    # inheritance is possible in snit3.
+                    parseInherit $node $codeTree $content
+                    
+                }
+                
                 typemethod -
                 proc {
                     set pNode [::Parser::Tcl::parseProc $node $codeTree $content $cmdRange $off]

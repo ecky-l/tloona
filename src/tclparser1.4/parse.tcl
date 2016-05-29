@@ -188,11 +188,15 @@ namespace eval ::Parser {
             }
             
             namespace {
-                set defOff 0
-                set nsn [Tcl::parseNs $node $codeTree $content defOff]
-                if {$nsn != ""} {
-                    $nsn configure -byterange $cmdRange
-                    parse $nsn [expr {$off + $defOff}] [$nsn cget -definition]
+                switch -- [$node cget -type] {
+                script - namespace {
+                    set defOff 0
+                    set nsn [Tcl::parseNs $node $codeTree $content defOff]
+                    if {$nsn != ""} {
+                        $nsn configure -byterange $cmdRange
+                        parse $nsn [expr {$off + $defOff}] [$nsn cget -definition]
+                    }
+                }
                 }
             }
             
