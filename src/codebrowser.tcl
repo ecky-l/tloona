@@ -509,7 +509,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         destructor {
             set tktyp destructor
             set tknam ""
-            set tkargs ""
+            set tkargs "{ }"
         }
         }
         
