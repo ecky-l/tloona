@@ -37,6 +37,7 @@ Release 1.7.0 : Date 2016/05/23 :
  * bugfixes for sending ::oo::define, ::oo::objdefine commands and ::itcl::destructor 
    to console
  * minor parser enhancements: namespace eval's don't appear in procs/methods etc.
+ * fixed history cut at wrong place bug
 
 Release 1.6.1 : Date 2016/05/02 :
  * Bugfix for connection lost from remote comm interp

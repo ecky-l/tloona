@@ -430,6 +430,9 @@ snit::widget ::Tmw::Console {
         
         set HistLevel -1
         set command [string trimright $command \n]
+        if {$command == ""} {
+            return
+        }
         set i [lsearch $options(-history) $command]
         if {[set i [lsearch $options(-history) $command]] >= 0} {
             set options(-history) [lreplace $options(-history) $i $i]
@@ -438,8 +441,7 @@ snit::widget ::Tmw::Console {
         
         # cut history when it gets too large
         if {[llength $options(-history)] > $options(-maxhistory)} {
-            set options(-history) \
-                [lrange $options(-history) 0 $options(-maxhistory)]
+            set options(-history) [lrange $options(-history) 10 end]
         }
     }
     
