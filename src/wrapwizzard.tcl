@@ -203,15 +203,14 @@ class ::Tloona::WrapWizzard {
     }
     
     private method _openFile {forWhat} {
-        set eFt {{"Executable" {.exe .bin}}}
+        global tcl_platform
+        set eFt {}
         switch -- $forWhat {
             "interp" {
-                set _Options(v_interp) \
-                    [tk_getOpenFile -filetypes $eFt]
+                set _Options(v_interp) [tk_getOpenFile -filetypes $eFt]
             }
             "runtime" {
-                set _Options(v_runtime) \
-                    [tk_getOpenFile -filetypes $eFt]
+                set _Options(v_runtime) [tk_getOpenFile -filetypes $eFt]
             }
         }
     }
