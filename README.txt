@@ -18,7 +18,7 @@ ActiveTcl 8.6 installation, but binary dependencies are not included.
 
 ==
 
-Release 1.7.0 : Date 2016/05/23 :
+Release 1.7.0 : Date 2016/06/12 :
   *  Enhancement for dynamic REPLS: if semicolon is typed after a statement, the
      result of that statement is not displayed. Useful if output should be prevented,
      e.g. if the result is huge or binary
