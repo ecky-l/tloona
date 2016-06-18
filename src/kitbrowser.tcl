@@ -21,7 +21,6 @@ usual KitBrowser {}
 # @c possible to insert new Tcl files directly
 class ::Tloona::KitBrowser {
     inherit Tloona::ProjectBrowser
-    
         
     constructor {args} {
         set tb [toolbar tools -pos n -compound none]
@@ -114,36 +113,7 @@ class ::Tloona::KitBrowser {
         if {$file == ""} {
             set file [selection]
         }
-        
-        if {[$file isa ::Tmw::Fs::FSContent]} {
-            refreshFile $file
-            set cls [eval $itk_option(-openfilecmd) [$file cget -name] 0]
-            if {$cls == ""} {
-                return
-            }
-            $cls updateHighlights
-            if {[$cls isa ::Tmw::BrowsableFile]} {
-                $cls setTree $file
-                $cls reparseTree
-            }
-            return
-        }
-        
-        # seems to be an inner node. Open the enclosing file
-        set parent [$file getParent]
-        while {$parent != "" && ![$parent isa ::Tmw::Fs::FSContent]} {
-            set parent [$parent getParent]
-        }
-        if {![isOpen $parent]} {
-        	    set cls [eval $itk_option(-openfilecmd) [$parent cget -name] 0]
-             $cls updateHighlights
-             if {[$cls isa ::Tmw::BrowsableFile]} {
-                 $cls setTree $parent
-                 $cls reparseTree
-             }
-        }
-        
-        selectCode $x $y 0
+        $itk_option(-openfilecmd) [$file cget -name] 1
     }
         
     # @c callback for file delete

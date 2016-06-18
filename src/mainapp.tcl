@@ -164,7 +164,6 @@ class Tloona::Mainapp {
         if {$uri == ""} {
             return
         }
-        
         openFile $uri 1
     }
 

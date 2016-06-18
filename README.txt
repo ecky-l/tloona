@@ -18,6 +18,10 @@ ActiveTcl 8.6 installation, but binary dependencies are not included.
 
 ==
 
+Release 1.7.1 : Date 2016/06/18 :
+  *  Bugfix: openFile from Workspace browser didn't generate tree properly
+     (removed dead code with side effects)
+
 Release 1.7.0 : Date 2016/06/12 :
   *  Enhancement for dynamic REPLS: if semicolon is typed after a statement, the
      result of that statement is not displayed. Useful if output should be prevented,
