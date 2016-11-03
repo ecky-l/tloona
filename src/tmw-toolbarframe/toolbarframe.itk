@@ -15,6 +15,12 @@ catch {
 
 namespace eval ::Tmw {}
 
+itk::usual TFrame {}
+itk::usual TButton {}
+itk::usual Toolbar {}
+itk::usual TLabel {}
+itk::usual TProgressbar {}
+
 itk::usual Toolbar {}
 itk::usual ToolbarFrame {
     keep -relief -borderwidth -width -height

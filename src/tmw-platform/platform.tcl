@@ -1,27 +1,75 @@
 ## platform.tcl (created by Tloona here)
 package require snit 2.3.2
 
+set auto_path [linsert $auto_path 0 [file join [pwd] .. .. lib] [file join [pwd] ..]]
+package require tmw::toolbarframe 1.0
+
 namespace eval ::Tmw {
 
+## \brief Main application Megawidget. 
+# 
+# It contains methods to create menus, toolbars and a status line. The toolbar functionality 
+# is delegated to a Toolbarframe megawidget inside. Menu entries can be displayed in the main 
+# menu and in a main toolbar simultaneously, via the [menuentry] method. The builtin statusline 
+# contains a status message label (can be configured via the -status variable) and a progress 
+# indicator that can be displayed on demand. By default it is hidden.
 ::snit::widget platform {
     hulltype toplevel
-    delegate option * to hull
+    delegate option -mainmenu to hull as -menu
+    
+    ## \brief The toolbar frame that serves as main frame. Everything is in this frame.
+    component mainframe
+    delegate method toolbar to mainframe
+    delegate method toolbutton to mainframe
+    delegate method tbshow to mainframe
+    delegate method tbhide to mainframe
+    delegate option -mainrelief to mainframe as -relief
+    delegate option -mainbd to mainframe as -borderwidth
+    delegate option -width to mainframe
+    delegate option -height to mainframe
+    
+    component mainmenu
+    
+    component action
+    
+    ## \brief The status line. Contains a status message and a progress indicator.
+    component statusline
+    delegate option -statusrelief to statusline as -relief
+    delegate option -statusbd to statusline as -borderwidth
+    delegate option -statusheight to statusline as -height
     
     component progress
-    component mainframe
-    component mainmenu
-    component statusline
+    delegate option -progressmode to progress as -mode
+    delegate option -progresslength to progress as -length
     
+    #### Options
+    option -status
+    
+    #### variables
     variable Menus
     array set Menus {}
     
     constructor {args} {
-        set mainmenu [menu $win.mainmenu -tearoff no -relief raised]
+        install mainmenu as menu $self.mainmenu -tearoff no -relief raised
+        install mainframe as Tmw::toolbarframe $self.mainframe
+        pack $mainframe -expand y -fill both
+        $self configure -mainrelief flat -mainbd 1
         
-        $win configure -menu $mainmenu
+        $self AddStatusLine
+        $self toolbar maintoolbar -pos n -compound none
+        $self AddDefaultMenu
+        
+        wm protocol $self WM_DELETE_WINDOW [mymethod onQuit]
+        
+        $self configure -mainmenu $mainmenu
         $self configurelist $args
     }
     
+    #### Public 
+    
+    ## \brief Create a menu entry
+    #
+    # The menuentry is at the same time added to the main toolbar
     method menuentry {name args} {
         set M $mainmenu
         
@@ -60,7 +108,7 @@ namespace eval ::Tmw {
         }
         
         # Configure the entry (or delete it) when it exists
-        set sName $M.[string tolower $name]
+        set sName $mainmenu.[string tolower $name]
         if {[info exists Menus($sName)]} {
             set parent [join [lrange [split $sName .] 0 end-1] .]
             set i [lindex $Menus($sName) 2]
@@ -100,13 +148,13 @@ namespace eval ::Tmw {
             if {$cmd != "" && $accel != ""} {
                 set accel [regsub {Ctrl} $accel Control]
                 set accel [regsub {Meta} $accel M1]
-                bind [namespace tail $this] <[set accel]> $cmd
+                bind $win <[set accel]> $cmd
             }
             
             return
         }
         
-        # type must be given at this point
+        # type must be given here
         if {$type == ""} {
             error "type must be given"
         }
@@ -165,7 +213,6 @@ namespace eval ::Tmw {
         
         set sName $M.[string tolower $name]
         set Menus($sName) [list $name $type]
-        #lappend Menus($sName) $type
         
         if {$type != "separator"} {
             # set some arguments if not present
@@ -193,8 +240,7 @@ namespace eval ::Tmw {
             if {[set i [lsearch $nargs -accelerator]] >= 0} {
                 set nargs [lreplace $nargs $i [incr i]]
             }
-            set toolButton [eval component mainframe toolbutton $name \
-                -type $type -toolbar $toolbar $nargs]
+            set toolButton [$self toolbutton $name -type $type -toolbar $toolbar {*}$nargs]
             
             # if it is a cascade, create a menu for it. This is filled
             # with subsequent entries
@@ -210,46 +256,133 @@ namespace eval ::Tmw {
         if {$cmd != "" && $accel != ""} {
             set accel [regsub {Ctrl} $accel Control]
             set accel [regsub {Meta} $accel M1]
-            bind [namespace tail $this] <[set accel]> $cmd
+            bind $win <[set accel]> $cmd
         }
         
         list $parentMenu [$parentMenu index last] $toolButton $toolMenu
     }
     
-    ## private 
-    method DefaultMenu {} {
-        menuentry File.New -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileNew) -command [code $this onFileNew] \
+    ## \brief Shows the progress bar in the status line. 
+    #
+    # This is a ttk::progress widget right next to the status information in determinate mode 
+    # (by default). The mode can be configured via the -progressmode option
+    #
+    # \param show 
+    #    0 for hide, 1 for show the progress bar. If left empty (the default), this method 
+    #    returns whether the progress bar is showing right now
+    method showProgress {{show -1}} {
+        set prgShow [lcontain [pack slaves $statusline] $progress]
+        if {$show < 0} {
+            return $prgShow
+        }
+        
+        if {$show} {
+            if {$prgShow} {
+                # progress already showing
+                return $prgShow
+            }
+            
+            pack $progress -before $action -fill x -expand n -side right -padx 3
+            $progress start $progressincr
+        } else {
+            if {! $prgShow} {
+                # progress already hidden
+                return $prgShow
+            }
+            $progress stop
+            pack forget $progress
+        }
+        
+        return $show
+    }
+    
+    ## \brief callback handler for exiting the application. 
+    #
+    # This method is connected to the File.Quit menuentry in the default application menu 
+    # and to the close button. Clients may override.
+    method onQuit {} {
+        ::exit
+    }
+    
+    ## \brief Callback handler for default File.New menu entry. 
+    #
+    # Needs to be overridden
+    method onFileNew {} {}
+    
+    ## \brief Callback handler for default File.Open menu entry. 
+    method onFileOpen {} {}
+    
+    ## \brief Callback handler for default File.Save menu entry. 
+    method onFileSave {} {}
+    
+    ## \brief Callback handler for default File.Close menu entry. 
+    method onFileClose {} {}
+    
+    ## \brief Callback handler for default Edit.Undo menu entry.
+    method onEditUndo {} {}
+    
+    ## \brief Callback handler for default Edit.Redo menu entry.
+    method onEditRedo {} {}
+    
+    ## \brief Callback handler for default Edit.Cut menu entry.
+    method onEditCut {} {}
+    
+    ## \brief Callback handler for default Edit.Copy menu entry.
+    method onEditCopy {} {}
+    
+    ## \brief Callback handler for default Edit.Paste menu entry.
+    method onEditPaste {} {}
+        
+    #### Private 
+    
+    ## \brief Creates and adds the status line at the bottom of the window
+    method AddStatusLine {} {
+        install statusline using ttk::frame $self.statusline
+        install action using ttk::label $statusline.action -textvar [myvar options(-status)]
+        install progress using ttk::progressbar $self.progress
+        #ttk::label $statusline.action -textvar [myvar Status]
+        set sep1 [ttk::separator $statusline.s1 -orient vertical]
+        pack $statusline.action -fill x -expand n -side right -padx 3
+        pack $sep1 -fill y -expand n -side right -padx 5 -pady 2
+        pack $statusline -side bottom -expand no -fill x
+        $self configure -statusrelief flat -statusbd 0 -statusheight 20 \
+            -progressmode determinate -progresslength 40
+    }
+    
+    ## \brief create a default menu
+    method AddDefaultMenu {} {
+        $self menuentry File.New -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileNew) -command [mymethod onFileNew] \
             -accelerator Ctrl-n
-        menuentry File.Open -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileOpen) -command [code $this onFileOpen] \
+        $self menuentry File.Open -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileOpen) -command [mymethod onFileOpen] \
             -accelerator Ctrl-o
-        menuentry File.Save -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileSave) -command [code $this onFileSave] \
+        $self menuentry File.Save -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileSave) -command [mymethod onFileSave] \
             -accelerator Ctrl-s
-        menuentry File.Close -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileClose) -command [code $this onFileClose] \
+        $self menuentry File.Close -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileClose) -command [mymethod onFileClose] \
             -accelerator Ctrl-w
-        menuentry File.Sep0 -type separator -toolbar maintoolbar
-        menuentry File.Quit -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActExit) -command [code $this onQuit] \
+        $self menuentry File.Sep0 -type separator -toolbar maintoolbar
+        $self menuentry File.Quit -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(ActExit) -command [mymethod onQuit] \
             -accelerator Ctrl-q
         
-        menuentry Edit.Undo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActUndo) -command [code $this onEditUndo] \
+        $self menuentry Edit.Undo -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(ActUndo) -command [mymethod onEditUndo] \
             -accelerator Ctrl-z
-        menuentry Edit.Redo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActRedo) -command [code $this onEditRedo] \
+        $self menuentry Edit.Redo -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(ActRedo) -command [mymethod onEditRedo] \
             -accelerator Ctrl-r
-        menuentry Edit.Sep0 -type separator -toolbar maintoolbar
-        menuentry Edit.Cut -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCut) -command [code $this onEditCut] \
+        $self menuentry Edit.Sep0 -type separator -toolbar maintoolbar
+        $self menuentry Edit.Cut -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(EditCut) -command [mymethod onEditCut] \
             -accelerator Ctrl-x
-        menuentry Edit.Copy -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCopy) -command [code $this onEditCopy] \
+        $self menuentry Edit.Copy -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(EditCopy) -command [mymethod onEditCopy] \
             -accelerator Ctrl-c
-        menuentry Edit.Paste -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditPaste) -command [code $this onEditPaste] \
+        $self menuentry Edit.Paste -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(EditPaste) -command [mymethod onEditPaste] \
             -accelerator Ctrl-v
     }
 }
@@ -259,4 +392,6 @@ namespace eval ::Tmw {
 package provide tmw::platform 2.0.0
 
 # testcode
-Tmw::platform .p
+#package re Tk
+#wm withdraw .
+#Tmw::platform .p -width 800 -height 600 -status ready

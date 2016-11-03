@@ -10,3 +10,4 @@
 
 
 package ifneeded tmw::platform 1.0 [list source [file join $dir platform.itk]]
+package ifneeded tmw::platform 2.0.0 [list source [file join $dir platform.tcl]]
