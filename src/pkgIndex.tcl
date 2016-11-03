@@ -8,15 +8,14 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tloona::codebrowser 1.0 [list source [file join $dir codebrowser.tcl]]
-package ifneeded tloona::projectoutline 1.0 [list source [file join $dir projectoutline.tcl]]
-package ifneeded tloona::codecompletion 1.0 [list source [file join $dir codecompletion.tcl]]
-package ifneeded tloona::console 1.0 [list source [file join $dir console.tcl]]
-package ifneeded tloona::file 1.0 [list source [file join $dir file.tcl]]
-package ifneeded tloona::mainapp 1.0 [list source [file join $dir mainapp.tcl]]
-package ifneeded tloona::starkit 1.0 [list source [file join $dir starkit.tcl]]
-package ifneeded tloona::kitbrowser 1.0 [list source [file join $dir kitbrowser.tcl]]
-package ifneeded tloona::wrapwizzard 1.0 [list source [file join $dir wrapwizzard.tcl]]
-package ifneeded tloona::htmlparser 1.0 [list source [file join $dir htmlparser.tcl]]
-package ifneeded tloona::debugger 1.0 [list source [file join $dir debugger.tcl]]
+package ifneeded tloona::codebrowser 1.0 [list source [file join $dir codebrowser.itk]]
+package ifneeded tloona::projectoutline 1.0 [list source [file join $dir projectoutline.itk]]
+package ifneeded tloona::codecompletion 1.0 [list source [file join $dir codecompletion.itk]]
+package ifneeded tloona::file 1.0 [list source [file join $dir file.itk]]
+package ifneeded tloona::mainapp 1.0 [list source [file join $dir mainapp.itk]]
+package ifneeded tloona::kitbrowser 1.0 [list source [file join $dir kitbrowser.itk]]
+package ifneeded tloona::wrapwizzard 1.0 [list source [file join $dir wrapwizzard.itk]]
+package ifneeded tloona::debugger 1.0 [list source [file join $dir debugger.itk]]
 
+package ifneeded tloona::htmlparser 1.0 [list source [file join $dir htmlparser.tcl]]
+package ifneeded tloona::starkit 1.0 [list source [file join $dir starkit.tcl]]
