@@ -1,7 +1,6 @@
 # toolbarwidget
 package require -exact Itcl 3.4
 package require -exact Itk 3.4
-package require tile 0.7.5
 package require Tclx 8.4
 
 package require tmw::icons 1.0

@@ -2,7 +2,8 @@
 package require snit 2.3.2
 
 set auto_path [linsert $auto_path 0 [file join [pwd] .. .. lib] [file join [pwd] ..]]
-package require tmw::toolbarframe 1.0
+package require tmw::toolbarframe 2.0.0
+package require tmw::icons 1.0
 
 namespace eval ::Tmw {
 
@@ -23,6 +24,7 @@ namespace eval ::Tmw {
     delegate method toolbutton to mainframe
     delegate method tbshow to mainframe
     delegate method tbhide to mainframe
+    delegate method childsite to mainframe
     delegate option -mainrelief to mainframe as -relief
     delegate option -mainbd to mainframe as -borderwidth
     delegate option -width to mainframe
@@ -42,8 +44,10 @@ namespace eval ::Tmw {
     delegate option -progressmode to progress as -mode
     delegate option -progresslength to progress as -length
     
-    #### Options
-    option -status
+    ### Options
+    option -title -default tmw-platform -configuremethod ConfigSetTitle
+    option -status hello
+    option -createdefaultmenu false
     
     #### variables
     variable Menus
@@ -52,12 +56,14 @@ namespace eval ::Tmw {
     constructor {args} {
         install mainmenu as menu $self.mainmenu -tearoff no -relief raised
         install mainframe as Tmw::toolbarframe $self.mainframe
-        pack $mainframe -expand y -fill both
+        #$mainframe configure -background red
+        pack $mainframe -expand yes -fill both
         $self configure -mainrelief flat -mainbd 1
         
         $self AddStatusLine
-        $self toolbar maintoolbar -pos n -compound none
-        $self AddDefaultMenu
+        if {[lsearch $args -createdefaultmenu] >= 0} {
+            $self AddDefaultMenu
+        }
         
         wm protocol $self WM_DELETE_WINDOW [mymethod onQuit]
         
@@ -216,10 +222,10 @@ namespace eval ::Tmw {
         
         if {$type != "separator"} {
             # set some arguments if not present
-            if {[lcontain $nargs -image] && ![lcontain $args -compound]} {
+            if {[lsearch $nargs -image] >= 0 && [lsearch $args -compound] < 0} {
                 lappend nargs -compound left
             }
-            if {![lcontain $nargs -label]} {
+            if {[lsearch $nargs -label] < 0} {
                 lappend nargs -label [lindex [split $name .] end]
             }
         }
@@ -271,7 +277,7 @@ namespace eval ::Tmw {
     #    0 for hide, 1 for show the progress bar. If left empty (the default), this method 
     #    returns whether the progress bar is showing right now
     method showProgress {{show -1}} {
-        set prgShow [lcontain [pack slaves $statusline] $progress]
+        set prgShow [expr { [lsearch [pack slaves $statusline] $progress] >= 0 } ]
         if {$show < 0} {
             return $prgShow
         }
@@ -335,6 +341,12 @@ namespace eval ::Tmw {
         
     #### Private 
     
+    ## \brief configure method for title
+    method ConfigSetTitle {option value} {
+        set options($option) $value
+        wm title $win $value
+    }
+    
     ## \brief Creates and adds the status line at the bottom of the window
     method AddStatusLine {} {
         install statusline using ttk::frame $self.statusline
@@ -351,38 +363,39 @@ namespace eval ::Tmw {
     
     ## \brief create a default menu
     method AddDefaultMenu {} {
+        $self toolbar maintoolbar -pos n -compound none
         $self menuentry File.New -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileNew) -command [mymethod onFileNew] \
+            -image $Tmw::Icons(FileNew) -command [list $self onFileNew] \
             -accelerator Ctrl-n
         $self menuentry File.Open -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileOpen) -command [mymethod onFileOpen] \
+            -image $Tmw::Icons(FileOpen) -command [list $self onFileOpen] \
             -accelerator Ctrl-o
         $self menuentry File.Save -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileSave) -command [mymethod onFileSave] \
+            -image $Tmw::Icons(FileSave) -command [list $self onFileSave] \
             -accelerator Ctrl-s
         $self menuentry File.Close -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileClose) -command [mymethod onFileClose] \
+            -image $Tmw::Icons(FileClose) -command [list $self onFileClose] \
             -accelerator Ctrl-w
         $self menuentry File.Sep0 -type separator -toolbar maintoolbar
         $self menuentry File.Quit -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActExit) -command [mymethod onQuit] \
+            -image $Tmw::Icons(ActExit) -command [list $self onQuit] \
             -accelerator Ctrl-q
         
         $self menuentry Edit.Undo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActUndo) -command [mymethod onEditUndo] \
+            -image $Tmw::Icons(ActUndo) -command [list $self onEditUndo] \
             -accelerator Ctrl-z
         $self menuentry Edit.Redo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActRedo) -command [mymethod onEditRedo] \
+            -image $Tmw::Icons(ActRedo) -command [list $self onEditRedo] \
             -accelerator Ctrl-r
         $self menuentry Edit.Sep0 -type separator -toolbar maintoolbar
         $self menuentry Edit.Cut -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCut) -command [mymethod onEditCut] \
+            -image $Tmw::Icons(EditCut) -command [list $self onEditCut] \
             -accelerator Ctrl-x
         $self menuentry Edit.Copy -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCopy) -command [mymethod onEditCopy] \
+            -image $Tmw::Icons(EditCopy) -command [list $self onEditCopy] \
             -accelerator Ctrl-c
         $self menuentry Edit.Paste -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditPaste) -command [mymethod onEditPaste] \
+            -image $Tmw::Icons(EditPaste) -command [list $self onEditPaste] \
             -accelerator Ctrl-v
     }
 }
@@ -394,4 +407,4 @@ package provide tmw::platform 2.0.0
 # testcode
 #package re Tk
 #wm withdraw .
-#Tmw::platform .p -width 800 -height 600 -status ready
+#Tmw::platform .p -createdefaultmenu y -width 800 -height 600 -status ready
