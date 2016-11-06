@@ -2,7 +2,7 @@
 package require snit 2.3.2
 
 set auto_path [linsert $auto_path 0 [file join [pwd] .. .. lib] [file join [pwd] ..]]
-package require tmw::toolbarframe 2.0.0
+package require tmw::toolbarframe2 2.0.0
 package require tmw::icons 1.0
 
 namespace eval ::Tmw {
@@ -14,7 +14,7 @@ namespace eval ::Tmw {
 # menu and in a main toolbar simultaneously, via the [menuentry] method. The builtin statusline 
 # contains a status message label (can be configured via the -status variable) and a progress 
 # indicator that can be displayed on demand. By default it is hidden.
-::snit::widget platform {
+::snit::widget platform2 {
     hulltype toplevel
     delegate option -mainmenu to hull as -menu
     
@@ -55,7 +55,7 @@ namespace eval ::Tmw {
     
     constructor {args} {
         install mainmenu as menu $self.mainmenu -tearoff no -relief raised
-        install mainframe as Tmw::toolbarframe $self.mainframe
+        install mainframe as Tmw::toolbarframe2 $self.mainframe
         #$mainframe configure -background red
         pack $mainframe -expand yes -fill both
         $self configure -mainrelief flat -mainbd 1
@@ -402,7 +402,7 @@ namespace eval ::Tmw {
 
 } ;# namespace Tmw
 
-package provide tmw::platform 2.0.0
+package provide tmw::platform2 2.0.0
 
 # testcode
 #package re Tk

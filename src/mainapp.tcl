@@ -1,6 +1,6 @@
 ## mainapp.tcl (created by Tloona here)
 package require snit 2.3.2
-package require tmw::platform 2.0.0
+package require tmw::platform2 2.0.0
 package require tmw::icons 1.0
 package require tloona::kitbrowser 1.0
 package require tloona::projectoutline 1.0
@@ -17,7 +17,6 @@ namespace eval ::Tloona {
 
 ## \brief This is Tloona's main application.
 snit::widgetadaptor mainapp {
-    inherit Tmw::Platform
     
     #### Options
     
@@ -27,6 +26,19 @@ snit::widgetadaptor mainapp {
     option -filetabsize 4
     ## \brief whether to expand tab chars with spaces
     option -filetabexpand 1
+    
+    #### Components
+    component browsenb
+    component browsepw
+    component codebrowser
+    component kitbrowser
+    component navigatepw
+    component textnb
+    component txtconpw
+    
+    delegate method * to hull
+    delegate option * to hull
+    
     
     #### Variables
     
@@ -56,53 +68,22 @@ snit::widgetadaptor mainapp {
     
     ## \brief A list of registered Comm ids for other interpreters
     variable CommIDs {}
-        
+    
     constructor {args} {
-        installhull using Tmw::platform
+        installhull using Tmw::platform2
         
         global Icons UserOptions TloonaVersion
+        $self CreateMenus
         $self CreatePanes
         $self CreateNavigators
-        onNewREPL slave
-        onNewREPL comm
+        $self onNewREPL slave
+        $self onNewREPL comm
         
         # disable the debugger features for now... this does not work currently
         #$self CreateDebugTools
         #$Debugger configure -console [component output]
         
-        menuentry Edit.Sep1 -type separator -toolbar maintoolbar
-        menuentry Edit.Search -type checkbutton -toolbar maintoolbar \
-            -image $Tmw::Icons(ActFileFind) -command [code $this onEditSearch %K] \
-            -label "Search & Replace" -variable [scope _ShowSearchReplace] \
-            -accelerator [set UserOptions(DefaultModifier)]-f
-        menuentry Code.Comment -type command -toolbar maintoolbar \
-            -image $Icons(ToggleCmt) -command [code $this onToggleComment] \
-            -label "Comment/Uncomment section"
-        menuentry Code.Indent -type command -toolbar maintoolbar \
-            -image $Icons(Indent) -command [code $this onIndent 1] \
-            -label "Indent section"
-        menuentry Code.Unindent -type command -toolbar maintoolbar \
-            -image $Icons(UnIndent) -command [code $this onIndent 0] \
-            -label "Unindent section"
-        menuentry REPL.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
-            -command [code $this onExecFile] -label "Execute Script in current REPL"
-        menuentry REPL.NewSlaveConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleBlack) \
-            -command [code $this onNewREPL slave] -label "New SlaveInterp REPL"
-        menuentry REPL.NewCommConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleRed) \
-            -command [code $this onNewREPL comm] -label "New CommInterp REPL"
-        menuentry REPL.CloseConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleClose) \
-            -command [code $this onCloseREPL comm] -label "Close current REPL"
-        menuentry View.Browser -type checkbutton -label "Project/Code Browser" \
-            -command [code $this onViewWindow browser] -toolbar maintoolbar \
-            -variable [scope _ViewProjectBrowser] -image $Icons(ViewBrowser)
-        menuentry View.Console -type checkbutton -label "Console" \
-            -command [code $this onViewWindow console] -toolbar maintoolbar \
-            -variable [scope _ViewConsole] -image $Icons(ViewConsole)
-        menuentry View.Editor -type checkbutton -label "Text Editor" \
-            -command [code $this onViewWindow editor] -toolbar maintoolbar \
-            -variable [scope _ViewEditor] -image $Icons(ViewEditor)
-        
-        configure -title "Tloona - Tcl/Tk Development" \
+        $self configure -title "Tloona - Tcl/Tk Development" \
             -status "Version $TloonaVersion"
         $self configurelist $args
     }
@@ -130,7 +111,7 @@ snit::widgetadaptor mainapp {
         component textnb select $cls
         $cls addToBrowser [component codebrowser]
         $cls modified 0
-        $cls configure -modifiedcmd [code $this showModified $cls 1]
+        $cls configure -modifiedcmd [mymethod showModified $cls 1]
         lappend _Files $ttl $cls 0
         incr _FileIdx
     }
@@ -900,46 +881,6 @@ snit::widgetadaptor mainapp {
     }
     
     method DefaultMenu {} {
-        global Icons UserOptions
-        
-        menuentry File.New -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileNew) -command [code $this onFileNew] \
-            -accelerator [set UserOptions(DefaultModifier)]-n
-        menuentry File.Open -type cascade -image $Tmw::Icons(FileOpen)
-        menuentry File.Open.File -type command  -toolbar maintoolbar \
-            -command [code $this onFileOpen] -image $Icons(TclFileOpen) \
-            -accelerator [set UserOptions(DefaultModifier)]-o -label "File..."
-        menuentry File.Open.Project -type command -label "Project..." \
-            -toolbar maintoolbar -command [code $this onProjectOpen] \
-            -image $Icons(KitFileOpen) -accelerator [set UserOptions(DefaultModifier)]-p
-        
-        menuentry File.Save -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileSave) -command [code $this onFileSave] \
-            -accelerator [set UserOptions(DefaultModifier)]-s
-        menuentry File.Close -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(FileClose) -command [code $this onFileClose] \
-            -accelerator [set UserOptions(DefaultModifier)]-w
-        menuentry File.Sep0 -type separator -toolbar maintoolbar
-        menuentry File.Quit -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActExit) -command [code $this onQuit] \
-            -accelerator [set UserOptions(DefaultModifier)]-q
-        
-        menuentry Edit.Undo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActUndo) -command [code $this onEditUndo] \
-            -accelerator [set UserOptions(DefaultModifier)]-z
-        menuentry Edit.Redo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActRedo) -command [code $this onEditRedo] \
-            -accelerator [set UserOptions(DefaultModifier)]-r
-        menuentry Edit.Sep0 -type separator -toolbar maintoolbar
-        menuentry Edit.Cut -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCut) -command [code $this onEditCut] \
-            -accelerator [set UserOptions(DefaultModifier)]-x
-        menuentry Edit.Copy -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCopy) -command [code $this onEditCopy] \
-            -accelerator [set UserOptions(DefaultModifier)]-c
-        menuentry Edit.Paste -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditPaste) -command [code $this onEditPaste] \
-            -accelerator [set UserOptions(DefaultModifier)]-v
     }
         
     # @c shows a particular window part
@@ -978,130 +919,171 @@ snit::widgetadaptor mainapp {
         }
     }
     
+    ## \brief Create the menus
+    method CreateMenus {} {
+        global Icons UserOptions
+        
+        $self menuentry File.New -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileNew) -command [mymethod onFileNew] \
+            -accelerator [set UserOptions(DefaultModifier)]-n
+        $self menuentry File.Open -type cascade -image $Tmw::Icons(FileOpen)
+        $self menuentry File.Open.File -type command  -toolbar maintoolbar \
+            -command [mymethod onFileOpen] -image $Icons(TclFileOpen) \
+            -accelerator [set UserOptions(DefaultModifier)]-o -label "File..."
+        $self menuentry File.Open.Project -type command -label "Project..." \
+            -toolbar maintoolbar -command [mymethod onProjectOpen] \
+            -image $Icons(KitFileOpen) -accelerator [set UserOptions(DefaultModifier)]-p
+        
+        $self menuentry File.Save -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileSave) -command [mymethod onFileSave] \
+            -accelerator [set UserOptions(DefaultModifier)]-s
+        $self menuentry File.Close -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(FileClose) -command [mymethod onFileClose] \
+            -accelerator [set UserOptions(DefaultModifier)]-w
+        $self menuentry File.Sep0 -type separator -toolbar maintoolbar
+        $self menuentry File.Quit -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(ActExit) -command [mymethod onQuit] \
+            -accelerator [set UserOptions(DefaultModifier)]-q
+        
+        $self menuentry Edit.Undo -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(ActUndo) -command [mymethod onEditUndo] \
+            -accelerator [set UserOptions(DefaultModifier)]-z
+        $self menuentry Edit.Redo -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(ActRedo) -command [mymethod onEditRedo] \
+            -accelerator [set UserOptions(DefaultModifier)]-r
+        $self menuentry Edit.Sep0 -type separator -toolbar maintoolbar
+        $self menuentry Edit.Cut -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(EditCut) -command [mymethod onEditCut] \
+            -accelerator [set UserOptions(DefaultModifier)]-x
+        $self menuentry Edit.Copy -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(EditCopy) -command [mymethod onEditCopy] \
+            -accelerator [set UserOptions(DefaultModifier)]-c
+        $self menuentry Edit.Paste -type command -toolbar maintoolbar \
+            -image $Tmw::Icons(EditPaste) -command [mymethod onEditPaste] \
+            -accelerator [set UserOptions(DefaultModifier)]-v
+        $self menuentry Edit.Sep1 -type separator -toolbar maintoolbar
+        $self menuentry Edit.Search -type checkbutton -toolbar maintoolbar \
+            -image $Tmw::Icons(ActFileFind) -command [mymethod onEditSearch %K] \
+            -label "Search & Replace" -variable [myvar _ShowSearchReplace] \
+            -accelerator [set UserOptions(DefaultModifier)]-f
+        
+        $self menuentry Code.Comment -type command -toolbar maintoolbar \
+            -image $Icons(ToggleCmt) -command [mymethod onToggleComment] \
+            -label "Comment/Uncomment section"
+        $self menuentry Code.Indent -type command -toolbar maintoolbar \
+            -image $Icons(Indent) -command [mymethod onIndent 1] \
+            -label "Indent section"
+        $self menuentry Code.Unindent -type command -toolbar maintoolbar \
+            -image $Icons(UnIndent) -command [mymethod onIndent 0] \
+            -label "Unindent section"
+        $self menuentry REPL.Run -type command -toolbar maintoolbar -image $Tmw::Icons(ExeFile) \
+            -command [mymethod onExecFile] -label "Execute Script in current REPL"
+        $self menuentry REPL.NewSlaveConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleBlack) \
+            -command [mymethod onNewREPL slave] -label "New SlaveInterp REPL"
+        $self menuentry REPL.NewCommConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleRed) \
+            -command [mymethod onNewREPL comm] -label "New CommInterp REPL"
+        $self menuentry REPL.CloseConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleClose) \
+            -command [mymethod onCloseREPL comm] -label "Close current REPL"
+        $self menuentry View.Browser -type checkbutton -label "Project/Code Browser" \
+            -command [mymethod onViewWindow browser] -toolbar maintoolbar \
+            -variable [myvar _ViewProjectBrowser] -image $Icons(ViewBrowser)
+        $self menuentry View.Console -type checkbutton -label "Console" \
+            -command [mymethod onViewWindow console] -toolbar maintoolbar \
+            -variable [myvar _ViewConsole] -image $Icons(ViewConsole)
+        $self menuentry View.Editor -type checkbutton -label "Text Editor" \
+            -command [mymethod onViewWindow editor] -toolbar maintoolbar \
+            -variable [myvar _ViewEditor] -image $Icons(ViewEditor)
+        
+    }
+    
     # @c creates the pane parts in the main window
     method CreatePanes {} {
-        itk_component add browsepw {
-            ::ttk::panedwindow [mainframe].browsepw \
-                -orient horizontal
-        }
+        install browsepw using ttk::panedwindow [$self childsite].browsepw -orient horizontal
+        install navigatepw using ttk::panedwindow $browsepw.navigatepw -orient vertical
+        $browsepw add $navigatepw -weight 1
+        install browsenb using ttk::notebook $navigatepw.browsenb -width 150 -height 300
+        $navigatepw add $browsenb -weight 1
+        install txtconpw using ttk::panedwindow $browsepw.txtconpw -orient vertical
+        $browsepw add $txtconpw -weight 1
+        install textnb using ttk::notebook $txtconpw.textnb -width 650 -height 400
+        $txtconpw add $textnb -weight 1
+        install consolenb using ttk::notebook $txtconpw -width 650 -height 100
+        $txtconpw add $consolenb -weight 1 
         
-        itk_component add navigatepw {
-            ::ttk::panedwindow [component browsepw].navigatepw \
-                -orient vertical
-        }
+        pack $browsepw -expand yes -fill both
         
-        itk_component add browsenb {
-            ::ttk::notebook [component navigatepw].browsenb \
-                -width 150 -height 300
-        }
-        
-        component navigatepw add [component browsenb] -weight 1
-        
-        itk_component add txtconpw {
-            ::ttk::panedwindow [component browsepw].txtconpw \
-                -orient vertical
-        }
-        
-        itk_component add textnb {
-            ::ttk::notebook [component txtconpw].textnb \
-                -width 650 -height 400
-        }
-        
-        itk_component add consolenb {
-            ::ttk::notebook [component txtconpw].consolenb \
-                -width 650 -height 100
-        }
-        
-        component browsepw add [component navigatepw] -weight 1
-        component browsepw add [component txtconpw] -weight 1
-        
-        # the text and console paned
-        component txtconpw add [component textnb] -weight 1
-        component txtconpw add [component consolenb] -weight 1 
-        
-        pack [component browsepw] -expand yes -fill both
-        
-        bind [component textnb] <Double-Button-1> [code $this showOnly textnb]
-        bind [component textnb] <<NotebookTabChanged>> [code $this onCurrFile]
-        bind [component consolenb] <Double-Button-1> [code $this showOnly console]
+        bind $textnb <Double-Button-1> [mymethod showOnly textnb]
+        bind $textnb <<NotebookTabChanged>> [mymethod onCurrFile]
+        bind $consolenb <Double-Button-1> [mymethod showOnly console]
     }
 
     ## \brief creates the navigation controls: code browser, project browser...
     method CreateNavigators {} {
         global UserOptions Icons
         
-        set bnb [component browsenb]
-        
-        # the project browser
-        itk_component add kitbrowser {
-            ::Tloona::kitbrowser $bnb.kitbrowser \
-                -closefilecmd [code $this onFileClose] \
-                -openfilecmd [code $this openFile] \
-                -isopencmd [list {file} [concat [code $this isOpen] {$file}]] \
-                -selectcodecmd [code $this selectCode] \
-                -getfilefromitemcmd [code $this getFileFromItem] \
+        set bnb $browsenb
+        install kitbrowser using Tloona::kitbrowser $browsenb.kitbrowser \
+                -closefilecmd [mymethod onFileClose] \
+                -openfilecmd [mymethod openFile] \
+                -isopencmd [list {file} [concat [mymethod isOpen] {$file}]] \
+                -selectcodecmd [mymethod selectCode] \
+                -getfilefromitemcmd [mymethod getFileFromItem] \
                 -sortsequence $UserOptions(KitBrowser,SortSeq) \
                 -sortalpha $UserOptions(KitBrowser,SortAlpha) \
-                -mainwindow $itk_interior
-        }
-        set kb [component kitbrowser]
+                -mainwindow $win
+        
+        set kb $kitbrowser
         # add a command to send code to the builtin console
-        $kb addSendCmd [mymethod SendToConsole]
-        $kb setNodeIcons [concat [$kb getNodeIcons] $Icons(ScriptIcons)]
-        $bnb add $kb -text "Workspace"
-        bind [component kitbrowser] <<SortSeqChanged>> \
-            [code $this setOption %W "KitBrowser,Sort"]
+        $kitbrowser addSendCmd [mymethod SendToConsole]
+        $kitbrowser setNodeIcons [concat [$kb getNodeIcons] $Icons(ScriptIcons)]
+        $bnb add $kitbrowser -text "Workspace"
+        bind $kitbrowser <<SortSeqChanged>> [mymethod setOption %W "KitBrowser,Sort"]
         
         # The code outline
-        itk_component add codebrowser {
-            ::Tloona::codeoutline $bnb.codebrowser \
+        install codebrowser using ::Tloona::codeoutline $bnb.codebrowser \
                 -sortsequence $UserOptions(CodeBrowser,SortSeq) \
                 -sortalpha $UserOptions(CodeBrowser,SortAlpha) \
-                -mainwindow $itk_interior
-        }
+                -mainwindow $win
     
-        component codebrowser setNodeIcons $Icons(ScriptIcons)
-        component codebrowser addSendCmd [mymethod SendToConsole]
-        $bnb add [component codebrowser] -text "Outline"
-        set V [component codebrowser component treeview]
-        bind $V <Button-1> [code $this selectCode %W %x %y 0]
-        bind $V <Control-Button-1> [code $this selectCode %W %x %y 1]
-        bind [component codebrowser] <<SortSeqChanged>> \
-            [code $this setOption %W "CodeBrowser,Sort"]
+        $codebrowser setNodeIcons $Icons(ScriptIcons)
+        $codebrowser addSendCmd [mymethod SendToConsole]
+        $bnb add $codebrowser -text "Outline"
+        set V $codebrowser component treeview
+        bind $V <Button-1> [mymethod selectCode %W %x %y 0]
+        bind $V <Control-Button-1> [mymethod selectCode %W %x %y 1]
+        bind $codebrowser <<SortSeqChanged>> [mymethod setOption %W "CodeBrowser,Sort"]
     }
 
     # @c Creates debugging tools and inspection browsers
     method CreateDebugTools {} {
         global Icons
-        set Debugger [Tloona::debugger -openfilecmd [code $this openFile] \
-            -fileisopencmd [code $this isOpen] \
-            -selectfilecmd [code $this component textnb select]]
+        set Debugger [Tloona::debugger -openfilecmd [mymethod openFile] \
+            -fileisopencmd [mymethod isOpen] \
+            -selectfilecmd [list $textnb select]]
         
         # the run button gets a menu assigned
-        set mb [toolbutton runto -toolbar maintoolbar -image $Icons(DbgRunTo) \
+        set mb [$self toolbutton runto -toolbar maintoolbar -image $Icons(DbgRunTo) \
             -stickto front -type menubutton -separate 0]
-        menuentry Run.DebugConfigs -type command -label "Debug..." \
-            -command [code $Debugger onManageConfigs] -image $Icons(DbgRunTo)
-        menuentry Run.Step -type command -label "Step into" \
-            -toolbar maintoolbar -command [code $Debugger onStep] \
+        $self menuentry Run.DebugConfigs -type command -label "Debug..." \
+            -command [list $Debugger onManageConfigs] -image $Icons(DbgRunTo)
+        $self menuentry Run.Step -type command -label "Step into" \
+            -toolbar maintoolbar -command [list $Debugger onStep] \
             -image $Icons(DbgStep) -accelerator F5
-        menuentry Run.Next -type command -label "Step over" \
-            -toolbar maintoolbar -command [code $Debugger onNext] \
+        $self menuentry Run.Next -type command -label "Step over" \
+            -toolbar maintoolbar -command [list $Debugger onNext] \
             -image $Icons(DbgNext) -accelerator F6
-        menuentry Run.Continue -type command -label "Continue" \
-            -toolbar maintoolbar -command [code $Debugger onStepOut] \
+        $self menuentry Run.Continue -type command -label "Continue" \
+            -toolbar maintoolbar -command [list $Debugger onStepOut] \
             -image $Icons(DbgStepOut) -accelerator F7
-        menuentry Run.Stop -type command -label "Stop" \
-            -toolbar maintoolbar -command [code $Debugger onStop] \
+        $self menuentry Run.Stop -type command -label "Stop" \
+            -toolbar maintoolbar -command [list $Debugger onStop] \
             -image $Icons(DbgStop) -accelerator F8
         
         $Debugger runMenu $mb
-        set vi [$Debugger varInspector [component browsenb] -borderwidth 0 \
-            -mainwindow $itk_interior]
-        set si [$Debugger stackInspector [component consolenb] -borderwidth 0 \
-            -mainwindow $itk_interior]
-        component browsenb add $vi -text "Variables"
-        component consolenb add $si -text "Call Frames"
+        set vi [$Debugger varInspector $browsenb -borderwidth 0 -mainwindow $win]
+        set si [$Debugger stackInspector $consolenb -borderwidth 0 -mainwindow $win]
+        $browsenb add $vi -text "Variables"
+        $consolenb add $si -text "Call Frames"
     }
         
     # @c open a Tcl/Itcl file
@@ -1109,7 +1091,7 @@ snit::widgetadaptor mainapp {
         # @c opens an (I)tcl file
         global UserOptions
         
-        set T [component textnb]
+        set T $textnb
         set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $filefont \
                 -tabsize $filetabsize -expandtab $filetabexpand \
                 -mainwindow [namespace tail $this] \
@@ -1121,7 +1103,7 @@ snit::widgetadaptor mainapp {
         bind [$cls component textwin].t <Control-Tab> "[mymethod SwitchWidgets];break"
         
         set ttl [file tail $uri]
-        component textnb add $cls -text $ttl
+        $textnb add $cls -text $ttl
         
         if {[catch {$cls openFile ""} msg]} {
             set messg "can not open file $uri :\n\n"
@@ -1133,7 +1115,7 @@ snit::widgetadaptor mainapp {
         }
         
         $cls modified 0
-        $cls configure -modifiedcmd [code $this showModified $cls 1]
+        $cls configure -modifiedcmd [mymethod showModified $cls 1]
         
         lappend _Files $uri $cls 1
         incr _FileIdx
@@ -1154,20 +1136,20 @@ snit::widgetadaptor mainapp {
         
     # @c open a starkit file
     method OpenKitFile {uri} {
-        set fs [component kitbrowser addFileSystem $uri]
+        set fs [$kitbrowser addFileSystem $uri]
         if {$fs == ""} {
             return
         }
         
         # associate eventual open visual files from the new project
         # with the parsed code trees
-        foreach {file} [component kitbrowser getTclFiles $fs] {
+        foreach {file} [$kitbrowser getTclFiles $fs] {
             foreach {uri cls hn} $_Files {
                 if {![string equal [$file cget -name] $uri]} {
                     continue
                 }
                 $cls setTree $file
-                $cls addToFileBrowser [component kitbrowser]
+                $cls addToFileBrowser $kitbrowser
                 $cls updateHighlights
             }
         }
@@ -1177,7 +1159,7 @@ snit::widgetadaptor mainapp {
     method OpenPlainFile {uri} {
         global UserOptions
         
-        set T [component textnb]
+        set T $textnb
         set cls [::Tmw::visualfile $T.file$_FileIdx \
                 -filename $uri -font $filefont \
                 -tabsize $filetabsize \
@@ -1186,11 +1168,11 @@ snit::widgetadaptor mainapp {
                 -backupfile $UserOptions(File,Backup)]
         
         set ttl [file tail $uri]
-        component textnb add $cls -text $ttl
+        $textnb add $cls -text $ttl
         
         $cls openFile ""        
         $cls modified 0
-        $cls configure -modifiedcmd [code $this showModified $cls 1]
+        $cls configure -modifiedcmd [mymethod showModified $cls 1]
         
         lappend _Files $uri $cls 1
         incr _FileIdx
@@ -1199,8 +1181,7 @@ snit::widgetadaptor mainapp {
         # new file immediately
         $cls showSearch $_ShowSearchReplace
         if {$_CurrFile != ""} {
-            $cls configure \
-                -searchstring [$_CurrFile cget -searchstring] \
+            $cls configure -searchstring [$_CurrFile cget -searchstring] \
                 -replacestring [$_CurrFile cget -replacestring] \
                 -searchexact [$_CurrFile cget -searchexact] \
                 -searchregex [$_CurrFile cget -searchregex] \
@@ -1214,7 +1195,7 @@ snit::widgetadaptor mainapp {
     method OpenWebFile {uri} {
         global UserOptions
         
-        set T [component textnb]
+        set T $textnb
         set cls [::Tloona::webfile $T.file$_FileIdx \
                 -filename $uri -font $filefont \
                 -tabsize $filetabsize \
@@ -1224,19 +1205,18 @@ snit::widgetadaptor mainapp {
                 -threadpool [cget -threadpool]]
         
         set ttl [file tail $uri]
-        component textnb add $cls -text $ttl
+        $textnb add $cls -text $ttl
         
         if {[catch {$cls openFile ""} msg]} {
             set messg "can not open file $uri :\n\n"
             append messg $msg
-            tk_messageBox -title "can not open file" \
-                -message $messg -type ok -icon error
+            tk_messageBox -title "can not open file" -message $messg -type ok -icon error
             itcl::delete object $cls
             return
         }
         
         $cls modified 0
-        $cls configure -modifiedcmd [code $this showModified $cls 1]
+        $cls configure -modifiedcmd [mymethod showModified $cls 1]
         
         lappend _Files $uri $cls 1
         incr _FileIdx
@@ -1245,8 +1225,7 @@ snit::widgetadaptor mainapp {
         # new file immediately
         $cls showSearch $_ShowSearchReplace
         if {$_CurrFile != ""} {
-            $cls configure \
-                -searchstring [$_CurrFile cget -searchstring] \
+            $cls configure -searchstring [$_CurrFile cget -searchstring] \
                 -replacestring [$_CurrFile cget -replacestring] \
                 -searchexact [$_CurrFile cget -searchexact] \
                 -searchregex [$_CurrFile cget -searchregex] \
@@ -1283,7 +1262,7 @@ snit::widgetadaptor mainapp {
     method IsProjectPart {uri treePtr} {
         upvar $treePtr tree
         set tree {}
-        foreach {prj} [component kitbrowser getStarkits] {
+        foreach {prj} [$kitbrowser getStarkits] {
             set rn $uri
             if {[string match [$prj cget -name]* $uri]} {
                 foreach {kid} [$prj getChildren yes] {
@@ -1302,7 +1281,7 @@ snit::widgetadaptor mainapp {
         if {$script == {}} {
             return
         }
-        set cons [component consolenb select]
+        set cons [$consolenb select]
         $cons eval $script -showlines 1
     }
     
