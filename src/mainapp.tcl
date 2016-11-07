@@ -1,9 +1,9 @@
 ## mainapp.tcl (created by Tloona here)
 package require snit 2.3.2
-package require tmw::platform2 2.0.0
+package require tmw::platform 2.0.0
 package require tmw::icons 1.0
-package require tloona::kitbrowser 1.0
-package require tloona::projectoutline 1.0
+package require tloona::kitbrowser1 1.0
+package require tloona::projectoutline1 1.0
 package require tmw::console 2.0
 package require tloona::file 1.0
 package require fileutil 1.7
@@ -27,12 +27,16 @@ snit::widgetadaptor mainapp {
     
     #### Components
     component browsenb
-    component browsepw
+    
+    component browsepw -public browsepw
+    
     component codebrowser
     component kitbrowser
-    component navigatepw
+    #component navigatepw
     component textnb
-    component txtconpw
+    component txtconpw -public txtconpw
+    component consolenb
+    component outlinenb
     
     delegate method * to hull
     delegate option * to hull
@@ -50,6 +54,8 @@ snit::widgetadaptor mainapp {
     variable _Projects {}
     ## \brief indicates whether the project browser is viewable
     variable _ViewProjectBrowser 1
+    ## \brief indicates whether the code outline should be viewed
+    variable _ViewOutline 1
     ## \brief indicates that only the text notebook should e shown
     variable _ViewTextNbOnly 0
     ## \brief indicates whether to view the console
@@ -68,7 +74,7 @@ snit::widgetadaptor mainapp {
     variable CommIDs {}
     
     constructor {args} {
-        installhull using Tmw::platform2
+        installhull using Tmw::platform
         
         global Icons UserOptions TloonaVersion
         $self CreateMenus
@@ -80,6 +86,8 @@ snit::widgetadaptor mainapp {
         # disable the debugger features for now... this does not work currently
         #$self CreateDebugTools
         #$Debugger configure -console [component output]
+        
+        wm protocol $self WM_DELETE_WINDOW [mymethod onQuit]
         
         $self configure -title "Tloona - Tcl/Tk Development" \
             -status "Version $TloonaVersion"
@@ -96,9 +104,9 @@ snit::widgetadaptor mainapp {
         # @c callback for new Tcl/Itcl scripts
         global UserOptions
         
-        set cls [::Tloona::tclfile $textnb.file$_FileIdx -font $filefont \
+        set cls [::Tloona::tclfile $textnb.file$_FileIdx -font $options(-filefont) \
             -sendcmd [mymethod SendToConsole] \
-            -tabsize $options(-filetabsize) -expandtab $filetabexpand \
+            -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
             -mainwindow $win -backupfile $UserOptions(File,Backup)]
                 
         $cls createTree
@@ -171,12 +179,11 @@ snit::widgetadaptor mainapp {
         if {$hasname} {
             $file saveFile $filename
             $file modified 0
-            showModified $file 0
+            $self showModified $file 0
             return
         }
         
-        set filename [tk_getSaveFile -initialdir $_InitDir \
-            -parent [namespace tail $this]]
+        set filename [tk_getSaveFile -initialdir $_InitDir -parent $win]
         if {$filename == ""} {
             return
         }
@@ -186,7 +193,7 @@ snit::widgetadaptor mainapp {
         lset _Files [expr {$i + 2}] 1
         
         set ttl [file tail $filename]
-        component textnb tab $_CurrFile -text $ttl
+        $textnb tab $_CurrFile -text $ttl
         set _InitDir [file dirname $filename]
     }
     
@@ -206,7 +213,7 @@ snit::widgetadaptor mainapp {
                 -icon question]
             switch -- $ans {
                 "yes" {
-                    onFileSave $file
+                    $self onFileSave $file
                 }
                 "cancel" {
                     return
@@ -214,10 +221,10 @@ snit::widgetadaptor mainapp {
             }
         }
         
-        set idx [component textnb index $file]
-        component textnb forget $idx
+        set idx [$textnb index $file]
+        $textnb forget $idx
         if {[$file isa ::Tmw::BrowsableFile]} {
-            $file removeFromBrowser [component codebrowser]
+            $file removeFromBrowser $codebrowser
         }
         ::itcl::delete object $file
         
@@ -328,13 +335,25 @@ snit::widgetadaptor mainapp {
                     set view $_ViewProjectBrowser
                 }
                 
-                $self ShowWindowPart $view browsepw navigatepw browserSash 0
+                $self ShowWindowPart $view browsepw browsenb browserSash 0
                 set _ViewProjectBrowser $view
                 if {$store} {
                     set UserOptions(View,browser) $view
                 }
             }
-            
+            "outline" {
+                if {$view == $_ViewOutline} {
+                    return
+                }
+                if {$view == -1} {
+                    set view $_ViewOutline
+                }
+                $self ShowWindowPart $view browsepw outlinenb outlineSash end
+                set _ViewOutline $view
+                if {$store} {
+                    set UserOptions(View,outline) $view
+                }
+            }
             "console" {
                 if {$view == $_ViewConsole} {
                     return
@@ -366,7 +385,7 @@ snit::widgetadaptor mainapp {
             
             "consoleOnly" {
                 if {! $_ViewConsole} {
-                    onViewWindow console 1 0
+                    $self onViewWindow console 1 0
                 }
                 
                 if {$view == $_ViewConsoleOnly} {
@@ -378,24 +397,24 @@ snit::widgetadaptor mainapp {
                 
                 if {! $view} {
                     if {$_ViewProjectBrowser} {
-                        component browsepw insert 0 [component navigatepw] -weight 1
+                        $browsepw insert 0 $browsenb -weight 1
                     }
-                    component txtconpw insert 0 [component textnb]
+                    $txtconpw insert 0 $textnb
                     
                     # restore sash positions
                     update
-                    component browsepw sashpos 0 $UserOptions(View,browserSash)
-                    component txtconpw sashpos 0 $UserOptions(View,consoleSash)
+                    $browsepw sashpos 0 $UserOptions(View,browserSash)
+                    $txtconpw sashpos 0 $UserOptions(View,consoleSash)
                 } else  {
                     # store sash positions
                     
-                    set UserOptions(View,browserSash) [component browsepw sashpos 0]
-                    set UserOptions(View,consoleSash) [component txtconpw sashpos 0]
+                    set UserOptions(View,browserSash) [$browsepw sashpos 0]
+                    set UserOptions(View,consoleSash) [$txtconpw sashpos 0]
                     
                     if {$_ViewProjectBrowser} {
-                        component browsepw forget [component navigatepw]
+                        $browsepw forget $browsenb
                     }
-                    component txtconpw forget [component textnb]
+                    $txtconpw forget $textnb
                 }
                 set _ViewConsoleOnly $view
                 set UserOptions(View,consoleOnly) $view
@@ -429,7 +448,7 @@ snit::widgetadaptor mainapp {
                 -icon question]
             switch -- $ans {
                 "yes" {
-                    onFileSave $file
+                    $self onFileSave $file
                 }
                 "cancel" {
                     return
@@ -441,28 +460,30 @@ snit::widgetadaptor mainapp {
         
         # get kit projects and store them
         set UserOptions(KitProjects) {}
-        foreach {kit} [component kitbrowser getFileSystems] {
+        foreach {kit} [$kitbrowser getFileSystems] {
             lappend UserOptions(KitProjects) [$kit cget -name]
         }
         
+        set olSashPos 1
         if {$_ViewProjectBrowser} {
-            set UserOptions(View,browserSash) [component browsepw sashpos 0]
+            set UserOptions(View,browserSash) [$browsepw sashpos 0]
         } else {
             set UserOptions(View,browserSash) 0
+            set olSashPos 0
         }
         
+        set UserOptions(View,outlineSash) [expr {
+            ($_ViewOutline) ? [$browsepw sashpos $olSashPos] : 0
+        }]
+        
         if {$_ViewConsole} {
-            set UserOptions(View,consoleSash) [component txtconpw sashpos 0]
+            set UserOptions(View,consoleSash) [$txtconpw sashpos 0]
         } else {
             set UserOptions(View,consoleSash) 0
         }
         
         ::Tloona::saveUserOptions
         ::Tloona::closeLog
-        
-        if {[cget -threadpool] != ""} {
-            tpool::release [cget -threadpool]
-        }
         
         ::exit
     }
@@ -511,7 +532,7 @@ snit::widgetadaptor mainapp {
         }
         set T [$_CurrFile component textwin]
         set script [$T get 1.0 end]
-        set cons [component consolenb select]
+        set cons [$consolenb select]
         
         set errInfo {}
         set result [$cons eval $script -displayresult n -errinfovar errInfo]
@@ -537,67 +558,64 @@ snit::widgetadaptor mainapp {
     method onNewREPL {mode} {
         global UserOptions
         
-        # disable this for now... just overhead
-        set cnb [component consolenb]
-        set last [lindex [split [lindex [lsort [component consolenb tabs]] end] .] end]
+        set last [lindex [split [lindex [lsort [$consolenb tabs]] end] .] end]
         set ni [string range $last 4 end]
         if {$ni == {}} {
             set ni 0
         }
         set repl repl[incr ni]
-        Tmw::console $cnb.$repl -wrap $UserOptions(ConsoleWrap) \
+        Tmw::console $consolenb.$repl -wrap $UserOptions(ConsoleWrap) \
             -font $UserOptions(ConsoleFont) \
             -colors $UserOptions(TclSyntax) -vimode y -mode $mode
             
-        bind $cnb.$repl.textwin <Control-Tab> "[mymethod SwitchWidgets];break"
-        $cnb add $cnb.$repl -text "REPL ($mode)"
+        bind $consolenb.$repl.textwin <Control-Tab> "[mymethod SwitchWidgets];break"
+        $consolenb add $consolenb.$repl -text "REPL ($mode)"
     }
     
     ## \brief close a REPL
     method onCloseREPL {which} {
-        set curr [component consolenb select]
+        set curr [$consolenb select]
         $curr eval exit -displayresult no
-        component consolenb forget $curr
+        $consolenb forget $curr
         destroy $curr
     }
     
     # @c callback that is triggered when the currently selected
     # @c file changes
     method onCurrFile {{file ""}} {
-        if {$file != "" && [catch {component textnb select $file} msg]} {
+        if {$file != "" && [catch {$textnb select $file} msg]} {
             return -code error "no such file"
         }
         
-        set fs [component textnb tabs]
+        set fs [$textnb tabs]
         if {$fs == {}} {
-            configure -title "Tloona - Tcl/Tk Development"
+            $self configure -title "Tloona - Tcl/Tk Development"
             return ""
         }
         
-        set idx [component textnb index current]
+        set idx [$textnb index current]
         set _CurrFile [lindex $fs $idx]
         set fn [$_CurrFile cget -filename]
-        configure -title "Tloona - $fn"
+        $self configure -title "Tloona - $fn"
         focus -force [$_CurrFile component textwin].t
         
         # is the search toolbar showing in the new file?
         set _ShowSearchReplace [expr {[$_CurrFile showingSearch] ? 1 : 0}]
-        onEditSearch
+        $self onEditSearch
         
         set fObj [$_CurrFile cget -browserobj]
-        if {$fObj != {} && [component kitbrowser exists $fObj]} {
-            component kitbrowser selection set $fObj
-            component kitbrowser see $fObj
+        if {$fObj != {} && [$kitbrowser exists $fObj]} {
+            $kitbrowser selection set $fObj
+            $kitbrowser see $fObj
         }
             
         # adjust code browser view
         if {[$_CurrFile isa ::Tmw::BrowsableFile]} {
-            set fb [component codebrowser]
-            $fb remove all
+            $codebrowser remove all
             if {[set tree [$_CurrFile getTree]] != ""} {
-                $fb add $tree 1 0
-                if {[$fb children ""] != {}} {
-                    $fb see [lindex [$fb children ""] 0]
+                $codebrowser add $tree 1 0
+                if {[$codebrowser children ""] != {}} {
+                    $codebrowser see [lindex [$codebrowser children ""] 0]
                 }
             }
         }
@@ -607,16 +625,14 @@ snit::widgetadaptor mainapp {
             
     # @c shows whether a file is modified or not
     method showModified {fileObj modified} {
-        set ttl [component textnb tab $fileObj -text]
+        set ttl [$textnb tab $fileObj -text]
         set ttl [regsub {^\*} $ttl {}]
-        
-        set TN [component textnb]
         
         if {$modified} {
             set ttl "*$ttl"
-            $TN tab $fileObj -text $ttl
+            $textnb tab $fileObj -text $ttl
         } else  {
-            $TN tab $fileObj -text $ttl
+            $textnb tab $fileObj -text $ttl
         }
     }
     
@@ -654,11 +670,11 @@ snit::widgetadaptor mainapp {
         }
         
         set realSel $sel
-        set toSelect [getFileFromItem $sel]
+        set toSelect [$self getFileFromItem $sel]
         if {$toSelect == {}} {
             return
         }
-        component textnb select $toSelect
+        $textnb select $toSelect
         if {[lindex [$realSel cget -byterange] 0] != -1} {
             $toSelect jumpTo $realSel $definition
             $toSelect flashCode $realSel $definition
@@ -674,22 +690,22 @@ snit::widgetadaptor mainapp {
                 set _ViewTextNbOnly [expr {! $_ViewTextNbOnly}]
                 
                 if {$_ViewTextNbOnly} {
-                    onViewWindow "browser" 0 0
-                    onViewWindow "console" 0 0
+                    $self onViewWindow "browser" 0 0
+                    $self onViewWindow "console" 0 0
                 } else {
-                    onViewWindow "browser" $::UserOptions(View,browser)
-                    onViewWindow "console" $::UserOptions(View,console)
+                    $self onViewWindow "browser" $::UserOptions(View,browser)
+                    $self onViewWindow "console" $::UserOptions(View,console)
                 }
                 
             }
             "console" {
                 set _ViewConsoleOnly [expr {! $_ViewConsoleOnly}]
                 if {$_ViewConsoleOnly} {
-                    onViewWindow "browser" 0 0
-                    onViewWindow "editor" 0 0
+                    $self onViewWindow "browser" 0 0
+                    $self onViewWindow "editor" 0 0
                 } else {
-                    onViewWindow "browser" $UserOptions(View,browser)
-                    onViewWindow "editor" $UserOptions(View,editor)
+                    $self onViewWindow "browser" $UserOptions(View,browser)
+                    $self onViewWindow "editor" $UserOptions(View,editor)
                 }
             }
             
@@ -709,7 +725,7 @@ snit::widgetadaptor mainapp {
         switch -- [file extension $uri] {
             .vfs {
                 set urivfs [file rootname $uri].vfs
-                foreach {kit} [component kitbrowser getFileSystems] {
+                foreach {kit} [$kitbrowser getFileSystems] {
                     if {[string match [$kit cget -name] $urivfs]} {
                         return $kit
                     }
@@ -741,18 +757,14 @@ snit::widgetadaptor mainapp {
     # @c sets the option key, indicated by widget
     method setOption {widget key} {
         switch -- $key {
-            "CodeBrowser,Sort" {
-                set ::UserOptions(CodeBrowser,SortSeq) \
-                    [component codebrowser cget -sortsequence]
-                set ::UserOptions(CodeBrowser,SortAlpha) \
-                    [component codebrowser cget -sortalpha]
-            }
-            "KitBrowser,Sort" {
-                set ::UserOptions(KitBrowser,SortSeq) \
-                    [component kitbrowser cget -sortsequence]
-                set ::UserOptions(KitBrowser,SortAlpha) \
-                    [component kitbrowser cget -sortalpha]
-            }
+        "CodeBrowser,Sort" {
+            set ::UserOptions(CodeBrowser,SortSeq) [$codebrowser cget -sortsequence]
+            set ::UserOptions(CodeBrowser,SortAlpha) [$codebrowser cget -sortalpha]
+        }
+        "KitBrowser,Sort" {
+            set ::UserOptions(KitBrowser,SortSeq) [$kitbrowser cget -sortsequence]
+            set ::UserOptions(KitBrowser,SortAlpha) [$kitbrowser cget -sortalpha]
+        }
         }
     }
     
@@ -768,7 +780,7 @@ snit::widgetadaptor mainapp {
         global TloonaApplication UserOptions
         
         if {[file isdirectory $uri]} {
-            if {[isOpen $uri] != ""} {
+            if {[$self isOpen $uri] != ""} {
                 Tmw::message $TloonaApplication "Project exists" ok \
                     "The project $uri exists already"
                 return
@@ -781,8 +793,8 @@ snit::widgetadaptor mainapp {
         set fCls ""
         switch -- $ending {
             .tcl - .tk - .tm - .itcl - .itk - .xotcl - .test - .ws3 {
-                if {[set fileObj [isOpen $uri]] != ""} {
-                    component textnb select $fileObj
+                if {[set fileObj [$self isOpen $uri]] != ""} {
+                    $textnb select $fileObj
                     return
                 }
                 set fCls [$self OpenTclFile $uri 1]
@@ -793,9 +805,9 @@ snit::widgetadaptor mainapp {
                 $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
                 
                 $fCls updateHighlights
-                $fCls addToBrowser [component codebrowser]
+                $fCls addToBrowser $codebrowser
                 if {$fileInPrj} {
-                    $fCls addToFileBrowser [component kitbrowser]
+                    $fCls addToFileBrowser $kitbrowser
                 }
                 update
             }
@@ -803,10 +815,10 @@ snit::widgetadaptor mainapp {
             ".html" -
             ".htm" -
             ".adp" {
-                if {[set fileObj [isOpen $uri]] != ""} {
+                if {[set fileObj [$self isOpen $uri]] != ""} {
                     Tmw::message $TloonaApplication "File already open" ok \
                         "The file $uri exists already"
-                    component textnb select $fileObj
+                    $textnb select $fileObj
                     return
                 }
                 set fCls [$self OpenWebFile $uri]
@@ -820,8 +832,8 @@ snit::widgetadaptor mainapp {
             default {
                 set fType [lindex [fileutil::fileType $uri] 0]
                 if {[string equal $fType text]} {
-                    if {[set fileObj [isOpen $uri]] != ""} {
-                        component textnb select $fileObj
+                    if {[set fileObj [$self isOpen $uri]] != ""} {
+                        $textnb select $fileObj
                         return
                     }
                     set fCls [$self OpenPlainFile $uri]
@@ -838,7 +850,7 @@ snit::widgetadaptor mainapp {
         }
         
         $fCls configure -savelineendings $UserOptions(File,SaveLineEndings)
-        component textnb select $fCls
+        $textnb select $fCls
         set _InitDir [file dirname $uri]
         return $fCls
     }
@@ -853,7 +865,7 @@ snit::widgetadaptor mainapp {
         # interpreter exits
         set script "catch {rename ::exit ::el_exit} m;\n"
         append script "proc ::exit {args} {\n"
-        append script "catch {comm::comm send [comm::comm self] \[list $this removeCommID $id \]}\n"
+        append script "catch {comm::comm send [comm::comm self] \[list $self removeCommID $id \]}\n"
         append script "eval ::el_exit \$args \n"
         append script "}\n"
         if {[catch {comm::comm send $id $script} res]} {
@@ -876,30 +888,29 @@ snit::widgetadaptor mainapp {
         return $CommIDs
     }
     
-    method DefaultMenu {} {
-    }
-        
     # @c shows a particular window part
     #
     # @a view: to view or not to view
     method ShowWindowPart {view parentComp childComp optionKey pos} {
         global UserOptions
         
+        set pComp [set $parentComp]
+        set cComp [set $childComp]
         if {$view} {
             if {[string equal $pos end]} {
-                component $parentComp add [component $childComp] -weight 1
+                $pComp add $cComp -weight 1
             } else {
-                component $parentComp insert $pos [component $childComp] -weight 1
+                $pComp insert $pos $cComp -weight 1
             }
             update
-            catch {component $parentComp sashpos 0 $UserOptions(View,$optionKey)}
-        } else  {
-            catch {
-                set UserOptions(View,$optionKey) \
-                    [component $parentComp sashpos 0]
+            if {[llength [$pComp panes]] > 1} {
+                $pComp sashpos 0 $UserOptions(View,$optionKey)
             }
-            
-            component $parentComp forget [component $childComp]
+        } else  {
+            if {[llength [$pComp panes]] > 1} {
+                set UserOptions(View,$optionKey) [$pComp sashpos 0]
+            }
+            $pComp forget $cComp
         }
                 
     }
@@ -907,7 +918,7 @@ snit::widgetadaptor mainapp {
     # @c switch between widgets inside the application
     method SwitchWidgets {} {
         set cfw [$_CurrFile component textwin].t
-        set consw [component consolenb select].textwin.t
+        set consw [$consolenb select].textwin.t
         if {[string match [focus] $cfw]} {
             focus -force $consw
         } elseif {[string match [focus] $consw]} {
@@ -919,6 +930,7 @@ snit::widgetadaptor mainapp {
     method CreateMenus {} {
         global Icons UserOptions
         
+        $self toolbar maintoolbar -pos n -compound none
         $self menuentry File.New -type command -toolbar maintoolbar \
             -image $Tmw::Icons(FileNew) -command [mymethod onFileNew] \
             -accelerator [set UserOptions(DefaultModifier)]-n
@@ -980,9 +992,13 @@ snit::widgetadaptor mainapp {
             -command [mymethod onNewREPL comm] -label "New CommInterp REPL"
         $self menuentry REPL.CloseConsole -type command -toolbar maintoolbar -image $Tmw::Icons(ConsoleClose) \
             -command [mymethod onCloseREPL comm] -label "Close current REPL"
+        
         $self menuentry View.Browser -type checkbutton -label "Project/Code Browser" \
             -command [mymethod onViewWindow browser] -toolbar maintoolbar \
             -variable [myvar _ViewProjectBrowser] -image $Icons(ViewBrowser)
+        $self menuentry View.Outline -type checkbutton -label "Code Outline" \
+            -command [mymethod onViewWindow outline] -toolbar maintoolbar \
+            -variable [myvar _ViewOutline] -image $Icons(ViewBrowser)
         $self menuentry View.Console -type checkbutton -label "Console" \
             -command [mymethod onViewWindow console] -toolbar maintoolbar \
             -variable [myvar _ViewConsole] -image $Icons(ViewConsole)
@@ -995,16 +1011,20 @@ snit::widgetadaptor mainapp {
     # @c creates the pane parts in the main window
     method CreatePanes {} {
         install browsepw using ttk::panedwindow [$self childsite].browsepw -orient horizontal
-        install navigatepw using ttk::panedwindow $browsepw.navigatepw -orient vertical
-        $browsepw add $navigatepw -weight 1
-        install browsenb using ttk::notebook $navigatepw.browsenb -width 150 -height 300
-        $navigatepw add $browsenb -weight 1
+        #install navigatepw using ttk::panedwindow $browsepw.navigatepw -orient vertical
+        #$browsepw add $navigatepw -weight 1
+        #install browsenb using ttk::notebook $navigatepw.browsenb -width 150 -height 300
+        install browsenb using ttk::notebook $browsepw.browsenb -width 150 -height 300
+        $browsepw add $browsenb -weight 1
+        #$navigatepw add $browsenb -weight 1
         install txtconpw using ttk::panedwindow $browsepw.txtconpw -orient vertical
         $browsepw add $txtconpw -weight 1
         install textnb using ttk::notebook $txtconpw.textnb -width 650 -height 400
         $txtconpw add $textnb -weight 1
-        install consolenb using ttk::notebook $txtconpw -width 650 -height 100
+        install consolenb using ttk::notebook $txtconpw.consolenb -width 650 -height 100
         $txtconpw add $consolenb -weight 1 
+        install outlinenb using ttk::notebook $browsepw.outlooknb -width 100
+        $browsepw add $outlinenb -weight 1
         
         pack $browsepw -expand yes -fill both
         
@@ -1018,12 +1038,12 @@ snit::widgetadaptor mainapp {
         global UserOptions Icons
         
         set bnb $browsenb
-        install kitbrowser using Tloona::kitbrowser $browsenb.kitbrowser \
-                -closefilecmd [mymethod onFileClose] \
-                -openfilecmd [mymethod openFile] \
-                -isopencmd [list {file} [concat [mymethod isOpen] {$file}]] \
-                -selectcodecmd [mymethod selectCode] \
-                -getfilefromitemcmd [mymethod getFileFromItem] \
+        install kitbrowser using Tloona::kitbrowser1 $browsenb.kitbrowser \
+                -closefilecmd [list $self onFileClose] \
+                -openfilecmd [list $self openFile] \
+                -isopencmd [list {file} [concat [list $self isOpen] {$file}]] \
+                -selectcodecmd [list $self selectCode] \
+                -getfilefromitemcmd [list $self getFileFromItem] \
                 -sortsequence $UserOptions(KitBrowser,SortSeq) \
                 -sortalpha $UserOptions(KitBrowser,SortAlpha) \
                 -mainwindow $win
@@ -1036,15 +1056,16 @@ snit::widgetadaptor mainapp {
         bind $kitbrowser <<SortSeqChanged>> [mymethod setOption %W "KitBrowser,Sort"]
         
         # The code outline
-        install codebrowser using ::Tloona::codeoutline $bnb.codebrowser \
+        install codebrowser using ::Tloona::codeoutline1 $outlinenb.codebrowser \
                 -sortsequence $UserOptions(CodeBrowser,SortSeq) \
                 -sortalpha $UserOptions(CodeBrowser,SortAlpha) \
                 -mainwindow $win
     
         $codebrowser setNodeIcons $Icons(ScriptIcons)
         $codebrowser addSendCmd [mymethod SendToConsole]
-        $bnb add $codebrowser -text "Outline"
-        set V $codebrowser component treeview
+        #$bnb add $codebrowser -text "Outline"
+        $outlinenb add $codebrowser -text Outline
+        set V [$codebrowser component treeview]
         bind $V <Button-1> [mymethod selectCode %W %x %y 0]
         bind $V <Control-Button-1> [mymethod selectCode %W %x %y 1]
         bind $codebrowser <<SortSeqChanged>> [mymethod setOption %W "CodeBrowser,Sort"]
@@ -1088,12 +1109,10 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $filefont \
-                -tabsize $filetabsize -expandtab $filetabexpand \
-                -mainwindow [namespace tail $this] \
-                -backupfile $UserOptions(File,Backup) \
-                -sendcmd [mymethod SendToConsole] \
-                -threadpool [cget -threadpool]]
+        set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+                -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
+                -mainwindow $win -backupfile $UserOptions(File,Backup) \
+                -sendcmd [mymethod SendToConsole]]
         
         # set binding for shortcut to change windows
         bind [$cls component textwin].t <Control-Tab> "[mymethod SwitchWidgets];break"
@@ -1156,12 +1175,9 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tmw::visualfile $T.file$_FileIdx \
-                -filename $uri -font $filefont \
-                -tabsize $filetabsize \
-                -expandtab $filetabexpand \
-                -mainwindow [namespace tail $this] \
-                -backupfile $UserOptions(File,Backup)]
+        set cls [::Tmw::visualfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+                -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
+                -mainwindow $win -backupfile $UserOptions(File,Backup)]
         
         set ttl [file tail $uri]
         $textnb add $cls -text $ttl
@@ -1192,13 +1208,9 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tloona::webfile $T.file$_FileIdx \
-                -filename $uri -font $filefont \
-                -tabsize $filetabsize \
-                -expandtab $filetabexpand \
-                -mainwindow [namespace tail $this] \
-                -backupfile $UserOptions(File,Backup) \
-                -threadpool [cget -threadpool]]
+        set cls [::Tloona::webfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+                -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
+                -mainwindow $win -backupfile $UserOptions(File,Backup)]
         
         set ttl [file tail $uri]
         $textnb add $cls -text $ttl

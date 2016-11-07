@@ -4,7 +4,7 @@ package require Tclx 8.4
 
 namespace eval ::Tmw {
 
-::snit::widgetadaptor toolbarframe2 {
+::snit::widgetadaptor toolbarframe {
     
     ### Options
     option {-tbrelief toolbarRelief ToolbarRelief} \
@@ -584,5 +584,5 @@ namespace eval ::Tmw {
 
 } ;# namespace Tmw
 
-package provide tmw::toolbarframe2 2.0.0
+package provide tmw::toolbarframe 2.0.0
 

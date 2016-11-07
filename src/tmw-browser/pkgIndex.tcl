@@ -8,5 +8,5 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::browser 1.0 [list source [file join $dir browser.itk]]
+package ifneeded tmw::browser1 1.0 [list source [file join $dir browser.itk]]
 package ifneeded tmw::browser 2.0.0 [list source [file join $dir browser.tcl]]

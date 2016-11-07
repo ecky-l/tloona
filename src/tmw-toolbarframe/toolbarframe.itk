@@ -5,7 +5,7 @@ package require Tclx 8.4
 
 package require tmw::icons 1.0
 
-package provide tmw::toolbarframe 1.0
+package provide tmw::toolbarframe1 1.0
 
 catch {
     namespace import ::itcl::*
@@ -21,7 +21,7 @@ itk::usual TLabel {}
 itk::usual TProgressbar {}
 
 itk::usual Toolbar {}
-itk::usual ToolbarFrame {
+itk::usual ToolbarFrame1 {
     keep -relief -borderwidth -width -height
 }
 
@@ -32,7 +32,7 @@ itk::usual ToolbarFrame {
 # @c serve as containers for the toolbars technically).
 # @c Every megawidget that should be able to display toolbars can derive
 # @c from this widget.
-class ::Tmw::ToolbarFrame {
+class ::Tmw::ToolbarFrame1 {
     inherit ::itk::Widget
     
     constructor {args} {
@@ -176,7 +176,7 @@ class ::Tmw::ToolbarFrame {
     
 }
 
-body ::Tmw::ToolbarFrame::toolbar {name args} {
+body ::Tmw::ToolbarFrame1::toolbar {name args} {
     array set aargs $args
     
     set T ""
@@ -280,13 +280,13 @@ body ::Tmw::ToolbarFrame::toolbar {name args} {
     return $T
 }
 
-body ::Tmw::ToolbarFrame::tbhide {name} {
+body ::Tmw::ToolbarFrame1::tbhide {name} {
     set T [component $name]
     pack forget $T
     showRegions
 }
 
-body ::Tmw::ToolbarFrame::tbshow {name} {
+body ::Tmw::ToolbarFrame1::tbshow {name} {
     set T [component $name]
     switch -- $Positions($name) {
         n {
@@ -305,7 +305,7 @@ body ::Tmw::ToolbarFrame::tbshow {name} {
     showRegions
 }
 
-body ::Tmw::ToolbarFrame::tbexists {toolbar {toolbutton ""}} {
+body ::Tmw::ToolbarFrame1::tbexists {toolbar {toolbutton ""}} {
     if {[catch {component $toolbar} msg]} {
         return 0
     }
@@ -321,7 +321,7 @@ body ::Tmw::ToolbarFrame::tbexists {toolbar {toolbutton ""}} {
     return 0
 }
 
-body ::Tmw::ToolbarFrame::toolbutton {name args} {
+body ::Tmw::ToolbarFrame1::toolbutton {name args} {
     set toolbar ""
     set type ""
     set stickto "front"
@@ -473,7 +473,7 @@ body ::Tmw::ToolbarFrame::toolbutton {name args} {
     return $T.$path
 }
 
-body ::Tmw::ToolbarFrame::dropframe {name args} {
+body ::Tmw::ToolbarFrame1::dropframe {name args} {
     
     if {[set idx [lsearch $args -toolbar]] < 0} {
         error "-toolbar must be provided"
@@ -541,7 +541,7 @@ body ::Tmw::ToolbarFrame::dropframe {name args} {
     return [lindex $Dropframes($toolbar,$name) 0]
 }
 
-body ::Tmw::ToolbarFrame::showRegions {} {
+body ::Tmw::ToolbarFrame1::showRegions {} {
     
     set is [pack slaves $itk_interior]
     foreach {w} {topregion bottomregion \
@@ -562,7 +562,7 @@ body ::Tmw::ToolbarFrame::showRegions {} {
     pack [component childsite] -expand yes -fill both
 }
 
-body ::Tmw::ToolbarFrame::showDropframe {toolbar name} {
+body ::Tmw::ToolbarFrame1::showDropframe {toolbar name} {
     set relx 0
     set rely 0
     switch -- $Positions($toolbar) {
@@ -599,7 +599,7 @@ body ::Tmw::ToolbarFrame::showDropframe {toolbar name} {
     eval $cmd
 }
 
-body ::Tmw::ToolbarFrame::_addRegions {} {
+body ::Tmw::ToolbarFrame1::_addRegions {} {
     itk_component add topregion {
         ttk::frame $itk_interior.topregion -relief groove
     }
@@ -620,7 +620,7 @@ body ::Tmw::ToolbarFrame::_addRegions {} {
     pack [component rightregion] -side right -expand n -fill y
 }
 
-body ::Tmw::ToolbarFrame::_addChildsite {} {
+body ::Tmw::ToolbarFrame1::_addChildsite {} {
     
     itk_component add childsite {
         ttk::frame $itk_interior.childsite
@@ -633,6 +633,6 @@ body ::Tmw::ToolbarFrame::_addChildsite {} {
     pack [component childsite] -expand yes -fill both
 }
 
-proc ::Tmw::toolbarframe {path args} {
-    uplevel 0 ToolbarFrame $path $args
+proc ::Tmw::toolbarframe1 {path args} {
+    uplevel 0 ToolbarFrame1 $path $args
 }

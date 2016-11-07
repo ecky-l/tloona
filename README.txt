@@ -18,6 +18,9 @@ ActiveTcl 8.6 installation, but binary dependencies are not included.
 
 ==
 
+Release 2.0a0 : Date 2016/11/07 :
+  * switch from Itk to snit
+
 Release 1.7.1 : Date 2016/06/18 :
   *  Bugfix: openFile from Workspace browser didn't generate tree properly
      (removed dead code with side effects)

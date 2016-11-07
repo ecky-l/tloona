@@ -6,10 +6,10 @@ package require tmw::dialog 1.0
 package require tmw::icons 1.0
 package require tmw::filesystem 1.0
 package require tloona::wrapwizzard 1.0
-package require tloona::codebrowser 1.0
+package require tloona::codebrowser1 1.0
 package require parser::script 1.0
 package require tloona::starkit 1.0
-package provide tloona::kitbrowser 1.0
+package provide tloona::kitbrowser1 1.0
 
 usual KitBrowser {}
 
@@ -19,8 +19,8 @@ usual KitBrowser {}
 # @c refreshed and the resulting .vfs directory is displayed in the
 # @c browser. Files can be browsed and opened from there, it is also
 # @c possible to insert new Tcl files directly
-class ::Tloona::KitBrowser {
-    inherit Tloona::ProjectBrowser
+class ::Tloona::KitBrowser1 {
+    inherit Tloona::ProjectBrowser1
         
     constructor {args} {
         set tb [toolbar tools -pos n -compound none]
@@ -113,7 +113,7 @@ class ::Tloona::KitBrowser {
         if {$file == ""} {
             set file [selection]
         }
-        $itk_option(-openfilecmd) [$file cget -name] 1
+        uplevel #0 $itk_option(-openfilecmd) [$file cget -name] 1
     }
         
     # @c callback for file delete
@@ -212,7 +212,7 @@ class ::Tloona::KitBrowser {
         
         ::Tmw::Fs::rebuild $parentItem 1 nf of
         add [$parentItem lookup $uri] 1 1
-   	    set cls [eval $itk_option(-openfilecmd) $uri 0]
+   	    set cls [uplevel #0 $itk_option(-openfilecmd) $uri 0]
     }
     
     ## \brief Change directory in the slave console that is configured
@@ -387,10 +387,13 @@ class ::Tloona::KitBrowser {
 }
 
 
-proc ::Tloona::kitbrowser {path args} {
-    uplevel ::Tloona::KitBrowser $path $args
+proc ::Tloona::kitbrowser1 {path args} {
+    uplevel ::Tloona::KitBrowser1 $path $args
 }
 
-proc ::Tloona::KitBrowser::globFilter {pattern node} {
+namespace eval Tloona::KitBrowser {
+proc globFilter {pattern node} {
     string match $pattern [$node cget -tail]
 }
+}
+

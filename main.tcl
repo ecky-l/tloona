@@ -188,17 +188,10 @@ proc ::Tloona::loadUserOptions {} {
     global UserOptions TloonaRoot
     variable RcFile
     array set UserOptions {}
-    if {![file exists $RcFile]} {
-        uplevel 1 source [file join $TloonaRoot useroptions.tcl]
-    } else {
+    uplevel 1 source [file join $TloonaRoot useroptions.tcl]
+    if {[file exists $RcFile]} {
         source $RcFile
     }
-    
-    if {![info exists UserOptions(File,SaveLineEndings)]} {
-        set UserOptions(File,SaveLineEndings) auto
-    }
-
-    #error tttaaaagag
 }
     
 proc ::Tloona::saveUserOptions {} {
@@ -309,11 +302,13 @@ proc ::main {args} {
     
     # sash positions
     if {[set sp $UserOptions(View,browserSash)] > 0} {
-        $TloonaApplication component browsepw sashpos 0 $sp
+        #$TloonaApplication component browsepw sashpos 0 $sp
+        $TloonaApplication browsepw sashpos 0 $sp
     }
     
     if {[set sp $UserOptions(View,consoleSash)] > 0} {
-        $TloonaApplication component txtconpw sashpos 0 $sp
+        #$TloonaApplication component txtconpw sashpos 0 $sp
+        $TloonaApplication txtconpw sashpos 0 $sp
     }
     
     ::Tmw::Splash::Message "Applying Window Settings"

@@ -4,10 +4,10 @@ package require -exact Itk 3.4
 package require Tclx 8.4
 
 package require tmw::icons 1.0
-package require tmw::toolbarframe 1.0
+package require tmw::toolbarframe1 1.0
 package require tmw::plugin 1.0
 
-package provide tmw::platform 1.0
+package provide tmw::platform1 1.0
 
 # Toolbar options
 # See toolbutton.tcl.
@@ -44,7 +44,7 @@ itk::usual TProgressbar {}
 # @component mainframe: The toolbar frame that serves as main frame
 # @component statusline: The status line. Contains a status message and a
 # @component statusline: progress indicator that can be displayed on demand
-class Tmw::Platform {
+class Tmw::Platform1 {
     inherit itk::Toplevel
     
     itk_option define -width width Width 800 {
@@ -496,7 +496,7 @@ body ::Tmw::Platform::addMainframe {} {
     
     itk_component add mainframe {
         #Tmw::toolbarframe $itk_interior.mainframe
-        Tmw::toolbarframe [component hull].mainframe
+        Tmw::toolbarframe1 [component hull].mainframe
     } {
         usual
         rename -relief -mainrelief mainRelief Relief

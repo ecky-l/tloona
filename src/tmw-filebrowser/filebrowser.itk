@@ -1,13 +1,13 @@
 #
 # filebrowser.itk
 #
-package require tmw::browser 1.0
+package require tmw::browser1 1.0
 package require tmw::filesystem 1.0
 
-package provide tmw::filebrowser 1.0
+package provide tmw::filebrowser1 1.0
 
-class ::Tmw::FileBrowser {
-    inherit Tmw::Browser
+class ::Tmw::FileBrowser1 {
+    inherit Tmw::Browser1
     
     # @v ignorebackup: indicates whether to ignore backup files
     public variable ignorebackup 1

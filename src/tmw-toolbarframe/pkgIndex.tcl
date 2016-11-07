@@ -8,6 +8,6 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::toolbarframe 1.0 [list source [file join $dir toolbarframe.itk]]
-package ifneeded tmw::toolbarframe2 2.0.0 [list source [file join $dir toolbarframe.tcl]]
+package ifneeded tmw::toolbarframe1 1.0 [list source [file join $dir toolbarframe.itk]]
+package ifneeded tmw::toolbarframe 2.0.0 [list source [file join $dir toolbarframe.tcl]]
 

@@ -1,13 +1,13 @@
 #
 # codebrowser.itk
 #
-package require tmw::filebrowser 1.0
+package require tmw::filebrowser1 1.0
 package require tmw::icons 1.0
 
-package provide tloona::codebrowser 1.0
+package provide tloona::codebrowser1 1.0
 
-usual CodeBrowser {}
-usual ProjectBrowser {}
+usual CodeBrowser1 {}
+usual ProjectBrowser1 {}
 
 # @c This class implements the code browser for Tloona. The codebrowser
 # @c is the central point where the code structure of several scripts
@@ -17,8 +17,8 @@ usual ProjectBrowser {}
 # @c sort sequence (first namespaces, then classes, then procedures etc.)
 # @c The sort sequence can be configured via a dropwidget that contains
 # @c a list of tokens and buttons to change the sequence
-class ::Tloona::CodeBrowser {
-    inherit Tmw::FileBrowser
+class ::Tloona::CodeBrowser1 {
+    inherit Tmw::FileBrowser1
     
     # @v sortsequence: overloads the sortsequence parameter
     public variable sortsequence {} {
@@ -65,14 +65,14 @@ class ::Tloona::CodeBrowser {
         set CodeTrees [concat $CodeTrees [children {}]]
         
         if {[getExcludeTypes] != {} && $Filter(pattern) != ""} {
-            configure -filter [list ::Tmw::Browser::typeExcludeGlobFilter \
+            configure -filter [list ::Tmw::Browser1::typeExcludeGlobFilter \
                 [getExcludeTypes] $Filter(pattern)]
         } elseif {$Filter(pattern) != ""} {
             configure -filter \
-                [list ::Tmw::Browser::globFilter $Filter(pattern)]
+                [list ::Tmw::Browser1::globFilter $Filter(pattern)]
         } elseif {[getExcludeTypes] != {}} {
             configure -filter \
-                [list ::Tmw::Browser::typeExcludeFilter [getExcludeTypes]]
+                [list ::Tmw::Browser1::typeExcludeFilter [getExcludeTypes]]
         } else {
             configure -filter ""
         }
@@ -348,15 +348,15 @@ class ::Tloona::CodeBrowser {
 }
 
 proc ::Tloona::codebrowser {path args} {
-    uplevel ::Tloona::CodeBrowser $path $args
+    uplevel ::Tloona::CodeBrowser1 $path $args
 }
 
 
 ## \brief A basic project browser.
 #
 # This is the base class for kit browser and project outline
-class ::Tloona::ProjectBrowser {
-    inherit ::Tloona::CodeBrowser
+class ::Tloona::ProjectBrowser1 {
+    inherit ::Tloona::CodeBrowser1
     
     ## \brief a piece of code that is executed to open files
     itk_option define -newfilecmd newFileCmd Command ""
@@ -397,7 +397,7 @@ class ::Tloona::ProjectBrowser {
         configure -syncronize $syncronize
     }
         
-    ## \brief Overrides remove in Tmw::Browser.
+    ## \brief Overrides remove in Tmw::Browser1.
     # 
     # Closes files that are still open
     public method removeProjects {nodes} {

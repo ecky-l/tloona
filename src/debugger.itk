@@ -5,8 +5,8 @@
 
 package require Itree 1.0
 package require tmw::dialog 1.0
-package require tmw::toolbarframe 1.0
-package require tmw::browser 1.0
+package require tmw::toolbarframe1 1.0
+package require tmw::browser1 1.0
 package require tmw::icons 1.0
 package require tdom 0.8.1
 
@@ -74,7 +74,7 @@ class ::Tloona::Callframe {
 
 # @c This is a browser for locally visible variables
 class ::Tloona::VarInspector {
-    inherit Tmw::ToolbarFrame
+    inherit Tmw::ToolbarFrame1
     
     # @v FrameVars: An array of variables for call frames. The callframes
     # @v FrameVars: are treenode objects
@@ -256,7 +256,7 @@ proc ::Tloona::VarInspector::parseFrameVars {obj xmlNode callFrame scope} {
 # @c This is a browser for the stack trace at a certain
 # @c code position
 class ::Tloona::StackInspector {
-    inherit Tmw::Browser
+    inherit Tmw::Browser1
     
     # @v -openfilecmd: a piece of code that is executed to open files
     #itk_option define -selectcmd selectCmd Command ""

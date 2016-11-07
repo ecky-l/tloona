@@ -5,7 +5,7 @@ package require -exact Itcl 3.4
 package require -exact Itk 3.4
 package require ctext 3.1
 
-package require tmw::toolbarframe 1.0
+package require tmw::toolbarframe1 1.0
 
 catch {
     namespace import ::itcl::*
@@ -44,7 +44,7 @@ usual TScrollbar {}
 # @c a ctext widget with proper highlighting mode and
 # @c autocompletion helpers
 class ::Tmw::VisualFile {
-    inherit Tmw::ToolbarFrame
+    inherit Tmw::ToolbarFrame1
     
     itk_option define -font font Font {fixed 14} {
         set ts $tabsize

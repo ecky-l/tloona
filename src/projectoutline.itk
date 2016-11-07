@@ -1,7 +1,7 @@
 
-package require tloona::codebrowser 1.0
+package require tloona::codebrowser1 1.0
 
-package provide tloona::projectoutline 1.0
+package provide tloona::projectoutline1 1.0
 
 namespace eval ::Tloona {}
 
@@ -14,8 +14,8 @@ usual ProjectOutline {}
 # but the children of code trees in one window. Since these children are the same children
 # as for other browsers (or might be the same), it needs special implementations of several 
 # methods
-class ::Tloona::CodeOutline {
-    inherit ::Tloona::CodeBrowser
+class ::Tloona::CodeOutline1 {
+    inherit ::Tloona::CodeBrowser1
     
     constructor {args} {
         eval itk_initialize $args
@@ -106,8 +106,8 @@ class ::Tloona::CodeOutline {
     
 }
 
-proc ::Tloona::codeoutline {path args} {
-    uplevel ::Tloona::CodeOutline $path $args
+proc ::Tloona::codeoutline1 {path args} {
+    uplevel ::Tloona::CodeOutline1 $path $args
 }
 
 ## \brief A project viewer
@@ -115,12 +115,12 @@ proc ::Tloona::codeoutline {path args} {
 # This is intented to be a browser that displays all namespaces, classes, procs
 # etc. in a particular project in that hierarchy. Files are not displayed.
 class ::Tloona::ProjectOutline {
-    inherit CodeBrowser
+    inherit CodeBrowser1
     
     constructor {args} {chain {*}$args} {
     }
 }
 
-proc ::Tloona::projectoutline {path args} {
-    uplevel ::Tloona::ProjectOutline $path $args
+proc ::Tloona::projectoutline1 {path args} {
+    uplevel ::Tloona::ProjectOutline1 $path $args
 }

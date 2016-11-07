@@ -137,6 +137,8 @@ set ::UserOptions(Key,Save) "<Control-s>"
 # view options
 set ::UserOptions(View,browser) 1
 set ::UserOptions(View,browserSash) -1
+set ::UserOptions(View,outline) 1
+set ::UserOptions(View,outlineSash) -1
 set ::UserOptions(View,textnb) 1
 set ::UserOptions(View,console) 1
 set ::UserOptions(View,editor) 1

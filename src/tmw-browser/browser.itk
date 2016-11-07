@@ -1,12 +1,12 @@
 #
 # browser.itk
 #
-package require tmw::toolbarframe 1.0
+package require tmw::toolbarframe1 1.0
 package require tile 0.7.5
 package require Itree 1.0
 package require tmw::plugin 1.0
 
-package provide tmw::browser 1.0
+package provide tmw::browser1 1.0
 
 # unset default bindings for Treeview
 bind Treeview <Double-Button-1> {}
@@ -14,12 +14,12 @@ bind Treeview <Control-Button-1> {}
 
 usual Treeview {}
 usual TScrollbar {}
-usual Browser {}
+usual Browser1 {}
 
 # @c A browser displays a ttk::treeview inside a toolbarframe. Toolbars
 # @c can be added as needed, containing arbitrary tool buttons.
-class ::Tmw::Browser {
-    inherit ::Tmw::ToolbarFrame
+class ::Tmw::Browser1 {
+    inherit ::Tmw::ToolbarFrame1
     
     # @v -selectcmd: a command that is executed when a tree node was selected
     itk_option define -selectcmd selectCmd Command "" {
@@ -199,7 +199,7 @@ class ::Tmw::Browser {
     
 }
 
-body ::Tmw::Browser::add {nodes recursive refresh args} {
+body ::Tmw::Browser1::add {nodes recursive refresh args} {
     foreach {node} $nodes {
         if {[exists $node]} {
             if {$refresh} {
@@ -212,7 +212,7 @@ body ::Tmw::Browser::add {nodes recursive refresh args} {
     }
 }
 
-body ::Tmw::Browser::remove {nodes {delete no}} {
+body ::Tmw::Browser1::remove {nodes {delete no}} {
     set T [component treeview]
     if {[string equal $nodes all]} {
         set nodes [children ""]
@@ -233,7 +233,7 @@ body ::Tmw::Browser::remove {nodes {delete no}} {
     }
 }
 
-body ::Tmw::Browser::sort {} {
+body ::Tmw::Browser1::sort {} {
     if {$sortsequence == {} && ! $sortalpha} {
         return
     }
@@ -242,7 +242,7 @@ body ::Tmw::Browser::sort {} {
     add $topTrees 1 0
 }
 
-body ::Tmw::Browser::expand {open {item ""}} {
+body ::Tmw::Browser1::expand {open {item ""}} {
     if {$item == ""} {
         set item [component treeview selection]
     }
@@ -260,21 +260,21 @@ body ::Tmw::Browser::expand {open {item ""}} {
     }
 }
 
-body ::Tmw::Browser::collapseAll {{node ""}} {
+body ::Tmw::Browser1::collapseAll {{node ""}} {
     intCollapseAll $node
     if {[set ch1 [lindex [children $node] 0]] != ""} {
         see $ch1
     }
 }
 
-body ::Tmw::Browser::expandAll {{node ""}} {
+body ::Tmw::Browser1::expandAll {{node ""}} {
     intExpandAll $node
     if {[set ch1 [lindex [children $node] 0]] != ""} {
         see $ch1
     }
 }
 
-body ::Tmw::Browser::see {item} {
+body ::Tmw::Browser1::see {item} {
     component treeview see $item
     set parent [$item getParent]
     while {$parent != ""} {
@@ -283,7 +283,7 @@ body ::Tmw::Browser::see {item} {
     }
 }
 
-body ::Tmw::Browser::displayTreeNode {node recursive args} {
+body ::Tmw::Browser1::displayTreeNode {node recursive args} {
     set widget [component treeview]
     set nargs $args
     array set aargs $args
@@ -387,7 +387,7 @@ body ::Tmw::Browser::displayTreeNode {node recursive args} {
     $node configure -displayed 1
 }
 
-body ::Tmw::Browser::applyFilter {node} {
+body ::Tmw::Browser1::applyFilter {node} {
     # if no filter command is given, the filter is always passed
     if {$itk_option(-filter) == ""} {
         return 1
@@ -401,7 +401,7 @@ body ::Tmw::Browser::applyFilter {node} {
     return [expr {$res || [eval $itk_option(-filter) $node]}]
 }
 
-body ::Tmw::Browser::intCollapseAll {node} {
+body ::Tmw::Browser1::intCollapseAll {node} {
     foreach {child} [children $node] {
         component treeview item $child -open 0
         $child configure -expanded 0
@@ -409,7 +409,7 @@ body ::Tmw::Browser::intCollapseAll {node} {
     }
 }
 
-body ::Tmw::Browser::intExpandAll {node} {
+body ::Tmw::Browser1::intExpandAll {node} {
     foreach {child} [children $node] {
         component treeview item $child -open 1
         $child configure -expanded 1
@@ -425,7 +425,7 @@ body ::Tmw::Browser::intExpandAll {node} {
 # @a node: the Itree node
 #
 # @r 1 for success, 0 for decline
-proc ::Tmw::Browser::regexFilter {pattern node} {
+proc ::Tmw::Browser1::regexFilter {pattern node} {
     regexp $pattern [$node cget -name]
 }
 
@@ -437,7 +437,7 @@ proc ::Tmw::Browser::regexFilter {pattern node} {
 # @a node: the Itree node
 #
 # @r 1 for success, 0 for decline
-proc ::Tmw::Browser::globFilter {pattern node} {
+proc ::Tmw::Browser1::globFilter {pattern node} {
     string match $pattern [$node cget -name]
 }
 
@@ -450,7 +450,7 @@ proc ::Tmw::Browser::globFilter {pattern node} {
 # @a node: the node in question
 #
 # @r 1 for success, 0 for decline
-proc ::Tmw::Browser::typeExcludeFilter {excludeList node} {
+proc ::Tmw::Browser1::typeExcludeFilter {excludeList node} {
     expr {[lsearch $excludeList [$node cget -type]] < 0}
 }
 
@@ -462,12 +462,12 @@ proc ::Tmw::Browser::typeExcludeFilter {excludeList node} {
 # @a node: the node in question
 # 
 # @r 1 for success, 0 for decline
-proc ::Tmw::Browser::typeExcludeGlobFilter {excludeList pattern node} {
+proc ::Tmw::Browser1::typeExcludeGlobFilter {excludeList pattern node} {
     expr {[typeExcludeFilter $excludeList $node] && [globFilter $pattern $node]}
 }
 
 proc ::Tmw::browser {path args} {
-    uplevel Tmw::Browser $path $args
+    uplevel Tmw::Browser1 $path $args
 }
 ## plugin code
 #plugin Tmw::Browser
