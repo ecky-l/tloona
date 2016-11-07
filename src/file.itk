@@ -664,7 +664,7 @@ class ::Tloona::TclFile {
         if {$sendcmd == ""} {
             return
         }
-        $sendcmd [::Tloona::getNodeDefinition $CurrentNode $this]
+        uplevel #0 $sendcmd [list [::Tloona::getNodeDefinition $CurrentNode $this]]
     }
     
     # @c handles the character that was typed last. Invoked 

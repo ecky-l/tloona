@@ -110,6 +110,7 @@ namespace eval ::Parser::Snit {
         }
         
         $clsNode addVariable self 0 1
+        $clsNode addVariable selfns 0 1
         $clsNode addVariable options 0 1
         
         $clsNode addProcName myvar

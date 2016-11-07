@@ -852,6 +852,7 @@ snit::widgetadaptor mainapp {
         $fCls configure -savelineendings $UserOptions(File,SaveLineEndings)
         $textnb select $fCls
         set _InitDir [file dirname $uri]
+        $self showModified $fCls 0
         return $fCls
     }
     

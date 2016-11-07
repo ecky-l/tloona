@@ -20,4 +20,6 @@ package ifneeded tloona::debugger 1.0 [list source [file join $dir debugger.itk]
 package ifneeded tloona::htmlparser 1.0 [list source [file join $dir htmlparser.tcl]]
 package ifneeded tloona::starkit 1.0 [list source [file join $dir starkit.tcl]]
 
+# new snit versions
+package ifneeded tloona::codebrowser 2.0.0 [list source [file join $dir codebrowser.tcl]]
 package ifneeded tloona::mainapp 2.0.0 [list source [file join $dir mainapp.tcl]]

@@ -50,7 +50,7 @@ Tmw::Splash::Progress 22
 package require debug 1.0
 Tmw::Splash::Message "Loading starkit"
 Tmw::Splash::Progress 25
-package require starkit
+#package require starkit
 
 Tmw::Splash::Message "Generating comm id"
 Tmw::Splash::Progress 30

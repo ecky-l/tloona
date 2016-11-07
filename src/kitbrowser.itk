@@ -152,6 +152,12 @@ class ::Tloona::KitBrowser1 {
             return
         }
         
+        if {[catch {package require starkit}]} {
+            tk_messageBox -type ok -icon error -title "starkit not available" \
+                -parent [namespace tail $this] -message "starkit package is not present, but needed for deployment"
+            return
+        }
+        
         set mw [cget -mainwindow]
         if {$mw == ""} {
             return
@@ -305,7 +311,8 @@ class ::Tloona::KitBrowser1 {
             return
         }
         
-        Tmw::Browser::selection set $realItem
+        selection set $realItem
+        #Tmw::Browser::selection set $realItem
         # create context menu
         if {[winfo exists .kitcmenu]} {
             destroy .kitcmenu
