@@ -289,7 +289,7 @@ namespace eval ::Tmw {
         set path [regsub -all {\.} [string tolower $name] {_}]
         
         if {$toolbar == "" || ![winfo exists $win.$toolbar]} {
-            error "-toolbar must be provided and valid! ($T)"
+            error "-toolbar must be provided and valid! ($win.$toolbar)"
         }
         
         set T $win.$toolbar

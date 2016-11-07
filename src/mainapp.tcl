@@ -11,8 +11,6 @@ package require parser::parse 1.0
 package require tloona::debugger 1.0
 package require comm 4.3
 
-package provide tloona::mainapp 2.0.0
-
 namespace eval ::Tloona {
 
 ## \brief This is Tloona's main application.
@@ -98,18 +96,16 @@ snit::widgetadaptor mainapp {
         # @c callback for new Tcl/Itcl scripts
         global UserOptions
         
-        set T [component textnb]
-        set cls [::Tloona::tclfile $T.file$_FileIdx -font $filefont \
-            -sendcmd [mymethod SendToConsole] -threadpool [cget -threadpool] \
-            -tabsize $filetabsize -expandtab $filetabexpand \
-            -mainwindow [namespace tail $this] \
-            -backupfile $UserOptions(File,Backup)]
+        set cls [::Tloona::tclfile $textnb.file$_FileIdx -font $filefont \
+            -sendcmd [mymethod SendToConsole] \
+            -tabsize $options(-filetabsize) -expandtab $filetabexpand \
+            -mainwindow $win -backupfile $UserOptions(File,Backup)]
                 
         $cls createTree
         set ttl "unnamed $_FileIdx"
-        component textnb add $cls -text $ttl
-        component textnb select $cls
-        $cls addToBrowser [component codebrowser]
+        $textnb add $cls -text $ttl
+        $textnb select $cls
+        $cls addToBrowser $codebrowser
         $cls modified 0
         $cls configure -modifiedcmd [mymethod showModified $cls 1]
         lappend _Files $ttl $cls 0
@@ -126,7 +122,7 @@ snit::widgetadaptor mainapp {
             {Web {.html .htm .tml .adp}}
         }
         set uri [tk_getOpenFile -initialdir $_InitDir \
-                -filetypes  $ft -parent [namespace tail $this]]
+                -filetypes  $ft -parent $win]
         if {$uri == ""} {
             return
         }
@@ -136,15 +132,15 @@ snit::widgetadaptor mainapp {
     # @c callback handler for File.Open.Project menu entry.
     method onProjectOpen {{uri ""}} {
         if {$uri != ""} {
-            openFile $uri 0
+            $self openFile $uri 0
         }
         
         set uri [tk_chooseDirectory -mustexist 1 -initialdir $_InitDir \
-            -parent [namespace tail $this]]
+            -parent $win]
         if {$uri == ""} {
             return
         }
-        openFile $uri 0
+        $self openFile $uri 0
     }
 
     
@@ -1288,3 +1284,7 @@ snit::widgetadaptor mainapp {
 }
 
 } ;# namespace Tloona
+
+package provide tloona::mainapp 2.0.0
+
+

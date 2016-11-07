@@ -40,7 +40,8 @@ Tmw::Splash::Progress 15
 package require log 1.2
 Tmw::Splash::Message "Loading tloona::mainapp"
 Tmw::Splash::Progress 16
-package require tloona::mainapp 1.0
+#package require tloona::mainapp 1.0
+package require tloona::mainapp 2.0.0
 Tmw::Splash::Message "Loading tloona::starkit"
 Tmw::Splash::Progress 20
 package require tloona::starkit 1.0
@@ -297,9 +298,10 @@ proc ::main {args} {
     ::Tmw::Splash::Message "Creating Main Application"
     ::Tmw::Splash::Progress 50
     # create the tooltip and completion box
-    ::Tloona::Mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
+    # ::Tloona::Mainapp
+    ::Tloona::mainapp $TloonaApplication -filefont $UserOptions(FileFont) \
             -filetabsize $UserOptions(FileNTabs) -progressincr 5 \
-            -filetabexpand $UserOptions(FileExpandTabs) -threadpool "" ;#$tPool
+            -filetabexpand $UserOptions(FileExpandTabs) ;# -threadpool "" ;#$tPool
     wm geometry $TloonaApplication $UserOptions(MainGeometry)
     update
     
