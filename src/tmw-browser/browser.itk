@@ -466,7 +466,7 @@ proc ::Tmw::Browser1::typeExcludeGlobFilter {excludeList pattern node} {
     expr {[typeExcludeFilter $excludeList $node] && [globFilter $pattern $node]}
 }
 
-proc ::Tmw::browser {path args} {
+proc ::Tmw::browser1 {path args} {
     uplevel Tmw::Browser1 $path $args
 }
 ## plugin code

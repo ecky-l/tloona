@@ -106,6 +106,7 @@ namespace eval ::Parser::Snit {
         *widget -
         *widgetadaptor {
             $clsNode addVariable win 0 1
+            $clsNode addVariable hull 0 1
         }
         }
         

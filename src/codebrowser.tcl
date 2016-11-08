@@ -14,8 +14,8 @@ namespace eval Tloona {
 snit::widgetadaptor codebrowser {
     
     #### Options
-    option -sortsequence -default {} -configuremethod ConfigSortSequence
-    option -sortalpha 1
+    option -sortsequence -default {} -configuremethod ConfigSortSequence -cgetmethod CgetHullOption
+    option -sortalpha -default 1 -configuremethod ConfigSortAlpha -cgetmethod CgetHullOption
     option -getfilefromitemcmd {}
     option -dosortseq 1
     
@@ -23,7 +23,7 @@ snit::widgetadaptor codebrowser {
     component sortlist
     
     delegate method * to hull
-    delegate option * to hull
+    delegate option * to hull except { -sortsequence -sortalpha }
     
     #### Variables
     
@@ -47,7 +47,7 @@ snit::widgetadaptor codebrowser {
 
     constructor {args} {
         installhull using Tmw::filebrowser
-        $self CreateToolbar
+        $self createToolbar
         $self configurelist $args
     }
     
@@ -57,7 +57,7 @@ snit::widgetadaptor codebrowser {
     # @a what: name for simple filter name pattern. type considers
     # @a what: the ShowingNodes array and shows all types that have 1 there
     method onFilter {} {
-        set CodeTrees [concat $CodeTrees [children {}]]
+        set CodeTrees [concat $CodeTrees [$self children {}]]
         
         if {[$self GetExcludeTypes] != {} && $Filter(pattern) != ""} {
             $self configure -filter [list ::Tmw::Browser::typeExcludeGlobFilter \
@@ -93,12 +93,12 @@ snit::widgetadaptor codebrowser {
     # @a id: The id where to send. For comm, this is the comm id, for
     # @a id: backend, this is the file handle ... If empty, a dialog is
     # @a id: displayed to gather the id
-    method sendDefinition {node type id} {
+    method sendDefinition {node typ id} {
         if {$node == ""} {
-            set node [selection]
+            set node [$self selection]
         }
         
-        switch -- $type {
+        switch -- $typ {
         comm {
             $self SendCommDefinition $node $id
         }
@@ -117,7 +117,7 @@ snit::widgetadaptor codebrowser {
     }
     
     # @c fills the local toolbar
-    method CreateToolbar {} {
+    method createToolbar {} {
         global Icons
         
         # create a toolbar with codebrowser specific actions
@@ -133,17 +133,16 @@ snit::widgetadaptor codebrowser {
         
         $self CreateSortList $f
         
-        set f [$self dropframe showcfg -toolbar tools -image $Tmw::Icons(ActWatch) \
-            -separate 1  -hidecmd [mymethod OnFilter] -relpos 0]
-        
-        $self CreateShowButtons $f
+        #set f [$self dropframe showcfg -toolbar tools -image $Tmw::Icons(ActWatch) \
+        #    -separate 1  -hidecmd [mymethod onFilter] -relpos 0]
+        # 
+        #$self CreateShowButtons $f
     
         set Filter(pattern) ""
         ttk::entry $toolBar.efilter -textvariable [myvar Filter(pattern)] -width 15
         set Filter(widgets) $toolBar.efilter
         $self toolbutton filter -toolbar tools -image $Tmw::Icons(ActFilter) \
-            -type command -separate 0 -command [mymethod onFilter] \
-            -stickto back
+            -type command -separate 0 -command [mymethod onFilter] -stickto back
         pack $toolBar.efilter -expand n -fill none -side right -padx 2 -pady 1
         bind $toolBar.efilter <Return> [mymethod onFilter]
         
@@ -236,10 +235,9 @@ snit::widgetadaptor codebrowser {
     # @c updates the sort sequence from sort listbox and triggers
     # @c resorting
     method UpdateSortSeq {} {
-        configure -sortsequence [component sortlist get 0 end] \
-            -sortalpha $sortalpha
-        sort
-        event generate [namespace tail $this] <<SortSeqChanged>>
+        $self configure -sortsequence [$sortlist get 0 end] -sortalpha $options(-sortalpha)
+        $self sort
+        event generate $win <<SortSeqChanged>>
     }
         
     # @r a list of exclude types, based on the values in ShowingNodes array
@@ -306,9 +304,10 @@ snit::widgetadaptor codebrowser {
     
     ## \brief config method for the sort sequence
     method ConfigSortSequence {option value} {
-        set options($option) $value
+        $hull configure -sortsequence $value
+        #set options($option) $value
         if {$value == {}} {
-            set sseq {package \
+            set value {package \
                 macro \
                 variable \
                 class \
@@ -331,13 +330,146 @@ snit::widgetadaptor codebrowser {
         }
         
         $sortlist delete 0 end
-        $sortlist configure -height [llength $sseq]
-        foreach {c} $sseq {
+        $sortlist configure -height [llength $value]
+        foreach {c} $value {
             $sortlist insert end $c
         }
     }
     
+    method ConfigSortAlpha {option value} {
+        $hull configure -sortalpha $value
+    }
+    
+    method CgetHullOption {option} {
+        $hull cget $option
+    }
+    
 } ;# codebrowser
+
+## \brief A basic project browser.
+#
+# This is the base class for kit browser and project outline
+snit::widgetadaptor projectbrowser {
+    
+    #### Options
+    
+    ## \brief a piece of code that is executed to open files
+    option {-newfilecmd newFileCmd Command} -default ""
+    ## \brief a piece of code that is executed to open files
+    option {-openfilecmd openFileCmd Command} -default ""
+    ## \brief a piece of code that is executed to close files
+    option {-closefilecmd closeFileCmd Command} -default ""
+    ## \brief a piece of code to determine whether a file is open
+    option {-isopencmd isOpenCmd Command} -default ""
+    ## \brief a command that is executed when a code fragment is selected
+    option {-selectcodecmd selectCodeCmd Command} -default ""
+    
+    ### Components
+    
+    delegate method * to hull except createToolbar
+    delegate option * to hull
+    
+    #### Variables
+    
+    ## \brief A list of File systems
+    variable Starkits {}
+    ## \brief A scope variable for the checkbutton to synchronize with editor
+    variable Syncronize 1
+    
+    constructor {args} {
+        installhull using codebrowser
+        $self createToolbar
+        $self configurelist $args
+    }
+    
+    ## \brief Add a filesystem by root directory
+    # 
+    # Meant to be overridden by derived classes.
+    #method addFileSystem {root} {
+    #}
+    
+    ## \brief selects the code definition of Itcl methods. 
+    # 
+    # Essentially, dispatches to the -selectcodecmd option.
+    method selectCode {x y def} {
+        if {$options(-selectcodecmd) == ""} {
+            return
+        }
+        uplevel #0 $options(-selectcodecmd) $self $x $y $def
+    }
+    
+    # @c Callback for collapse the tree view
+    method onSyncronize {} {
+        $self configure -syncronize $Syncronize
+    }
+        
+    ## \brief Overrides remove in Tmw::Browser1.
+    # 
+    # Closes files that are still open
+    method removeProjects {nodes} {
+        foreach {node} $nodes {
+            if {[$node getParent] != ""} {
+                continue
+            }
+            foreach {file} [$node getChildren yes] {
+                set fName ""
+                if {[$file isa ::Tmw::Fs::File]} {
+                    set fName [$file cget -name]
+                } elseif {[$file isa ::Parser::Script]} {
+                    set fName [$file cget -filename]
+                } else {
+                    continue
+                }
+                set fCls [apply $options(-isopencmd) $fName]
+                if {$fCls == ""} {
+                    continue
+                }
+                
+                uplevel #0 $options(-closefilecmd) $fCls
+            }
+        }
+        
+        $self remove $nodes yes
+    }
+
+    # @c Overrides createToolbar in Codebrowser. Adds other widgets and
+    # @c aligns them different
+    method createToolbar {} {
+        global Icons
+        #$hull createToolbar
+        $self toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
+            -type checkbutton -variable [myvar Syncronize] -separate 0 \
+            -command [mymethod onSyncronize]
+        $self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
+            -type command -separate 0 -command [mymethod collapseAll]
+    }
+    
+    # @c checks whether a file is open already. The method
+    # @c invokes the -isopencmd code. If no -isopencmd is
+    # @c given, the check can not be performed
+    #
+    # @a file: the file in the file system to check for
+    method isOpen {{file ""}} {
+        if {$options(-isopencmd) == ""} {
+            return
+        }
+        if {$file == ""} {
+            set file [$self selection]
+        }
+        
+        set fname ""
+        if {[$file isa ::Tmw::Fs::FSContent]} {
+            set fname [$file cget -name]
+        } elseif {[$file isa ::Parser::Script]} {
+            set fname [$file cget -filename]
+        }
+        
+        expr {$fname != "" && [apply $options(-isopencmd) $fname] != {}}
+    }
+    
+    
+}
+
 
 ### useful procs
 

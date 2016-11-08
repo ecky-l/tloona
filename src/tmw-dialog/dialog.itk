@@ -4,7 +4,7 @@ package require -exact Itk 3.4
 package require tile 0.7.5
 package require Tclx 8.4
 
-package provide tmw::dialog 1.0
+package provide tmw::dialog1 1.0
 
 catch {
     namespace import ::itcl::*
@@ -20,26 +20,23 @@ itk::usual TFrame {
 itk::usual TButton {
 }
 
-class ::Tmw::Dialog {
+class ::Tmw::Dialog1 {
     inherit itk::Toplevel
     
     itk_option define -buttonpos buttonPos Position c {
         switch -- $itk_option(-buttonpos) {
-            "c" {
-                pack configure [component buttonbox] \
-                    -side top
-            }
-            "w" {
-                pack configure [component buttonbox] \
-                    -side left
-            }
-            "e" {
-                pack configure [component buttonbox] \
-                    -side right
-            }
-            default {
-                error "wrong button pos, must be w, e or c"
-            }
+        "c" {
+            pack configure [component buttonbox] -side top
+        }
+        "w" {
+            pack configure [component buttonbox] -side left
+        }
+        "e" {
+            pack configure [component buttonbox] -side right
+        }
+        default {
+            error "wrong button pos, must be w, e or c"
+        }
         }
     }
     
@@ -166,7 +163,7 @@ class ::Tmw::Dialog {
     
 }
 
-body ::Tmw::Dialog::center {{masterwin ""}} {
+body ::Tmw::Dialog1::center {{masterwin ""}} {
     if {$masterwin == ""} {
         set masterwin [namespace tail $master]
     }
@@ -195,7 +192,7 @@ body ::Tmw::Dialog::center {{masterwin ""}} {
 }
 
 
-body ::Tmw::Dialog::add {tag args} {
+body ::Tmw::Dialog1::add {tag args} {
     if {[lcontain $_Buttons $tag]} {
         return -code error "$tag already exists"
     }
@@ -220,7 +217,7 @@ body ::Tmw::Dialog::add {tag args} {
     return [component $tag]
 }
 
-body ::Tmw::Dialog::clampSize {} {
+body ::Tmw::Dialog1::clampSize {} {
     update
     set w [winfo width $itk_interior]
     set h [winfo height $itk_interior]
@@ -229,7 +226,7 @@ body ::Tmw::Dialog::clampSize {} {
     wm minsize $itk_interior $w $h
 }
 
-body ::Tmw::Dialog::_initialize {} {
+body ::Tmw::Dialog1::_initialize {} {
     
     itk_component add childsite {
         ttk::frame $itk_interior.childsite
@@ -250,8 +247,8 @@ body ::Tmw::Dialog::_initialize {} {
     wm resizable [namespace tail $this] 0 0
 }
 
-proc ::Tmw::dialog {path args} {
-    uplevel 0 Dialog $path $args
+proc ::Tmw::dialog1 {path args} {
+    uplevel 0 Dialog1 $path $args
 }
 
 # @c displays a message dialog
@@ -262,8 +259,8 @@ proc ::Tmw::dialog {path args} {
 # @a type: yes, yesno, yesnocancel
 # @a msg: actual message to display
 # @a icon: an image icon
-proc ::Tmw::message {master title type msg {icon ""}} {
-    Tmw::dialog .dlg -title $title -master $master
+proc ::Tmw::message1 {master title type msg {icon ""}} {
+    Tmw::dialog1 .dlg -title $title -master $master
     switch -- $type {
         ok {
             .dlg add ok -text "Ok"
@@ -300,8 +297,8 @@ proc ::Tmw::message {master title type msg {icon ""}} {
 
 # @c Displays an input dialog
 #
-proc ::Tmw::input {master title type} {
-    Tmw::dialog .dlg -title $title -master $master
+proc ::Tmw::input1 {master title type} {
+    Tmw::dialog1 .dlg -title $title -master $master
     switch -- $type {
         ok {
             .dlg add ok -text "Ok"

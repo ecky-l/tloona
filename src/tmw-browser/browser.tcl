@@ -45,23 +45,28 @@ snit::widgetadaptor browser {
     delegate method exists to treeview
     delegate method heading to treeview
     delegate method column to treeview
+    
     delegate method identify to treeview
+    
     delegate option -show to treeview
     delegate option -padding to treeview
     delegate option -columns to treeview
-    
+   
     component vscroll
     
     delegate method childsite to hull
     delegate method toolbar to hull
     delegate method toolbutton to hull
+    delegate method dropframe to hull
     delegate option * to hull
     
     constructor {args} {
         installhull using Tmw::toolbarframe
         install treeview using ttk::treeview [$self childsite].treeview
         install vscroll using ttk::scrollbar [$self childsite].vscroll -command "$treeview yview"
-            
+        
+        bind $treeview <<TreeviewOpen>> [mymethod expand 1]
+        bind $treeview <<TreeviewClose>> [mymethod expand 0]
         #$T column #0 -stretch y -minwidth 250 -width 250
         #$T heading #1 -text State
         #$T configure -show headings
@@ -297,7 +302,8 @@ snit::widgetadaptor browser {
         $self item $node -open [$node cget -expanded]
         
         # insert node data into the columns if necessary
-        if {[set colData [$node cget -coldata]] != {}} {
+        # TODO: change -data to -coldata when tree node is transferred
+        if {[set colData [$node cget -data]] != {}} {
             set colLen [llength [$treeview cget -columns]]
             if {[llength $colData] == $colLen} {
                 for {set i 0} {$i < [llength $colData]} {incr i} {

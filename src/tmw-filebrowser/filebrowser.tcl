@@ -55,7 +55,7 @@ snit::widgetadaptor filebrowser {
         
     # @r returns a list of file systems
     method getFileSystems {} {
-        lsort -unique [concat $FileSystems [children {}]]
+        lsort -unique [concat $FileSystems [$self children {}]]
     }
         
     method getFilesys {namePattern} {

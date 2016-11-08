@@ -28,7 +28,7 @@ Tmw::Splash::Progress 7
 package require -exact img::png 1.4.2
 Tmw::Splash::Message "Loading tmw::dialog"
 Tmw::Splash::Progress 8
-package require tmw::dialog 1.0
+package require tmw::dialog 2.0.0
 Tmw::Splash::Message "Loading tmw::icons"
 Tmw::Splash::Progress 10
 package require tmw::icons 1.0
@@ -241,7 +241,7 @@ namespace eval ::Tloona::Ui {
     proc inputdlg {master title} {
         set ::vVar ""
         if {![winfo exists .inputdlg]} {
-            Tmw::dialog .inputdlg -master $master -title $title
+            Tmw::dialog1 .inputdlg -master $master -title $title
             .inputdlg add Cancel -text "Cancel" -command \
                 {.inputdlg hide}
             .inputdlg add Ok -text "OK" -command {.inputdlg hide}

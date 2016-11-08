@@ -474,7 +474,7 @@ namespace eval ::Tmw {
         }
         
         # append command to show the frame to args
-        set cmd [mymethod ShowDropframe $toolbar $name]
+        set cmd [mymethod ShowDropFrame $toolbar $name]
         if {[set idx [lsearch $args -command]] >= 0} {
             lset args [incr idx] $cmd
         } else {
@@ -489,7 +489,7 @@ namespace eval ::Tmw {
         }
         
         set Dropframes($toolbar,$name) \
-            [list [ttk::frame $self.$toolbar,$name] \
+            [list [ttk::frame $win.$toolbar,$name] \
                 [$self toolbutton $name {*}$args] $anchor $relpos $showcmd $hidecmd]
         
         lindex $Dropframes($toolbar,$name) 0

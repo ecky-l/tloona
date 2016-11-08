@@ -3,7 +3,7 @@
 set ::auto_path [concat [file join [file dirname [info script]] .. ] \
     $::auto_path]
     
-package require tmw::dialog 1.0
+package require tmw::dialog1 1.0
 
 package provide tmw::progressdialog 1.0
 

@@ -4,7 +4,7 @@
 #error "this shouldnt happen"
 
 package require Itree 1.0
-package require tmw::dialog 1.0
+package require tmw::dialog1 1.0
 package require tmw::toolbarframe1 1.0
 package require tmw::browser1 1.0
 package require tmw::icons 1.0
@@ -203,7 +203,7 @@ class ::Tloona::VarInspector {
         # The browser
         set par [ttk::panedwindow [childsite].paned -orient vertical]
         itk_component add browser {
-            Tmw::browser $par.browser
+            Tmw::browser1 $par.browser
         }
         
         set f [ttk::frame $par.textframe -border 0 -relief flat]
@@ -283,7 +283,7 @@ class ::Tloona::StackInspector {
 # @c arguments for script execution. The debug configurations appear
 # @c in the run menu later in the debugger.
 class ::Tloona::DebugConfigDlg {
-    inherit Tmw::Dialog
+    inherit Tmw::Dialog1
     
     # @v projects: A list of projects that are displayed in a combobox
     # @v projects: for selection of an entry
@@ -765,7 +765,7 @@ class ::Tloona::Debugger {
         if {[string equal $res debug]} {
             if {$curSel == ""} {
                 set m "Please create and/or select a configuration to run.\n"
-                Tmw::message $TloonaApplication \
+                Tmw::message1 $TloonaApplication \
                     "No configuration selected" ok $m
                 return
             }

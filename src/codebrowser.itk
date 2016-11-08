@@ -318,14 +318,14 @@ class ::Tloona::CodeBrowser1 {
         set msg "This Comm ID does not exist"
         if {$id == ""} {
             while {1} {
-                set id [Tmw::input [cget -mainwindow] "Comm ID:" okcancel]
+                set id [Tmw::input1 [cget -mainwindow] "Comm ID:" okcancel]
                 if {$id == ""} {
                     return
                 }
                 if {[$mw addCommID $id]} {
                     break
                 }
-                set rr [Tmw::message $mw "Wrong Comm Id" okcancel $msg]
+                set rr [Tmw::message1 $mw "Wrong Comm Id" okcancel $msg]
                 if {$rr == "cancel"} {
                     return
                 }
@@ -341,13 +341,13 @@ class ::Tloona::CodeBrowser1 {
         
         #puts $script
         if {[catch {comm::comm send $id $script} m]} {
-            Tmw::message $mw "Error from $id" ok \
+            Tmw::message1 $mw "Error from $id" ok \
                 "The application at $id raised an error: $m"
         }
     }
 }
 
-proc ::Tloona::codebrowser {path args} {
+proc ::Tloona::codebrowser1 {path args} {
     uplevel ::Tloona::CodeBrowser1 $path $args
 }
 

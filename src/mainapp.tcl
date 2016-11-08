@@ -2,7 +2,7 @@
 package require snit 2.3.2
 package require tmw::platform 2.0.0
 package require tmw::icons 1.0
-package require tloona::kitbrowser1 1.0
+package require tloona::kitbrowser 2.0.0
 package require tloona::projectoutline1 1.0
 package require tmw::console 2.0
 package require tloona::file 1.0
@@ -10,6 +10,7 @@ package require fileutil 1.7
 package require parser::parse 1.0
 package require tloona::debugger 1.0
 package require comm 4.3
+package require tmw::dialog 2.0.0
 
 namespace eval ::Tloona {
 
@@ -35,7 +36,7 @@ snit::widgetadaptor mainapp {
     #component navigatepw
     component textnb
     component txtconpw -public txtconpw
-    component consolenb
+    component consolenb -public consolenb
     component outlinenb
     
     delegate method * to hull
@@ -1039,7 +1040,7 @@ snit::widgetadaptor mainapp {
         global UserOptions Icons
         
         set bnb $browsenb
-        install kitbrowser using Tloona::kitbrowser1 $browsenb.kitbrowser \
+        install kitbrowser using Tloona::kitbrowser $browsenb.kitbrowser \
                 -closefilecmd [list $self onFileClose] \
                 -openfilecmd [list $self openFile] \
                 -isopencmd [list {file} [concat [list $self isOpen] {$file}]] \

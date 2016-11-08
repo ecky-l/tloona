@@ -2,7 +2,7 @@
 package require -exact Itcl 3.4
 package require -exact Itk 3.4
 package require tile 0.7.5
-package require tmw::dialog 1.0
+package require tmw::dialog1 1.0
 
 package provide tmw::wizzard 1.0
 
@@ -14,7 +14,7 @@ itk::usual TFrame {}
 class ::Tmw::Wizzard {
     # @c the start wizzard
     #inherit ::iwidgets::Dialogshell
-    inherit ::Tmw::Dialog
+    inherit ::Tmw::Dialog1
     
     itk_option define -okcmd okCmd Command ""
     itk_option define -prevcmd prevCmd Command ""
@@ -64,7 +64,7 @@ class ::Tmw::Wizzard {
 body ::Tmw::Wizzard::show {} {
     showPage 0
     set Canceled 0
-    ::Tmw::Dialog::show
+    ::Tmw::Dialog1::show
 }
 
 body ::Tmw::Wizzard::addPage {args} {
