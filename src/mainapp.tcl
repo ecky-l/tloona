@@ -3,7 +3,7 @@ package require snit 2.3.2
 package require tmw::platform 2.0.0
 package require tmw::icons 1.0
 package require tloona::kitbrowser 2.0.0
-package require tloona::projectoutline1 1.0
+package require tloona::projectoutline 2.0.0
 package require tmw::console 2.0
 package require tloona::file 1.0
 package require fileutil 1.7
@@ -289,7 +289,7 @@ snit::widgetadaptor mainapp {
         }
         $T copy
     }
-                
+    
     # @c Override callback handler for Edit.Paste menu entry.
     method onEditPaste {} {
         if {$_CurrFile == ""} {
@@ -461,7 +461,7 @@ snit::widgetadaptor mainapp {
         
         # get kit projects and store them
         set UserOptions(KitProjects) {}
-        foreach {kit} [$kitbrowser getFileSystems] {
+        foreach {kit} [$kitbrowser getStarkits] {
             lappend UserOptions(KitProjects) [$kit cget -name]
         }
         
@@ -1058,7 +1058,7 @@ snit::widgetadaptor mainapp {
         bind $kitbrowser <<SortSeqChanged>> [mymethod setOption %W "KitBrowser,Sort"]
         
         # The code outline
-        install codebrowser using ::Tloona::codeoutline1 $outlinenb.codebrowser \
+        install codebrowser using ::Tloona::codeoutline $outlinenb.codebrowser \
                 -sortsequence $UserOptions(CodeBrowser,SortSeq) \
                 -sortalpha $UserOptions(CodeBrowser,SortAlpha) \
                 -mainwindow $win
@@ -1067,7 +1067,7 @@ snit::widgetadaptor mainapp {
         $codebrowser addSendCmd [mymethod SendToConsole]
         #$bnb add $codebrowser -text "Outline"
         $outlinenb add $codebrowser -text Outline
-        set V [$codebrowser component treeview]
+        set V [$codebrowser treeview]
         bind $V <Button-1> [mymethod selectCode %W %x %y 0]
         bind $V <Control-Button-1> [mymethod selectCode %W %x %y 1]
         bind $codebrowser <<SortSeqChanged>> [mymethod setOption %W "CodeBrowser,Sort"]

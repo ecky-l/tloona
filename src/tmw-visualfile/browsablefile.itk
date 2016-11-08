@@ -118,7 +118,7 @@ body ::Tmw::BrowsableFile::selectTreeDisplay {} {
     }
     
     foreach browser [getBrowsers] {
-        set bwin [$browser component treeview]
+        set bwin [$browser treeview]
         if {!([$browser exists $CurrentNode] && [winfo ismapped $bwin]
                 && [$browser cget -syncronize])} {
             continue

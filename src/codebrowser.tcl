@@ -15,9 +15,10 @@ snit::widgetadaptor codebrowser {
     
     #### Options
     option -sortsequence -default {} -configuremethod ConfigSortSequence -cgetmethod CgetHullOption
-    option -sortalpha -default 1 -configuremethod ConfigSortAlpha -cgetmethod CgetHullOption
+    option -sortalpha -default 1 -configuremethod ConfigHullOption -cgetmethod CgetHullOption
+    option -dosortseq -default 1 -configuremethod ConfigHullOption -cgetmethod CgetHullOption
     option -getfilefromitemcmd {}
-    option -dosortseq 1
+    option -filtercmd {}
     
     #### Components
     component sortlist
@@ -27,16 +28,6 @@ snit::widgetadaptor codebrowser {
     
     #### Variables
     
-    ## \brief Array with indicators for Code treenodes to show
-    variable ShowingNodes
-    array set ShowingNodes {}
-        
-    ## \brief variable for filter pattern and widgets
-    variable Filter
-    array set Filter {}
-    set Filter(pattern) ""
-    set Filter(widgets) {}
-    
     ## \brief list of all code trees. Used for filtering, so that no code tree 
     # gets lost
     variable CodeTrees {}
@@ -45,36 +36,61 @@ snit::widgetadaptor codebrowser {
     # one or more foreign interpreters
     variable SendCmds {}
 
+    ## \brief variable for filter pattern and widgets
+    variable Filter
+    array set Filter {}
+    set Filter(pattern) ""
+    set Filter(widgets) {}
+    
     constructor {args} {
         installhull using Tmw::filebrowser
         $self createToolbar
         $self configurelist $args
     }
     
-    # @c callback for filtering code items. What determines, after
-    # @c what to filter.
-    #
-    # @a what: name for simple filter name pattern. type considers
-    # @a what: the ShowingNodes array and shows all types that have 1 there
-    method onFilter {} {
-        set CodeTrees [concat $CodeTrees [$self children {}]]
-        
-        if {[$self GetExcludeTypes] != {} && $Filter(pattern) != ""} {
-            $self configure -filter [list ::Tmw::Browser::typeExcludeGlobFilter \
-                [$self GetExcludeTypes] $Filter(pattern)]
-        } elseif {$Filter(pattern) != ""} {
-            $self configure -filter \
-                [list ::Tmw::Browser1::globFilter $Filter(pattern)]
-        } elseif {[$self GetExcludeTypes] != {}} {
-            $self configure -filter \
-                [list ::Tmw::Browser1::typeExcludeFilter [$self GetExcludeTypes]]
-        } else {
-            $self configure -filter ""
-        }
-        
-        $self remove [$self children {}]
-        $self add $CodeTrees 1 0
+    ## \brief Callback for sort. Configures the options first, then sorts
+    method onSort {} {
+        $hull configure -sortsequence $options(-sortsequence) \
+            -sortalpha $options(-sortalpha) -dosortseq $options(-dosortseq)
+        $self sort
+    }
     
+    method onFilter {} {
+        if {$options(-filtercmd) != {}} {
+            uplevel #0 $options(-filtercmd) [list $Filter(pattern)]
+        }
+    }
+    
+    # @c fills the local toolbar
+    method createToolbar {} {
+        global Icons
+        
+        # create a toolbar with codebrowser specific actions
+        set toolBar [$self toolbar tools -pos n -compound none]
+        $self toolbutton sortalpha -toolbar tools -image $Tmw::Icons(SortAlpha) \
+            -type checkbutton -variable [myvar options(-sortalpha)] -separate 0 \
+            -command [mymethod onSort]
+        $self toolbutton sortseq -toolbar tools -image $Icons(SortSeq) \
+            -type checkbutton -variable [myvar options(-dosortseq)] -separate 0 \
+            -command [mymethod onSort]
+        set f [$self dropframe sortseqcfg -toolbar tools -image $Icons(SortSeqCfg) \
+            -separate 0 -hidecmd [mymethod UpdateSortSeq] -relpos 0]
+        
+        $self CreateSortList $f
+        
+        $self toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
+            -type checkbutton -variable [myvar Syncronize] -separate 0 \
+            -command [mymethod onSyncronize]
+        $self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
+            -type command -separate 0 -command [mymethod collapseAll]
+            
+        set Filter(pattern) ""
+        ttk::entry $toolBar.efilter -textvariable [myvar Filter(pattern)] -width 15
+        set Filter(widgets) $toolBar.efilter
+        $self toolbutton filter -toolbar tools -image $Tmw::Icons(ActFilter) \
+            -type command -separate 0 -command [mymethod onFilter] -stickto back
+        pack $toolBar.efilter -expand n -fill none -side right -padx 2 -pady 1
+        bind $toolBar.efilter <Return> [mymethod onFilter]
     }
     
     # @c Add a command to the list of commands that are used to send
@@ -103,11 +119,11 @@ snit::widgetadaptor codebrowser {
             $self SendCommDefinition $node $id
         }
         console {
-            if {$getfilefromitemcmd == {}} {
+            if {$options(-getfilefromitemcmd) == {}} {
                 set script [::Tloona::getNodeDefinition $node]
             } else {
                 set script [::Tloona::getNodeDefinition $node \
-                    [uplevel #0 $getfilefromitemcmd $node]]
+                    [uplevel #0 $options(-getfilefromitemcmd) $node]]
             }
             foreach {cmd} $SendCmds {
                 uplevel #0 $cmd [list $script]
@@ -116,47 +132,6 @@ snit::widgetadaptor codebrowser {
         }
     }
     
-    # @c fills the local toolbar
-    method createToolbar {} {
-        global Icons
-        
-        # create a toolbar with codebrowser specific actions
-        set toolBar [$self toolbar tools -pos n -compound none]
-        $self toolbutton sortalpha -toolbar tools -image $Tmw::Icons(SortAlpha) \
-            -type checkbutton -variable [myvar options(-sortalpha)] -separate 0 \
-            -command [mymethod sort]
-        $self toolbutton sortseq -toolbar tools -image $Icons(SortSeq) \
-            -type checkbutton -variable [myvar options(-dosortseq)] -separate 0 \
-            -command [mymethod sort]
-        set f [$self dropframe sortseqcfg -toolbar tools -image $Icons(SortSeqCfg) \
-            -separate 0 -hidecmd [mymethod UpdateSortSeq] -relpos 0]
-        
-        $self CreateSortList $f
-        
-        #set f [$self dropframe showcfg -toolbar tools -image $Tmw::Icons(ActWatch) \
-        #    -separate 1  -hidecmd [mymethod onFilter] -relpos 0]
-        # 
-        #$self CreateShowButtons $f
-    
-        set Filter(pattern) ""
-        ttk::entry $toolBar.efilter -textvariable [myvar Filter(pattern)] -width 15
-        set Filter(widgets) $toolBar.efilter
-        $self toolbutton filter -toolbar tools -image $Tmw::Icons(ActFilter) \
-            -type command -separate 0 -command [mymethod onFilter] -stickto back
-        pack $toolBar.efilter -expand n -fill none -side right -padx 2 -pady 1
-        bind $toolBar.efilter <Return> [mymethod onFilter]
-        
-        # the filter-by-type variables
-        set ShowingNodes(package) 1
-        set ShowingNodes(variable) 1
-        set ShowingNodes(proc) 1
-        set ShowingNodes(itk_components) 1
-        set ShowingNodes(const_dest) 1
-        set ShowingNodes(public) 1
-        set ShowingNodes(protected) 1
-        set ShowingNodes(private) 1
-    }
-        
     # @c creates the listbox and associated widgets for the sort
     # @c sequence configuration and fills the listbox
     #
@@ -174,36 +149,7 @@ snit::widgetadaptor codebrowser {
         grid $bup -row 0 -column 1 -sticky swe -padx 1
         grid $bdown -row 1 -column 1 -sticky nwe -padx 1
     }
-        
-    # @c creates checkbuttons in a parent frame that trigger filter
-    # @c expressions for showing and hiding particular code tree types
-    #
-    # @a parent: the parent frame
-    method CreateShowButtons {parent} {
-        global Icons
-        
-        ttk::checkbutton $parent.package -variable [myvar ShowingNodes(package)] \
-            -text "package imports" -image $Icons(TclPkg) -compound left
-        ttk::checkbutton $parent.variable -variable [myvar ShowingNodes(variable)] \
-            -text "variables" -image $Icons(TclVar) -compound left
-        ttk::checkbutton $parent.proc -variable [myvar ShowingNodes(proc)] \
-            -text "procedures" -image $Icons(TclProc) -compound left
-        ttk::checkbutton $parent.itk_components -variable [myvar ShowingNodes(itk_components)] \
-            -text "Itk Components" -image $Icons(ItkComponents) -compound left
-        ttk::checkbutton $parent.const_dest -variable [myvar ShowingNodes(const_dest)] \
-            -text "constructors/destructors" -image $Icons(TclConstructor) -compound left
-        ttk::checkbutton $parent.public -variable [myvar ShowingNodes(public)] \
-            -text "public members" -image $Icons(TclPublic) -compound left
-        ttk::checkbutton $parent.protected -variable [myvar ShowingNodes(protected)] \
-            -text "protected members" -image $Icons(TclProtected) -compound left
-        ttk::checkbutton $parent.private -variable [myvar ShowingNodes(private)] \
-            -text "private members" -image $Icons(TclPrivate) -compound left
-        
-        pack $parent.package $parent.variable $parent.proc $parent.itk_components \
-            $parent.const_dest $parent.public $parent.protected $parent.private \
-            -side top -expand n -fill none -padx 2 -pady 0 -anchor w
-    }
-        
+    
     # @c moves the selected item in the sort config listbox up or down
     # 
     # @a updown: up or down
@@ -235,36 +181,9 @@ snit::widgetadaptor codebrowser {
     # @c updates the sort sequence from sort listbox and triggers
     # @c resorting
     method UpdateSortSeq {} {
-        $self configure -sortsequence [$sortlist get 0 end] -sortalpha $options(-sortalpha)
+        $self configure -sortsequence [$sortlist get 0 end] -sortalpha $options(-sortalpha) 
         $self sort
         event generate $win <<SortSeqChanged>>
-    }
-        
-    # @r a list of exclude types, based on the values in ShowingNodes array
-    method GetExcludeTypes {} {
-        set excludes {}
-        foreach {v} {package variable proc} {
-            if {! $ShowingNodes($v)} {
-                lappend excludes $v
-            }
-        }
-        foreach {v} {public protected private} {
-            if {! $ShowingNodes($v)} {
-                lappend excludes [set v]_method [set v]_variable
-            }
-        }
-        if {!$ShowingNodes(public) && !$ShowingNodes(protected) \
-                && !$ShowingNodes(private)} {
-            lappend excludes class
-        }
-        if {! $ShowingNodes(const_dest)} {
-            lappend excludes constructor destructor
-        }
-        if {! $ShowingNodes(itk_components)} {
-            lappend excludes itk_components public_component private_component
-        }
-        
-        return $excludes
     }
     
     # @c Sends the definition of a node via comm to an interpreter
@@ -304,6 +223,7 @@ snit::widgetadaptor codebrowser {
     
     ## \brief config method for the sort sequence
     method ConfigSortSequence {option value} {
+        set options($option) $value
         $hull configure -sortsequence $value
         #set options($option) $value
         if {$value == {}} {
@@ -336,7 +256,8 @@ snit::widgetadaptor codebrowser {
         }
     }
     
-    method ConfigSortAlpha {option value} {
+    method ConfigHullOption {option value} {
+        set options($option) $value
         $hull configure -sortalpha $value
     }
     
@@ -366,7 +287,7 @@ snit::widgetadaptor projectbrowser {
     
     ### Components
     
-    delegate method * to hull except createToolbar
+    delegate method * to hull except {onFilter createToolbar}
     delegate option * to hull
     
     #### Variables
@@ -379,14 +300,9 @@ snit::widgetadaptor projectbrowser {
     constructor {args} {
         installhull using codebrowser
         $self createToolbar
+        $self configure -filtercmd [mymethod onFilter]
         $self configurelist $args
     }
-    
-    ## \brief Add a filesystem by root directory
-    # 
-    # Meant to be overridden by derived classes.
-    #method addFileSystem {root} {
-    #}
     
     ## \brief selects the code definition of Itcl methods. 
     # 
@@ -402,7 +318,15 @@ snit::widgetadaptor projectbrowser {
     method onSyncronize {} {
         $self configure -syncronize $Syncronize
     }
-        
+    
+    method onFilter {pattern} {
+        $self configure -filter [expr { 
+            ($pattern == {}) ? "" : [list ::Tmw::Browser::globFilter $pattern]
+        }]
+        $self remove [$self children {}]
+        $self add $Starkits 1 1
+    }
+    
     ## \brief Overrides remove in Tmw::Browser1.
     # 
     # Closes files that are still open
@@ -436,12 +360,19 @@ snit::widgetadaptor projectbrowser {
     # @c aligns them different
     method createToolbar {} {
         global Icons
-        #$hull createToolbar
         $self toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
             -type checkbutton -variable [myvar Syncronize] -separate 0 \
             -command [mymethod onSyncronize]
         $self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
             -type command -separate 0 -command [mymethod collapseAll]
+    }
+    
+    method addStarkit {starKit} {
+        lappend Starkits $starKit
+    }
+    
+    method getStarkits {} {
+        return $Starkits
     }
     
     # @c checks whether a file is open already. The method

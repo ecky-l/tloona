@@ -98,7 +98,7 @@ snit::widgetadaptor kitbrowser {
         Tmw::Fs::build $fs 1
         $self add $fs 1 0
         $self sort
-        lappend Starkits $fs
+        $self addStarkit $fs
         return $fs
     }
     
@@ -240,12 +240,7 @@ snit::widgetadaptor kitbrowser {
         
         return $tclFiles
     }
-        
-    # @r All FileSystems in the browser
-    method getStarkits {} {
-        $self children {}
-    }
-        
+    
     # @c Overrides the expand method
     method expand {open {item ""}} {
         if {$item == ""} {
