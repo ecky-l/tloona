@@ -1,13 +1,14 @@
 #
 # file.itk
 #
-package require tmw::browsablefile 1.0
+package require tmw::browsablefile1 1.0
 package require Itree 1.0
 package require parser::parse 1.0
 package require tloona::codecompletion 1.0
 package require tloona::htmlparser 1.0
 
-package provide tloona::file 1.0
+package provide tloona::file1 1.0
+
 # @c a special Tcl/Tk file representation with 
 # @c features & functionality for Tcl/Tk files
 class ::Tloona::TclFile {
@@ -826,7 +827,7 @@ class ::Tloona::TclFile {
 
 
 
-proc ::Tloona::tclfile {path args} {
+proc ::Tloona::tclfile1 {path args} {
     # @c convenience command for constructing files
     uplevel ::Tloona::TclFile $path $args
 }
@@ -1036,7 +1037,7 @@ class ::Tloona::WebFile {
 }
 
 
-proc ::Tloona::webfile {path args} {
+proc ::Tloona::webfile1 {path args} {
     uplevel ::Tloona::WebFile $path $args
 }
 

@@ -5,7 +5,7 @@ package require tmw::icons 1.0
 package require tloona::kitbrowser 2.0.0
 package require tloona::projectoutline 2.0.0
 package require tmw::console 2.0
-package require tloona::file 1.0
+package require tloona::file1 1.0
 package require fileutil 1.7
 package require parser::parse 1.0
 package require tloona::debugger 1.0
@@ -105,7 +105,7 @@ snit::widgetadaptor mainapp {
         # @c callback for new Tcl/Itcl scripts
         global UserOptions
         
-        set cls [::Tloona::tclfile $textnb.file$_FileIdx -font $options(-filefont) \
+        set cls [::Tloona::tclfile1 $textnb.file$_FileIdx -font $options(-filefont) \
             -sendcmd [mymethod SendToConsole] \
             -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
             -mainwindow $win -backupfile $UserOptions(File,Backup)]
@@ -1111,7 +1111,7 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+        set cls [::Tloona::tclfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
                 -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
                 -mainwindow $win -backupfile $UserOptions(File,Backup) \
                 -sendcmd [mymethod SendToConsole]]
@@ -1177,7 +1177,7 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tmw::visualfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+        set cls [::Tmw::visualfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
                 -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
                 -mainwindow $win -backupfile $UserOptions(File,Backup)]
         
@@ -1210,7 +1210,7 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tloona::webfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+        set cls [::Tloona::webfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
                 -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
                 -mainwindow $win -backupfile $UserOptions(File,Backup)]
         

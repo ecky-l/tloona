@@ -12,7 +12,7 @@ catch {
     namespace import ::itk::*
 }
 
-package provide tmw::visualfile 1.0
+package provide tmw::visualfile1 1.0
 
 # unset some of the Text default bindings. They are rebound later
 bind Text <Control-v> {}
@@ -619,6 +619,6 @@ body ::Tmw::VisualFile::enableSearchButtons {varPtr args} {
 }
 
 # @c convenience command for constructing files
-proc ::Tmw::visualfile {path args} {
+proc ::Tmw::visualfile1 {path args} {
     uplevel ::Tmw::VisualFile $path $args
 }

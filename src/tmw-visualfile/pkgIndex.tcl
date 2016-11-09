@@ -8,6 +8,6 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::visualfile 1.0 [list source [file join $dir visualfile.itk]]
-package ifneeded tmw::browsablefile 1.0 [list source [file join $dir browsablefile.itk]]
+package ifneeded tmw::visualfile1 1.0 [list source [file join $dir visualfile.itk]]
+package ifneeded tmw::browsablefile1 1.0 [list source [file join $dir browsablefile.itk]]
 

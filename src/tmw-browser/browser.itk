@@ -4,7 +4,6 @@
 package require tmw::toolbarframe1 1.0
 package require tile 0.7.5
 package require Itree 1.0
-package require tmw::plugin 1.0
 
 package provide tmw::browser1 1.0
 
@@ -469,8 +468,3 @@ proc ::Tmw::Browser1::typeExcludeGlobFilter {excludeList pattern node} {
 proc ::Tmw::browser1 {path args} {
     uplevel Tmw::Browser1 $path $args
 }
-## plugin code
-#plugin Tmw::Browser
-#extends Tmw::Platform {
-#    #puts hello,world
-#}

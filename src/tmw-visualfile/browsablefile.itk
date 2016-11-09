@@ -1,9 +1,9 @@
 
-package require tmw::visualfile 1.0
+package require tmw::visualfile1 1.0
 package require Tclx 8.4
 package require parser::script 1.0
 
-package provide tmw::browsablefile 1.0
+package provide tmw::browsablefile1 1.0
 
 # @c This class implements a visual file which can be
 # @c displayed and used in a browser
@@ -140,6 +140,6 @@ body ::Tmw::BrowsableFile::updateCurrentNode {{x -1} {y -1}} {
 
 
 # @c convenience command for constructing files
-proc ::Tmw::browsablefile {path args} {
+proc ::Tmw::browsablefile1 {path args} {
     uplevel ::Tmw::BrowsableFile $path $args
 }

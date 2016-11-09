@@ -11,7 +11,7 @@
 package ifneeded tloona::codebrowser1 1.0 [list source [file join $dir codebrowser.itk]]
 package ifneeded tloona::projectoutline1 1.0 [list source [file join $dir projectoutline.itk]]
 package ifneeded tloona::codecompletion 1.0 [list source [file join $dir codecompletion.itk]]
-package ifneeded tloona::file 1.0 [list source [file join $dir file.itk]]
+package ifneeded tloona::file1 1.0 [list source [file join $dir file.itk]]
 package ifneeded tloona::mainapp 1.0 [list source [file join $dir mainapp.itk]]
 package ifneeded tloona::kitbrowser1 1.0 [list source [file join $dir kitbrowser.itk]]
 package ifneeded tloona::wrapwizzard 1.0 [list source [file join $dir wrapwizzard.itk]]

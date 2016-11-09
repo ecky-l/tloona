@@ -32,9 +32,6 @@ package require tmw::dialog 2.0.0
 Tmw::Splash::Message "Loading tmw::icons"
 Tmw::Splash::Progress 10
 package require tmw::icons 1.0
-Tmw::Splash::Message "Loading tmw::plugin"
-Tmw::Splash::Progress 12
-package require tmw::plugin 1.0
 Tmw::Splash::Message "Loading log"
 Tmw::Splash::Progress 15
 package require log 1.2
