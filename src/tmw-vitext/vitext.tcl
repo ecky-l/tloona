@@ -4,12 +4,12 @@ package require ctext 3.3
 
 namespace eval Tmw {
     namespace export vitext
-}
+
 
 ## \brief a vi mode enabled text
 # 
 # This serves as base class for any other texts that can have vi mode
-snit::widgetadaptor Tmw::ViText {
+snit::widgetadaptor vitext {
     delegate method * to hull
     delegate option * to hull
     
@@ -155,12 +155,12 @@ snit::widgetadaptor Tmw::ViText {
             $W see insert
         }} $win]
         set options(-cutlinecmd) [list apply {{W si} {
-            $W tag add sel $si {insert lineend}
+            $W tag add sel $si [list insert lineend]+1displayindices
             tk_textCut $W
             $W see insert
         }} $win]
         set options(-yanklinecmd) [list apply {{W si} {
-            $W tag add sel $si {insert lineend}
+            $W tag add sel $si [list insert lineend]
             tk_textCopy $W
             $W tag remove sel {insert linestart} {insert lineend}
             $W see insert
@@ -290,7 +290,7 @@ snit::widgetadaptor Tmw::ViText {
         }
         d - y - c {
             if {$KeyCommand == $key && $key ne "c"} {
-                uplevel #0 $CmdBindings($key) $options(-linestart)
+                uplevel #0 $CmdBindings($key) [list $options(-linestart)]
                 set LastCutYank line
                 set KeyCommand {}
             } else {
@@ -442,11 +442,11 @@ snit::widgetadaptor Tmw::ViText {
         }
         }
     }
-}
+    
+} ;# vitext
 
-proc ::Tmw::vitext {path args} {
-    uplevel ::Tmw::ViText $path $args
-}
 
-package provide tmw::vitext 1.0
+} ;# namespace Tmw
+
+package provide tmw::vitext 1.0.0
 

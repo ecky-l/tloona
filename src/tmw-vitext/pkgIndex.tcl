@@ -8,4 +8,4 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::vitext 1.0 [list source [file join $dir vitext.tcl]]
+package ifneeded tmw::vitext 1.0.0 [list source [file join $dir vitext.tcl]]
