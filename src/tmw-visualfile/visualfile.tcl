@@ -1,6 +1,6 @@
 ## visualfile.tcl (created by Tloona here)
 
-lappend auto_path [pwd]/src [pwd]/lib
+#lappend auto_path [pwd]/src [pwd]/lib
 
 package require snit 2.3.2
 package require tmw::toolbarframe 2.0.0
@@ -13,6 +13,8 @@ snit::widgetadaptor visualfile {
     
     #### Options
     option {-modifiedcmd modifiedCmd Command} -default {} -configuremethod ConfigModifiedCmd
+    option {-button1cmd button1Cmd Command} -default {} -configuremethod ConfigButton1Cmd
+    
     ## \brief line ending for save. lf (unix), crlf (windows) or auto
     option -savelineendings auto
     ## \brief the browser object for the file. Used for display in file browsers (not code browsers)
@@ -479,6 +481,12 @@ snit::widgetadaptor visualfile {
         bind $textwin.t <<Modified>> $value
     }
     
+    ## \brief configuremethod for -button1cmd
+    method ConfigButton1Cmd {option value} {
+        set options($option) $value
+        bind $textwin.t <Button-1> $value
+    }
+    
     ## \brief configuremethod for -searchstring
     method ConfigSearchString {option value} {
         set options($option) $value
@@ -523,6 +531,6 @@ snit::widgetadaptor visualfile {
 package provide tmw::visualfile 2.0.0
 
 ### Test Code
-package re Tk
-Tmw::visualfile .v -vimode true
-pack .v
+#package re Tk
+#Tmw::visualfile .v -vimode true
+#pack .v
