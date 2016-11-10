@@ -78,11 +78,11 @@ snit::widgetadaptor codebrowser {
         
         $self CreateSortList $f
         
-        $self toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
-            -type checkbutton -variable [myvar Syncronize] -separate 0 \
-            -command [mymethod onSyncronize]
-        $self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
-            -type command -separate 0 -command [mymethod collapseAll]
+        #$self toolbutton syncronize -toolbar tools -image $Icons(Syncronize) \
+        #    -type checkbutton -variable [myvar Syncronize] -separate 0 \
+        #    -command [mymethod onSyncronize]
+        #$self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
+        #    -type command -separate 0 -command [mymethod collapseAll]
             
         set Filter(pattern) ""
         ttk::entry $toolBar.efilter -textvariable [myvar Filter(pattern)] -width 15

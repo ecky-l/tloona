@@ -326,7 +326,7 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         switch -- $what {
-            "browser" {
+            browser {
                 #showWidget view parentComp childComp
                 #showWidget $view browsepw navigatepw
                 if {$view == $_ViewProjectBrowser} {
@@ -342,7 +342,7 @@ snit::widgetadaptor mainapp {
                     set UserOptions(View,browser) $view
                 }
             }
-            "outline" {
+            outline {
                 if {$view == $_ViewOutline} {
                     return
                 }
@@ -355,7 +355,7 @@ snit::widgetadaptor mainapp {
                     set UserOptions(View,outline) $view
                 }
             }
-            "console" {
+            console {
                 if {$view == $_ViewConsole} {
                     return
                 }
@@ -369,7 +369,7 @@ snit::widgetadaptor mainapp {
                 }
             }
             
-            "editor" {
+            editor {
                 if {$view == $_ViewEditor} {
                     return
                 }
@@ -384,7 +384,7 @@ snit::widgetadaptor mainapp {
                 }
             }
             
-            "consoleOnly" {
+            consoleOnly {
                 if {! $_ViewConsole} {
                     $self onViewWindow console 1 0
                 }
@@ -691,22 +691,26 @@ snit::widgetadaptor mainapp {
                 set _ViewTextNbOnly [expr {! $_ViewTextNbOnly}]
                 
                 if {$_ViewTextNbOnly} {
-                    $self onViewWindow "browser" 0 0
-                    $self onViewWindow "console" 0 0
+                    $self onViewWindow browser 0 0
+                    $self onViewWindow console 0 0
+                    $self onViewWindow outline 0 0
                 } else {
-                    $self onViewWindow "browser" $::UserOptions(View,browser)
-                    $self onViewWindow "console" $::UserOptions(View,console)
+                    $self onViewWindow browser $::UserOptions(View,browser)
+                    $self onViewWindow console $::UserOptions(View,console)
+                    $self onViewWindow outline $::UserOptions(View,outline)
                 }
                 
             }
             "console" {
                 set _ViewConsoleOnly [expr {! $_ViewConsoleOnly}]
                 if {$_ViewConsoleOnly} {
-                    $self onViewWindow "browser" 0 0
-                    $self onViewWindow "editor" 0 0
+                    $self onViewWindow browser 0 0
+                    $self onViewWindow editor 0 0
+                    $self onViewWindow outline 0 0
                 } else {
                     $self onViewWindow "browser" $UserOptions(View,browser)
                     $self onViewWindow "editor" $UserOptions(View,editor)
+                    $self onViewWindow outline $::UserOptions(View,outline)
                 }
             }
             
@@ -905,12 +909,18 @@ snit::widgetadaptor mainapp {
                 $pComp insert $pos $cComp -weight 1
             }
             update
-            if {[llength [$pComp panes]] > 1} {
-                $pComp sashpos 0 $UserOptions(View,$optionKey)
+            try {
+                set sashp [expr { ([string eq $pos end]) ? [llength [$pComp panes]] - 2 : $pos}]
+                $pComp sashpos $sashp $UserOptions(View,$optionKey)
+            } trap {TTK PANE SASH_INDEX} {err errOpts} {
+                # ignore
             }
         } else  {
-            if {[llength [$pComp panes]] > 1} {
-                set UserOptions(View,$optionKey) [$pComp sashpos 0]
+            try {
+                set sashp [expr { ([string eq $pos end]) ? [llength [$pComp panes]] - 2 : $pos}]
+                set UserOptions(View,$optionKey) [$pComp sashpos $sashp]
+            } trap {TTK PANE SASH_INDEX} {err errOpts} {
+                # ignore
             }
             $pComp forget $cComp
         }
