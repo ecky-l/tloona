@@ -132,13 +132,13 @@ snit::widget console {
         
         $textwin configure -linestart limit -lineend end-1c \
             -textstart limit -textend end \
-            -upcmd [mymethod getHistory Up] \
-            -downcmd [mymethod getHistory Down] \
+            -upcmd "[mymethod getHistory Up] ; break" \
+            -downcmd "[mymethod getHistory Down] ; break" \
             -leftcmd [mymethod HandleCursorLeftKey] \
-            -backspacecmd [mymethod OnBackspace] \
-            -homecmd [mymethod HandleHomeKey] \
-            -endcmd [mymethod HandleEndKey] \
-            -backcmd [mymethod HandleWordBack] \
+            -backspacecmd "[mymethod OnBackspace] ; break" \
+            -homecmd "[mymethod HandleHomeKey] ; break" \
+            -endcmd "[mymethod HandleEndKey] ; break" \
+            -backcmd "[mymethod HandleWordBack] ; break" \
             -cutlinecmd [mymethod CutLine] \
             -yanklinecmd [mymethod YankLine]
         

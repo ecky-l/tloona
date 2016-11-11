@@ -39,7 +39,7 @@ snit::widgetadaptor tclfile {
     
     constructor {args} {
         installhull using Tmw::browsablefile
-        install completor using ::Tloona::Completor $win.cmpl -textwin $win
+        install completor using ::Tloona::Completor $win.cmpl -textwin [$self textwin]
         
         # TODO: review
         $self SetBindings
@@ -603,34 +603,34 @@ snit::widgetadaptor tclfile {
         if {$options(-sendcmd) == ""} {
             return
         }
-        uplevel #0 $options(-sendcmd) [list [::Tloona::getNodeDefinition $CurrentNode $this]]
+        uplevel #0 $options(-sendcmd) [list [::Tloona::getNodeDefinition [$self getCurrentNode] $self]]
     }
     
     # @c set default bindings for the widget
     method SetBindings {} {
         global UserOptions
-        set T [$self childsite].t
+        set T [$self childsite].textwin
         
         # switch the bindtags sequence. The textwin (ctags textwin)
         # must come first in the list
-        set ntags [lindex [bindtags $win] 1]
-        lappend ntags [lindex [bindtags $win] 0]
-        set ntags [concat $ntags [lrange [bindtags $win] 2 end]]
+        set ntags [lindex [bindtags $T] 1]
+        lappend ntags [lindex [bindtags $T] 0]
+        set ntags [concat $ntags [lrange [bindtags $T] 2 end]]
         bindtags $win $ntags
         
         # code completion bindings
         set accel $UserOptions(DefaultModifier)
         set accel [regsub {Ctrl} $accel Control]
         set accel [regsub {Meta} $accel M1]
-        bind $win <[set accel]-space> [mymethod showCmdCompl 1]
-        bind $win <[set accel]-Return> "[mymethod sendCode];break"
+        bind $T <[set accel]-space> [mymethod showCmdCompl 1]
+        bind $T <[set accel]-Return> "[mymethod sendCode];break"
 
         #bind $T <Key-Up> [mymethod updateCurrentNode]
         #bind $T <Key-Down> [mymethod updateCurrentNode]
-        bind $win <Key-Left> [mymethod updateCurrentNode]
-        bind $win <Key-Right> [mymethod updateCurrentNode]
-        bind $win <KeyPress> [mymethod onKeyPress %K %A]
-        bind $win <KeyRelease> [mymethod HandleInputChar %A]
+        bind $T <Key-Left> [mymethod updateCurrentNode]
+        bind $T <Key-Right> [mymethod updateCurrentNode]
+        bind $T <KeyPress> [mymethod onKeyPress %K %A]
+        bind $T <KeyRelease> [mymethod HandleInputChar %A]
     }
     
     # @c handles the character that was typed last. Invoked 
@@ -641,27 +641,100 @@ snit::widgetadaptor tclfile {
     # @a keyrelease: key release event
     method HandleInputChar {char} {
         global tcl_platform
+        #set T $self
         if {$char == {}} {
             return
         }
         
         set tIdx [$self index insert]
         set line [$self get "$tIdx linestart" $tIdx]
-
-        set matchings { \{ \} \[ \] ( ) \" \" }
+        set tabsize [$self cget -tabsize]
         switch -- $char {
-        \{ - \[ - ( - \" {
-            $self fastinsert insert [dict get $matchings $char]
-            $self mark set insert "insert -1c"
-            
-            if {$char in {\{ \[ \\}} {
-                set LastChar $char
-                if {[regexp -all {^([ \t]*)[^ ]+} $line m v1]} {
-                    set IndentLevel [expr { [string len $v1] + [$self cget -tabsize] }]
-                }    
+        \" {
+            if {$::UserOptions(File,MatchQuotes) && $LastKey != "Return"} {
+                $self fastinsert insert "\""
+                $self mark set insert "insert -1c"
+                $self highlight "insert" "insert +10c"
+            }
+        }
+        ( {
+            if {$::UserOptions(File,MatchParens)} {
+                $self fastinsert insert ")"
+                $self mark set insert "insert -1c"
+                $self highlight "insert" "insert +1c"
+            }
+        }
+        \{ {
+            set c [$self get $tIdx "$tIdx lineend"]
+            if {$LastKey == "Return" && $c != "\}"} {
+                regexp -all {^([ \t]*)[^ ]+} $line m v1
+                set IndentLevel [expr { [string len $v1] + $tabsize }]
+            } elseif {$LastKey == "Return"} {
+                $self highlight "insert" "insert +50c"
+                # do nothing
+            } elseif {$::UserOptions(File,MatchBraces)} {
+                $self fastinsert insert "\}"
+                $self mark set insert "insert -1c"
+                $self highlight "insert" "insert +1c"
+            }
+        }
+        \[ {
+            set c [$self get $tIdx "$tIdx lineend"]
+            if {$LastKey == "Return" && $c != "\}"} {
+                regexp -all {^([ \t]*)[^ ]+} $line m v1
+                set IndentLevel [expr { [string length $v1] + $tabsize }]
+            } elseif {$LastKey == "Return"} {
+                $self highlight "insert" "insert +50c"
+                # do nothing
+            } elseif {$::UserOptions(File,MatchBrackets)} {
+                $self fastinsert insert "\]"
+                $self mark set insert "insert -1c"
+                $self highlight "insert" "insert +1c"
+            }
+        }
+        \} {
+            if {$LastKey == "Return"} {
+                regexp -all {^([ \t]*).*$} $line m v1
+                set IndentLevel [string length $v1]
+            } else {
+                set l [$self get "$tIdx linestart" "$tIdx lineend"]
+                if {[regexp {^[ \t]*\}} $l]} {
+                    set IndentLevel [expr { $IndentLevel - $tabsize }]
+                    set l [lindex [split $tIdx .] 0]
+                    set c [lindex [split $tIdx .] 1]
+                    $self fastdelete $l.[expr {$c - $tabsize - 1}] "insert -1c"
+                }
+            }
+        }
+        \] {
+            if {$LastKey == "Return"} {
+                regexp -all {^([ \t]*).*$} $line m v1
+                set IndentLevel [string length $v1]
+            } else {
+                set l [$self get "$tIdx linestart" "$tIdx lineend"]
+                if {[regexp {^[ \t]*\}} $l]} {
+                    set IndentLevel [expr { $IndentLevel - 2 * $tabsize }]
+                    set l [lindex [split $tIdx .] 0]
+                    set c [lindex [split $tIdx .] 1]
+                    $self fastdelete $l.[expr {$c - 2 * $tabsize - 1}] "insert -1c"
+                }
+            }
+        }
+        \\ {
+            if {$LastKey == "Return"} {
+                regexp -all {^([ \t]*)[^ ]+} $line m v1
+                set IndentLevel [expr {[string length $v1] + $tabsize}]
             }
         }
         
+        default {
+            if {$LastKey == "Return"} {
+                # an ordinary statement or empty line
+                if {[regexp -all {^([ \t]*).*$} $line m v1]} {
+                    set IndentLevel [string length $v1]
+                }
+            }
+        }
         }
     }
     

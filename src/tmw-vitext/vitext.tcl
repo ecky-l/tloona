@@ -388,7 +388,7 @@ snit::widgetadaptor vitext {
         set dk { -upcmd <Key-Up> -downcmd <Key-Down> -leftcmd <Key-Left> -rightcmd <Key-Right}
         set ck { -upcmd k -downcmd j -leftcmd h -rightcmd l}
         set CmdBindings([dict get $ck $option]) $value
-        bind $win [dict get $dk $option] "$value ; break"
+        bind $win [dict get $dk $option] $value
     }
     
     method ConfigHEBinding {option value} {
@@ -396,13 +396,13 @@ snit::widgetadaptor vitext {
         set dk { -homecmd <Home> -endcmd <End> }
         set ck { -homecmd 0 -endcmd dollar}
         set CmdBindings([dict get $ck $option]) $value
-        bind $win [dict get $dk $option] "$value ; break"
+        bind $win [dict get $dk $option] $value
     }
     
     method ConfigBackspaceBinding {option value} {
         set options($option) $value
         if {! $options(-commandmode)} {
-            bind $win <Key-BackSpace> "$value ; break"
+            bind $win <Key-BackSpace> $value
         }
     }
     
@@ -411,7 +411,7 @@ snit::widgetadaptor vitext {
         set dk { -wordcmd <Control-Right> -backcmd <Control-Left>}
         set ck { -wordcmd w -backcmd b }
         set CmdBindings([dict get $ck $option]) $value
-        bind $win [dict get $dk $option] "$value move 1 ; break"
+        bind $win [dict get $dk $option] $value ;# "$value move 1 ; break"
     }
     
     method ConfigCursor {option value} {

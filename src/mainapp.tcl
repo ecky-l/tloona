@@ -280,40 +280,23 @@ snit::widgetadaptor mainapp {
 
     # @c Override callback handler for Edit.Cut menu entry.
     method onEditCut {} {
-        if {$_CurrFile == ""} {
-            return
+        if {$_CurrFile != ""} {
+            $_CurrFile cut
         }
-        set T [$_CurrFile component textwin]
-        if {[focus] != "$T.t"} {
-            return
-        }
-        
-        $T cut
     }
 
     # @c Override callback handler for Edit.Copy menu entry.
     method onEditCopy {} {
-        if {$_CurrFile == ""} {
-            return
+        if {$_CurrFile != ""} {
+            $_CurrFile copy
         }
-        set T [$_CurrFile component textwin]
-        if {[focus] != "$T.t"} {
-            return
-        }
-        $T copy
     }
     
     # @c Override callback handler for Edit.Paste menu entry.
     method onEditPaste {} {
-        if {$_CurrFile == ""} {
-            return
+        if {$_CurrFile != ""} {
+            $_CurrFile paste
         }
-        set T [$_CurrFile component textwin]
-        if {[focus] != "$T.t"} {
-            return
-        }
-        
-        $T paste
     }
 
     # @c callback for Edit.Search
@@ -509,16 +492,15 @@ snit::widgetadaptor mainapp {
         if {$_CurrFile == ""} {
             return
         }
-        set T [$_CurrFile component textwin]
-        if {[$T tag ranges sel] == {}} {
-            set start [$T index "insert linestart"]
-            set end [$T index "insert lineend"]
+        if {[$_CurrFile tag ranges sel] == {}} {
+            set start [$_CurrFile index "insert linestart"]
+            set end [$_CurrFile index "insert lineend"]
         } else {
-            set start [$T index sel.first]
-            set end [$T index sel.last]
+            set start [$_CurrFile index sel.first]
+            set end [$_CurrFile index sel.last]
         }
         
-        $T tag remove sel $start $end
+        $_CurrFile tag remove sel $start $end
         $_CurrFile toggleComment $start $end
     }
     
@@ -528,16 +510,15 @@ snit::widgetadaptor mainapp {
             return
         }
         
-        set T [$_CurrFile component textwin]
-        if {[$T tag ranges sel] == {}} {
-            set start [$T index "insert linestart"]
-            set end [$T index "insert lineend"]
+        if {[$_CurrFile tag ranges sel] == {}} {
+            set start [$_CurrFile index "insert linestart"]
+            set end [$_CurrFile index "insert lineend"]
         } else {
-            set start [$T index sel.first]
-            set end [$T index sel.last]
+            set start [$_CurrFile index sel.first]
+            set end [$_CurrFile index sel.last]
         }
         
-        $T tag remove sel $start $end
+        $_CurrFile tag remove sel $start $end
         $_CurrFile indentBlock $indent $start $end
     }
     
@@ -546,8 +527,7 @@ snit::widgetadaptor mainapp {
         if {$_CurrFile == {}} {
             return
         }
-        set T [$_CurrFile component textwin]
-        set script [$T get 1.0 end]
+        set script [$_CurrFile get 1.0 end]
         set cons [$consolenb select]
         
         set errInfo {}
@@ -965,7 +945,7 @@ snit::widgetadaptor mainapp {
     
     # @c switch between widgets inside the application
     method SwitchWidgets {} {
-        set cfw [$_CurrFile component textwin].t
+        set cfw [$_CurrFile textwin].t
         set consw [$consolenb select].textwin.t
         if {[string match [focus] $cfw]} {
             focus -force $consw
@@ -1002,21 +982,16 @@ snit::widgetadaptor mainapp {
             -accelerator [set UserOptions(DefaultModifier)]-q
         
         $self menuentry Edit.Undo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActUndo) -command [mymethod onEditUndo] \
-            -accelerator [set UserOptions(DefaultModifier)]-z
+            -image $Tmw::Icons(ActUndo) -command [mymethod onEditUndo]
         $self menuentry Edit.Redo -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(ActRedo) -command [mymethod onEditRedo] \
-            -accelerator [set UserOptions(DefaultModifier)]-r
+            -image $Tmw::Icons(ActRedo) -command [mymethod onEditRedo] 
         $self menuentry Edit.Sep0 -type separator -toolbar maintoolbar
         $self menuentry Edit.Cut -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCut) -command [mymethod onEditCut] \
-            -accelerator [set UserOptions(DefaultModifier)]-x
+            -image $Tmw::Icons(EditCut) -command [mymethod onEditCut] 
         $self menuentry Edit.Copy -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditCopy) -command [mymethod onEditCopy] \
-            -accelerator [set UserOptions(DefaultModifier)]-c
+            -image $Tmw::Icons(EditCopy) -command [mymethod onEditCopy] 
         $self menuentry Edit.Paste -type command -toolbar maintoolbar \
-            -image $Tmw::Icons(EditPaste) -command [mymethod onEditPaste] \
-            -accelerator [set UserOptions(DefaultModifier)]-v
+            -image $Tmw::Icons(EditPaste) -command [mymethod onEditPaste] 
         $self menuentry Edit.Sep1 -type separator -toolbar maintoolbar
         $self menuentry Edit.Search -type checkbutton -toolbar maintoolbar \
             -image $Tmw::Icons(ActFileFind) -command [mymethod onEditSearch %K] \
@@ -1168,7 +1143,7 @@ snit::widgetadaptor mainapp {
         
         # set binding for shortcut to change windows
         #bind [$cls component textwin].t <Control-Tab> "[mymethod SwitchWidgets];break"
-        bind $cls <Control-Tab> "[mymethod SwitchWidgets];break"
+        bind [$cls textwin] <Control-Tab> "[mymethod SwitchWidgets];break"
         
         set ttl [file tail $uri]
         $textnb add $cls -text $ttl

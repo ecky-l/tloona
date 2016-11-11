@@ -29,11 +29,7 @@ snit::widgetadaptor browsablefile {
         
     constructor {args} {
         installhull using Tmw::visualfile
-        $self configure -button1cmd [mymethod updateCurrentNode %x %y]
-        
-        #bind [component textwin] <Button-1> \
-        #    [code $this updateCurrentNode %x %y]
-        
+        $self configure -button1cmd +[mymethod updateCurrentNode %x %y]
         $self configurelist $args
     }
     
@@ -132,6 +128,11 @@ snit::widgetadaptor browsablefile {
         if {$CurrentNode != "" && ![string equal $tmp $CurrentNode]} {
             $self selectTreeDisplay
         }
+    }
+    
+    ## \brief getter for current node
+    method getCurrentNode {} {
+        return $CurrentNode
     }
     
 } ;# browsablefile

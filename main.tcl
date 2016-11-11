@@ -355,6 +355,9 @@ proc ::main {args} {
     ::Tmw::Splash::Destroy
 }
 
+if {![info exists argv]} {
+    set argv {}
+}
 eval ::main $argv
 
 

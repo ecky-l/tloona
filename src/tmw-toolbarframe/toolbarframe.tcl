@@ -214,7 +214,7 @@ namespace eval ::Tmw {
     # with two arguments the existence of the toolbutton or dropwidget
     # button is evaluated as well
     method tbexists {toolbar {toolbutton ""}} {
-        if {![winfo exists $self.$toolbar]} {
+        if {![winfo exists $win.$toolbar]} {
             return 0
         }
         if {$toolbutton == ""} {

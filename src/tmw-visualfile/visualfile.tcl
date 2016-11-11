@@ -57,7 +57,7 @@ snit::widgetadaptor visualfile {
     component vscroll
     component hscroll
     
-    component textwin ;# -public textwin
+    component textwin
     delegate method * to textwin
     delegate option -textrelief to textwin as -relief
     delegate option -textbd to textwin as -borderwidth
@@ -89,6 +89,7 @@ snit::widgetadaptor visualfile {
         installhull using Tmw::toolbarframe
         set cs [$self childsite]
         install textwin using vitext $cs.textwin
+        #install textwin using ctext $cs.textwin
         install vscroll using ttk::scrollbar $cs.vscroll \
             -command "$textwin yview" -orient vertical
         install hscroll using ttk::scrollbar $cs.hscroll \
@@ -107,34 +108,9 @@ snit::widgetadaptor visualfile {
         $self configure -wrap none -textrelief flat -textbd 0
         
         # colorize the line where the insert cursor is
-        
-        $self configure -upcmd [mymethod MoveLineCmd -1]
-        $self configure -downcmd [mymethod MoveLineCmd 1]
-        
-        # TODO: really?
-        #bind $tw <Key-Up> [mymethod colorizeInsert]
-        #bind $tw <Key-Down> [mymethod colorizeInsert]
-        #bind $tw <Key-Left> [mymethod colorizeInsert]
-        #bind $tw <Key-Right> [mymethod colorizeInsert]
-        #bind $tw <Key-Return> [mymethod colorizeInsert]
-        #bind $tw <Key-BackSpace> [mymethod colorizeInsert]
-        #bind $tw <KeyPress> +[mymethod colorizeInsert %K]
-        bind $textwin.t <Button-1> [list apply {{W x y} {
-            $W tag configure inscolorize -background white
-            $W tag remove inscolorize [list insert linestart] \
-                [list insert lineend]+1displayindices
-            
-            set curPos @$x,$y
-            $W tag add inscolorize [list $curPos linestart] \
-                [list $curPos lineend]+1displayindices
-            $W tag configure inscolorize -background #e0f1ff
-            $W see $curPos
-        }} $self %x %y]
-        
-        
-        # [mymethod colorizeInsert]
-        #bind $textwin <Button-1> +[mymethod adjustSearchIndex]
-        #bind $tw <<Selection>> [mymethod colorizeInsert]
+        bind $textwin.t <KeyPress> +[mymethod colorizeInsLine]
+        bind $textwin.t <Button-1> +[mymethod colorizeInsLine %x %y]
+        bind $textwin <Button-1> +[mymethod adjustSearchIndex]
         bind $textwin.t <FocusIn> [list $self tag delete sflash]
         $self configurelist $args
     }
@@ -146,6 +122,13 @@ snit::widgetadaptor visualfile {
             file delete $fn
         }
         
+    }
+    
+    method textwin {args} {
+        if {$args == {}} {
+            return $textwin
+        }
+        $textwin {*}$args
     }
     
     ## \brief add to a file browser
@@ -312,15 +295,37 @@ snit::widgetadaptor visualfile {
             -command [mymethod doReplace] -type command]
         
         # bindings for validation and such
-        bind $S.sentry <KeyRelease> [mymethod enableSearchButtons searchstring $upb $downb]
-        bind $S.rentry <KeyRelease> [mymethod enableSearchButtons replacestring $replb]
+        bind $S.sentry <KeyRelease> [mymethod enableSearchButtons -searchstring $upb $downb]
+        bind $S.rentry <KeyRelease> [mymethod enableSearchButtons -replacestring $replb]
         bind $S.sentry <Return> [mymethod doSearch -forwards]
-        bind $S.rentry <Return> [mymethod doSearch -forwards]
+        bind $S.rentry <Return> [mymethod doSearch -backwards]
         bind $S.sentry <Alt-r> [mymethod doReplace]
         bind $S.rentry <Alt-r> [mymethod doReplace]
         
         lappend WSearch $S.sentry $upb $downb
         lappend WReplace $S.rentry $replb
+    }
+    
+    ## \brief callback for colorizing insert line
+    method colorizeInsLine {{x -1} {y -1}} {
+        set currPos insert
+        if {$x >= 0 || $y >= 0} {
+            set currPos @$x,$y
+        }
+        if {"inscolorize" in [$self tag names] \
+                && [$self tag ranges inscolorize] != {}} {
+            $self tag configure inscolorize -background white
+            $self tag remove inscolorize inscolorize.first inscolorize.last
+        }
+        
+        #after 2 [list apply {{}}]
+        after 2 [list apply {{W currPos} {
+            $W tag add inscolorize [list $currPos linestart] \
+                [list $currPos lineend]+1displayindices
+            $W tag configure inscolorize -background #e0f1ff
+            $W tag raise sel
+            $W see $currPos
+        }} $self $currPos]
     }
     
     # @r whether the search toolbar is showing
@@ -338,7 +343,7 @@ snit::widgetadaptor visualfile {
         
         $self tag delete sflash
         
-        if {$searchstring == ""} {
+        if { $options(-searchstring) == "" } {
             return
         }
         switch -- $direction {
@@ -350,9 +355,9 @@ snit::widgetadaptor visualfile {
             }
         }
         
-        set s0 [$self index sel.first]
-        set s1 [$self index sel.last]
-        $self tag remove sel $s0 $s1
+        if {"sel" in [$self tag names] && [$self tag ranges sel] != {}} {
+            $self tag remove sel sel.first sel.last
+        }
         
         set tmpsi $SearchIndex
         set SearchIndex [eval $self search $direction \
@@ -367,7 +372,7 @@ snit::widgetadaptor visualfile {
             return
         }
         
-        set len [string length $searchstring]
+        set len [string length $options(-searchstring)]
         $self tag add sel $SearchIndex "$SearchIndex + $len chars"
         $self see "$SearchIndex wordend"
         
@@ -461,9 +466,9 @@ snit::widgetadaptor visualfile {
     method enableSearchButtons {varPtr args} {
         # for some reason the value can not be obtained via [cget]
         # before this is done:
-        $self configure -$varPtr [set $varPtr]
+        #$self configure -$varPtr [set $varPtr]
         
-        set state [expr {([set $varPtr] == "") ? "disabled" : "normal"}]
+        set state [expr {($options($varPtr) == "") ? "disabled" : "normal"}]
         foreach {widget} $args {
             $widget configure -state $state
         }
@@ -489,14 +494,13 @@ snit::widgetadaptor visualfile {
     ## \brief configuremethod for -modifiedcmd
     method ConfigModifiedCmd {option value} {
         set options($option) $value
-        bind $textwin.t <<Modified>> {}
-        bind $textwin.t <<Modified>> $value
+        bind $textwin <<Modified>> $value
     }
     
     ## \brief configuremethod for -button1cmd
     method ConfigButton1Cmd {option value} {
         set options($option) $value
-        bind $textwin.t <Button-1> +$value
+        bind $textwin.t <Button-1> $value
     }
     
     ## \brief configuremethod for -searchstring
@@ -522,20 +526,7 @@ snit::widgetadaptor visualfile {
             $w configure -state $state
         }
     }
-    
-    method MoveLineCmd {direction} {
-        $self tag configure inscolorize -background white
-        $self tag remove inscolorize [list insert linestart] \
-            [list insert lineend]+1displayindices
         
-        ::tk::TextSetCursor $self [::tk::TextUpDownLine $self $direction]
-        
-        $self tag add inscolorize [list insert linestart] \
-            [list insert lineend]+1displayindices
-        $self tag configure inscolorize -background #e0f1ff
-        $self see insert
-    }
-    
 } ;# visualfile
 
 } ;# namespace Tmw
