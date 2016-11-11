@@ -5,7 +5,9 @@ package require tmw::icons 1.0
 package require tloona::kitbrowser 2.0.0
 package require tloona::projectoutline 2.0.0
 package require tmw::console 2.0
-package require tloona::file1 1.0
+#package require tloona::file1 1.0
+package require tloona::file 2.0.0
+
 package require fileutil 1.7
 package require parser::parse 1.0
 package require tloona::debugger 1.0
@@ -105,11 +107,16 @@ snit::widgetadaptor mainapp {
         # @c callback for new Tcl/Itcl scripts
         global UserOptions
         
-        set cls [::Tloona::tclfile1 $textnb.file$_FileIdx -font $options(-filefont) \
+        #set cls [::Tloona::tclfile1 $textnb.file$_FileIdx -font $options(-filefont) \
+        #    -sendcmd [mymethod SendToConsole] \
+        #    -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
+        #    -mainwindow $win -backupfile $UserOptions(File,Backup)]
+                
+        set cls [::Tloona::tclfile $textnb.file$_FileIdx -font $options(-filefont) \
             -sendcmd [mymethod SendToConsole] \
             -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
             -mainwindow $win -backupfile $UserOptions(File,Backup)]
-                
+        
         $cls createTree
         set ttl "unnamed $_FileIdx"
         $textnb add $cls -text $ttl
@@ -224,10 +231,16 @@ snit::widgetadaptor mainapp {
         
         set idx [$textnb index $file]
         $textnb forget $idx
-        if {[$file isa ::Tmw::BrowsableFile]} {
+        switch -- [$file info type] {
+        ::Tloona::tclfile {
             $file removeFromBrowser $codebrowser
         }
-        ::itcl::delete object $file
+        }
+        #if {[$file isa ::Tmw::BrowsableFile]} {
+        #    $file removeFromBrowser $codebrowser
+        #}
+        #::itcl::delete object $file
+        destroy $file
         
         
         # remove from _Files
@@ -439,7 +452,8 @@ snit::widgetadaptor mainapp {
                 [$file cget -filename]
             
             if {![$file modified]} {
-                delete object $file
+                #delete object $file
+                destroy $file
                 continue
             }
             
@@ -456,7 +470,8 @@ snit::widgetadaptor mainapp {
                 }
             }
             
-            delete object $file
+            #delete object $file
+            destroy $file
         }
         
         # get kit projects and store them
@@ -598,7 +613,8 @@ snit::widgetadaptor mainapp {
         set _CurrFile [lindex $fs $idx]
         set fn [$_CurrFile cget -filename]
         $self configure -title "Tloona - $fn"
-        focus -force [$_CurrFile component textwin].t
+        #focus -force [$_CurrFile component textwin].t
+        focus -force $_CurrFile
         
         # is the search toolbar showing in the new file?
         set _ShowSearchReplace [expr {[$_CurrFile showingSearch] ? 1 : 0}]
@@ -611,15 +627,23 @@ snit::widgetadaptor mainapp {
         }
             
         # adjust code browser view
-        if {[$_CurrFile isa ::Tmw::BrowsableFile]} {
-            $codebrowser remove all
-            if {[set tree [$_CurrFile getTree]] != ""} {
-                $codebrowser add $tree 1 0
-                if {[$codebrowser children ""] != {}} {
-                    $codebrowser see [lindex [$codebrowser children ""] 0]
-                }
+        $codebrowser remove all
+        if {[set tree [$_CurrFile getTree]] != ""} {
+            $codebrowser add $tree 1 0
+            if {[$codebrowser children ""] != {}} {
+                $codebrowser see [lindex [$codebrowser children ""] 0]
             }
         }
+        
+        #if {[$_CurrFile isa ::Tmw::BrowsableFile]} {
+        #    $codebrowser remove all
+        #    if {[set tree [$_CurrFile getTree]] != ""} {
+        #        $codebrowser add $tree 1 0
+        #        if {[$codebrowser children ""] != {}} {
+        #            $codebrowser see [lindex [$codebrowser children ""] 0]
+        #        }
+        #    }
+        #}
         
         return $_CurrFile
     }
@@ -645,13 +669,17 @@ snit::widgetadaptor mainapp {
         
         set toSelect ""
         foreach {fn cls hasFn} $_Files {
-            if {![$cls isa ::Tmw::BrowsableFile]} {
-                continue
+            switch -- [$cls info type] {
+            ::Tloona::tclfile {
+                if {$sel == [$cls getTree]} {
+                    set toSelect $cls
+                    break
+                }
             }
-            if {$sel == [$cls getTree]} {
-                set toSelect $cls
-                break
             }
+            #if {![$cls isa ::Tmw::BrowsableFile]} {
+            #    continue
+            #}
         }
         return $toSelect
     }
@@ -784,6 +812,8 @@ snit::widgetadaptor mainapp {
     method openFile {uri createTree} {
         global TloonaApplication UserOptions
         
+        try {
+            
         if {[file isdirectory $uri]} {
             if {[$self isOpen $uri] != ""} {
                 Tmw::message $TloonaApplication "Project exists" ok \
@@ -858,7 +888,13 @@ snit::widgetadaptor mainapp {
         $textnb select $fCls
         set _InitDir [file dirname $uri]
         $self showModified $fCls 0
+        
         return $fCls
+        
+        } trap {} {err errOpts} {
+            puts $err,$errOpts
+        }
+        
     }
     
     # @c Adds a comm id
@@ -1121,25 +1157,32 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tloona::tclfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+        #set cls [::Tloona::tclfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+        #        -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
+        #        -mainwindow $win -backupfile $UserOptions(File,Backup) \
+        #        -sendcmd [mymethod SendToConsole]]
+        set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
                 -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
                 -mainwindow $win -backupfile $UserOptions(File,Backup) \
                 -sendcmd [mymethod SendToConsole]]
         
         # set binding for shortcut to change windows
-        bind [$cls component textwin].t <Control-Tab> "[mymethod SwitchWidgets];break"
+        #bind [$cls component textwin].t <Control-Tab> "[mymethod SwitchWidgets];break"
+        bind $cls <Control-Tab> "[mymethod SwitchWidgets];break"
         
         set ttl [file tail $uri]
         $textnb add $cls -text $ttl
         
-        if {[catch {$cls openFile ""} msg]} {
-            set messg "can not open file $uri :\n\n"
-            append messg $msg
-            tk_messageBox -title "can not open file" \
-                -message $messg -type ok -icon error
-            itcl::delete object $cls
-            return
-        }
+        $cls openFile {}
+        
+        #if {[catch {$cls openFile ""} msg]} {
+        #    set messg "can not open file $uri :\n\n"
+        #    append messg $msg
+        #    tk_messageBox -title "can not open file" \
+        #        -message $messg -type ok -icon error
+        #    itcl::delete object $cls
+        #    return
+        #}
         
         $cls modified 0
         $cls configure -modifiedcmd [mymethod showModified $cls 1]
@@ -1227,13 +1270,14 @@ snit::widgetadaptor mainapp {
         set ttl [file tail $uri]
         $textnb add $cls -text $ttl
         
-        if {[catch {$cls openFile ""} msg]} {
-            set messg "can not open file $uri :\n\n"
-            append messg $msg
-            tk_messageBox -title "can not open file" -message $messg -type ok -icon error
-            itcl::delete object $cls
-            return
-        }
+        $cls openFile {}
+        #if {[catch {$cls openFile ""} msg]} {
+        #    set messg "can not open file $uri :\n\n"
+        #    append messg $msg
+        #    tk_messageBox -title "can not open file" -message $messg -type ok -icon error
+        #    itcl::delete object $cls
+        #    return
+        #}
         
         $cls modified 0
         $cls configure -modifiedcmd [mymethod showModified $cls 1]

@@ -25,3 +25,4 @@ package ifneeded tloona::codebrowser 2.0.0 [list source [file join $dir codebrow
 package ifneeded tloona::kitbrowser 2.0.0 [list source [file join $dir kitbrowser.tcl]]
 package ifneeded tloona::projectoutline 2.0.0 [list source [file join $dir projectoutline.tcl]]
 package ifneeded tloona::mainapp 2.0.0 [list source [file join $dir mainapp.tcl]]
+package ifneeded tloona::file 2.0.0 [list source [file join $dir file.tcl]]

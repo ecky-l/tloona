@@ -2,6 +2,9 @@
 # codecompletion.itk
 #
 
+package require -exact Itcl 3.4
+package require -exact Itk 3.4
+
 package require tile 0.7.2
 
 package provide tloona::codecompletion 1.0

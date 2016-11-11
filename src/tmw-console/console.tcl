@@ -31,8 +31,6 @@ proc ConsCommGets {id args} {
     $cons getsAlias {*}$args
 }
 
-}
-
 ## \brief A basic console widget. 
 # 
 # It contains a ctext widget as input and output channel and the possibility to 
@@ -43,10 +41,9 @@ proc ConsCommGets {id args} {
 # via a socket or comm ID. 
 # Commands are saved in a history for later retrieval. The command history can be
 # [cget] and stored for later [configure].
-snit::widget ::Tmw::Console {
+snit::widget console {
     
     option {-prompt prompt Prompt} -default "([file tail [pwd]]) % "
- #       -configuremethod ConfigPrompt
     
     ## \brief Colors for the text window that resembles the console
     #
@@ -124,7 +121,7 @@ snit::widget ::Tmw::Console {
         
         bind $textwin <KeyPress> [list apply {{thisWin key char} {
             switch -- $char {
-                \{ - \[ - ( {
+                \{ - \[ - ( - \" {
                     # these chars are not handled in the KeyRelease binding
                     after 1 [list $thisWin handleInputChar $key $char]
                 }
@@ -187,7 +184,7 @@ snit::widget ::Tmw::Console {
     #
     # Inserts matching braces, parens and brackets, inserts a horizontal scrollbar
     method handleInputChar {key char} {
-        set matchings { \{ \} \[ \] ( ) }
+        set matchings { \{ \} \[ \] ( ) \" \" }
         $textwin fastinsert insert [dict get $matchings $char]
         $textwin mark set insert "insert -1c"
         $textwin highlight "insert" "insert +10c"
@@ -885,16 +882,18 @@ snit::widget ::Tmw::Console {
     
 }
 
+} ;# namespace Tmw
+
 
 ## \brief console command to the outside world
-proc Tmw::console {path args} {
-    uplevel ::Tmw::Console $path $args
-}
+#proc Tmw::console {path args} {
+#    uplevel ::Tmw::Console $path $args
+#}
 
 ## \brief slaveconsole command to the outside world
-proc Tmw::slaveconsole {path args} {
-    uplevel ::Tmw::SlaveConsole $path $args
-}
+#proc Tmw::slaveconsole {path args} {
+#    uplevel ::Tmw::SlaveConsole $path $args
+#}
 
 package provide tmw::console 2.0
 

@@ -121,6 +121,9 @@ namespace eval ::Parser::Snit {
         $clsNode addProcName myproc
         $clsNode addProcName install
         $clsNode addProcName installhull
+        $clsNode addProcName configure
+        $clsNode addProcName configurelist
+        $clsNode addProcName cget
         
         return $clsNode
     }

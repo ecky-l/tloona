@@ -12,3 +12,4 @@ package ifneeded tmw::visualfile1 1.0 [list source [file join $dir visualfile.it
 package ifneeded tmw::browsablefile1 1.0 [list source [file join $dir browsablefile.itk]]
 
 package ifneeded tmw::visualfile 2.0.0 [list source [file join $dir visualfile.tcl]]
+package ifneeded tmw::browsablefile 2.0.0 [list source [file join $dir browsablefile.tcl]]

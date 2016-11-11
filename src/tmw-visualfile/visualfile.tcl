@@ -57,7 +57,7 @@ snit::widgetadaptor visualfile {
     component vscroll
     component hscroll
     
-    component textwin -public textwin
+    component textwin ;# -public textwin
     delegate method * to textwin
     delegate option -textrelief to textwin as -relief
     delegate option -textbd to textwin as -borderwidth
@@ -119,8 +119,21 @@ snit::widgetadaptor visualfile {
         #bind $tw <Key-Return> [mymethod colorizeInsert]
         #bind $tw <Key-BackSpace> [mymethod colorizeInsert]
         #bind $tw <KeyPress> +[mymethod colorizeInsert %K]
-        #bind $tw <Button-1> [mymethod colorizeInsert]
-        #bind $tw <Button-1> +[mymethod adjustSearchIndex]
+        bind $textwin.t <Button-1> [list apply {{W x y} {
+            $W tag configure inscolorize -background white
+            $W tag remove inscolorize [list insert linestart] \
+                [list insert lineend]+1displayindices
+            
+            set curPos @$x,$y
+            $W tag add inscolorize [list $curPos linestart] \
+                [list $curPos lineend]+1displayindices
+            $W tag configure inscolorize -background #e0f1ff
+            $W see $curPos
+        }} $self %x %y]
+        
+        
+        # [mymethod colorizeInsert]
+        #bind $textwin <Button-1> +[mymethod adjustSearchIndex]
         #bind $tw <<Selection>> [mymethod colorizeInsert]
         bind $textwin.t <FocusIn> [list $self tag delete sflash]
         $self configurelist $args
@@ -137,8 +150,8 @@ snit::widgetadaptor visualfile {
     
     ## \brief add to a file browser
     method addToFileBrowser {browser} {
-        if {![$browser exists $browserobj]} {
-            $browser add $browserobj 1 0
+        if {![$browser exists $options(-browserobj)]} {
+            $browser add $options(-browserobj) 1 0
         }
         
         if {[lsearch $FileBrowsers $browser] < 0} {
@@ -201,7 +214,6 @@ snit::widgetadaptor visualfile {
         $self insert 1.0 $ctn
         $self mark set insert 1.0
         $self edit reset
-        $self colorizeInsert
     }
     
     # @r whether the text is modified
@@ -484,7 +496,7 @@ snit::widgetadaptor visualfile {
     ## \brief configuremethod for -button1cmd
     method ConfigButton1Cmd {option value} {
         set options($option) $value
-        bind $textwin.t <Button-1> $value
+        bind $textwin.t <Button-1> +$value
     }
     
     ## \brief configuremethod for -searchstring

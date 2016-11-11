@@ -89,8 +89,10 @@ snit::widgetadaptor browsablefile {
     # @c for the BrowserTree
     method openFile {{file ""}} {
         $hull openFile $file
-        $BrowserTree configure -file [$self cget -filename] \
-            -displayformat {"%s (%s)" -name -dirname}
+        if {$BrowserTree != ""} {
+            $BrowserTree configure -file [$self cget -filename] \
+                -displayformat {"%s (%s)" -name -dirname}
+        }
     }
     
     # @c update the highlighting. By default, does nothing.
