@@ -579,7 +579,7 @@ snit::widgetadaptor tclfile {
         
         set iStr "\t"
         if {[$self cget -expandtab]} {
-            set iStr [string repeat " " $tabsize]
+            set iStr [string repeat " " [$self cget -tabsize]]
         }
         set realInd [expr {$minInd - [string length $iStr]}]
         if {! $indent && $realInd < 0} {

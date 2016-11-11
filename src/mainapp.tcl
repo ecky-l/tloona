@@ -106,12 +106,6 @@ snit::widgetadaptor mainapp {
     method onFileNew {} {
         # @c callback for new Tcl/Itcl scripts
         global UserOptions
-        
-        #set cls [::Tloona::tclfile1 $textnb.file$_FileIdx -font $options(-filefont) \
-        #    -sendcmd [mymethod SendToConsole] \
-        #    -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
-        #    -mainwindow $win -backupfile $UserOptions(File,Backup)]
-                
         set cls [::Tloona::tclfile $textnb.file$_FileIdx -font $options(-filefont) \
             -sendcmd [mymethod SendToConsole] \
             -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
@@ -236,10 +230,6 @@ snit::widgetadaptor mainapp {
             $file removeFromBrowser $codebrowser
         }
         }
-        #if {[$file isa ::Tmw::BrowsableFile]} {
-        #    $file removeFromBrowser $codebrowser
-        #}
-        #::itcl::delete object $file
         destroy $file
         
         
@@ -252,11 +242,6 @@ snit::widgetadaptor mainapp {
             lappend newf $ttl $cls $hn
         }
         set _Files $newf
-        
-        # notify kitbrowser that the file was closed,
-        # if it is a kit file
-        #component kitbrowser removeOpenFile $file
-        
         set _CurrFile ""
     }
     
@@ -318,13 +303,10 @@ snit::widgetadaptor mainapp {
         
     # @c callback for view windows
     method onViewWindow {what {view -1} {store 1}} {
-        # @c callback for viewing windows
         global UserOptions
         
         switch -- $what {
             browser {
-                #showWidget view parentComp childComp
-                #showWidget $view browsepw navigatepw
                 if {$view == $_ViewProjectBrowser} {
                     return
                 }
@@ -423,10 +405,11 @@ snit::widgetadaptor mainapp {
         }
     }
         
-    # @c Override: callback handler on quit
+    ## \brief callback handler on quit
+    #
+    # check on modified files and add all open files to the list of last open 
+    # documents
     method onQuit {} {
-        # check on modified files and add all open files to
-        # to the list of last open documents
         global UserOptions
         
         set UserOptions(LastOpenDocuments) {}
@@ -593,7 +576,6 @@ snit::widgetadaptor mainapp {
         set _CurrFile [lindex $fs $idx]
         set fn [$_CurrFile cget -filename]
         $self configure -title "Tloona - $fn"
-        #focus -force [$_CurrFile component textwin].t
         focus -force $_CurrFile
         
         # is the search toolbar showing in the new file?
@@ -614,16 +596,6 @@ snit::widgetadaptor mainapp {
                 $codebrowser see [lindex [$codebrowser children ""] 0]
             }
         }
-        
-        #if {[$_CurrFile isa ::Tmw::BrowsableFile]} {
-        #    $codebrowser remove all
-        #    if {[set tree [$_CurrFile getTree]] != ""} {
-        #        $codebrowser add $tree 1 0
-        #        if {[$codebrowser children ""] != {}} {
-        #            $codebrowser see [lindex [$codebrowser children ""] 0]
-        #        }
-        #    }
-        #}
         
         return $_CurrFile
     }
@@ -657,9 +629,6 @@ snit::widgetadaptor mainapp {
                 }
             }
             }
-            #if {![$cls isa ::Tmw::BrowsableFile]} {
-            #    continue
-            #}
         }
         return $toSelect
     }
@@ -781,98 +750,101 @@ snit::widgetadaptor mainapp {
         }
     }
     
-    # @c Opens a file, checks by extension which typeof file.
-    # @c If createTree is true, a tree is created using the
-    # @c fileObj createTree method.
+    ## \brief Opens a file, checks by extension which typeof file.
+    # 
+    # If createTree is true, a tree is created using the fileObj createTree method.
     #
-    # @a uri: file uri
-    # @a createTree: create a tree?
+    # \param uri file uri
+    # \param createTree whether to create a tree?
     #
-    # @r The file object. Type at least ::Parser::StructuredFile
+    # \return The file object. Type at least ::Parser::StructuredFile
     method openFile {uri createTree} {
         global TloonaApplication UserOptions
         
         try {
             
-        if {[file isdirectory $uri]} {
-            if {[$self isOpen $uri] != ""} {
-                Tmw::message $TloonaApplication "Project exists" ok \
-                    "The project $uri exists already"
+            if {[file isdirectory $uri]} {
+                if {[$self isOpen $uri] != ""} {
+                    Tmw::message $TloonaApplication "Project exists" ok \
+                        "The project $uri exists already"
+                    return
+                }
+                $self OpenKitFile $uri
                 return
             }
-            $self OpenKitFile $uri
-            return
-        }
-        
-        set ending [file extension $uri]
-        set fCls ""
-        switch -- $ending {
-            .tcl - .tk - .tm - .itcl - .itk - .xotcl - .test - .ws3 {
-                if {[set fileObj [$self isOpen $uri]] != ""} {
-                    $textnb select $fileObj
-                    return
-                }
-                set fCls [$self OpenTclFile $uri 1]
-                set fileInPrj [$self IsProjectPart $uri browserObj]
-                if {$fileInPrj && $browserObj != {}} {
-                    $fCls configure -browserobj $browserObj
-                }
-                $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
-                
-                $fCls updateHighlights
-                $fCls addToBrowser $codebrowser
-                if {$fileInPrj} {
-                    $fCls addToFileBrowser $kitbrowser
-                }
-                update
-            }
-            ".tml" -
-            ".html" -
-            ".htm" -
-            ".adp" {
-                if {[set fileObj [$self isOpen $uri]] != ""} {
-                    Tmw::message $TloonaApplication "File already open" ok \
-                        "The file $uri exists already"
-                    $textnb select $fileObj
-                    return
-                }
-                set fCls [$self OpenWebFile $uri]
-                set fileInPrj [$self IsProjectPart $uri browserObj]
-                if {$fileInPrj && $browserObj != {}} {
-                    $fCls configure -browserobj $browserObj
-                }
-            }
-            ".kit" -
-            ".vfs" -
-            default {
-                set fType [lindex [fileutil::fileType $uri] 0]
-                if {[string equal $fType text]} {
+            
+            set ending [file extension $uri]
+            set fCls ""
+            switch -- $ending {
+                .tcl - .tk - .tm - .itcl - .itk - .xotcl - .test - .ws3 {
                     if {[set fileObj [$self isOpen $uri]] != ""} {
                         $textnb select $fileObj
                         return
                     }
-                    set fCls [$self OpenPlainFile $uri]
+                    set fCls [$self OpenTclFile $uri 1]
                     set fileInPrj [$self IsProjectPart $uri browserObj]
                     if {$fileInPrj && $browserObj != {}} {
                         $fCls configure -browserobj $browserObj
                     }
+                    $fCls createTree -file $uri -displayformat {"%s (%s)" -name -dirname}
                     
-                } else {
-                    puts "cannot handle this"
-                    return
+                    $fCls updateHighlights
+                    $fCls addToBrowser $codebrowser
+                    if {$fileInPrj} {
+                        $fCls addToFileBrowser $kitbrowser
+                    }
+                    update
+                }
+                ".tml" -
+                ".html" -
+                ".htm" -
+                ".adp" {
+                    if {[set fileObj [$self isOpen $uri]] != ""} {
+                        Tmw::message $TloonaApplication "File already open" ok \
+                            "The file $uri exists already"
+                        $textnb select $fileObj
+                        return
+                    }
+                    set fCls [$self OpenWebFile $uri]
+                    set fileInPrj [$self IsProjectPart $uri browserObj]
+                    if {$fileInPrj && $browserObj != {}} {
+                        $fCls configure -browserobj $browserObj
+                    }
+                }
+                ".kit" -
+                ".vfs" -
+                default {
+                    set fType [lindex [fileutil::fileType $uri] 0]
+                    if {[string equal $fType text]} {
+                        if {[set fileObj [$self isOpen $uri]] != ""} {
+                            $textnb select $fileObj
+                            return
+                        }
+                        set fCls [$self OpenPlainFile $uri]
+                        set fileInPrj [$self IsProjectPart $uri browserObj]
+                        if {$fileInPrj && $browserObj != {}} {
+                            $fCls configure -browserobj $browserObj
+                        }
+                        
+                    } else {
+                        puts "cannot handle this"
+                        return
+                    }
                 }
             }
-        }
-        
-        $fCls configure -savelineendings $UserOptions(File,SaveLineEndings)
-        $textnb select $fCls
-        set _InitDir [file dirname $uri]
-        $self showModified $fCls 0
-        
-        return $fCls
+            
+            $fCls configure -savelineendings $UserOptions(File,SaveLineEndings)
+            $textnb select $fCls
+            set _InitDir [file dirname $uri]
+            $self showModified $fCls 0
+            
+            return $fCls
         
         } trap {} {err errOpts} {
-            puts $err,$errOpts
+            set messg "can not open file $uri :\n\n"
+            append messg $err
+            tk_messageBox -title "can not open file" -message $messg \
+                -type ok -icon error
         }
         
     }
@@ -1034,12 +1006,8 @@ snit::widgetadaptor mainapp {
     # @c creates the pane parts in the main window
     method CreatePanes {} {
         install browsepw using ttk::panedwindow [$self childsite].browsepw -orient horizontal
-        #install navigatepw using ttk::panedwindow $browsepw.navigatepw -orient vertical
-        #$browsepw add $navigatepw -weight 1
-        #install browsenb using ttk::notebook $navigatepw.browsenb -width 150 -height 300
         install browsenb using ttk::notebook $browsepw.browsenb -width 150 -height 300
         $browsepw add $browsenb -weight 1
-        #$navigatepw add $browsenb -weight 1
         install txtconpw using ttk::panedwindow $browsepw.txtconpw -orient vertical
         $browsepw add $txtconpw -weight 1
         install textnb using ttk::notebook $txtconpw.textnb -width 650 -height 400
@@ -1132,32 +1100,18 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        #set cls [::Tloona::tclfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
-        #        -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
-        #        -mainwindow $win -backupfile $UserOptions(File,Backup) \
-        #        -sendcmd [mymethod SendToConsole]]
         set cls [::Tloona::tclfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
                 -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
                 -mainwindow $win -backupfile $UserOptions(File,Backup) \
                 -sendcmd [mymethod SendToConsole]]
         
         # set binding for shortcut to change windows
-        #bind [$cls component textwin].t <Control-Tab> "[mymethod SwitchWidgets];break"
         bind [$cls textwin] <Control-Tab> "[mymethod SwitchWidgets];break"
         
         set ttl [file tail $uri]
         $textnb add $cls -text $ttl
         
         $cls openFile {}
-        
-        #if {[catch {$cls openFile ""} msg]} {
-        #    set messg "can not open file $uri :\n\n"
-        #    append messg $msg
-        #    tk_messageBox -title "can not open file" \
-        #        -message $messg -type ok -icon error
-        #    itcl::delete object $cls
-        #    return
-        #}
         
         $cls modified 0
         $cls configure -modifiedcmd [mymethod showModified $cls 1]
@@ -1246,14 +1200,6 @@ snit::widgetadaptor mainapp {
         $textnb add $cls -text $ttl
         
         $cls openFile {}
-        #if {[catch {$cls openFile ""} msg]} {
-        #    set messg "can not open file $uri :\n\n"
-        #    append messg $msg
-        #    tk_messageBox -title "can not open file" -message $messg -type ok -icon error
-        #    itcl::delete object $cls
-        #    return
-        #}
-        
         $cls modified 0
         $cls configure -modifiedcmd [mymethod showModified $cls 1]
         
@@ -1290,14 +1236,14 @@ snit::widgetadaptor mainapp {
         }
     }
         
-    # @c Checks whether the give uri is part of an open project
-    # @c If so, returns the code tree in treePtr and returns true
-    # @c Otherwise, returns false
+    ## \brief Checks whether the give uri is part of an open project.
     #
-    # @a uri: The uri to check
-    # @a treePtr: (out) pointer to tree
+    # If so, returns the code tree in treePtr and returns true Otherwise false.
     #
-    # @r true if it is part, false otherwise
+    # \param uri The uri to check
+    # \param[out] treePtr pointer to tree
+    #
+    # \return true if it is part, false otherwise
     method IsProjectPart {uri treePtr} {
         upvar $treePtr tree
         set tree {}
@@ -1315,7 +1261,7 @@ snit::widgetadaptor mainapp {
         return no
     }
     
-    # @c Send a script to the internal console
+    ## \brief Send a script to the internal console
     method SendToConsole {script} {
         if {$script == {}} {
             return
