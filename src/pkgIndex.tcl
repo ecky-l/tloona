@@ -10,11 +10,11 @@
 
 package ifneeded tloona::codebrowser1 1.0 [list source [file join $dir codebrowser.itk]]
 package ifneeded tloona::projectoutline1 1.0 [list source [file join $dir projectoutline.itk]]
-package ifneeded tloona::codecompletion 1.0 [list source [file join $dir codecompletion.itk]]
+package ifneeded tloona::codecompletion1 1.0 [list source [file join $dir codecompletion.itk]]
 package ifneeded tloona::file1 1.0 [list source [file join $dir file.itk]]
 package ifneeded tloona::mainapp 1.0 [list source [file join $dir mainapp.itk]]
 package ifneeded tloona::kitbrowser1 1.0 [list source [file join $dir kitbrowser.itk]]
-package ifneeded tloona::wrapwizzard 1.0 [list source [file join $dir wrapwizzard.itk]]
+package ifneeded tloona::wrapwizzard1 1.0 [list source [file join $dir wrapwizzard.itk]]
 package ifneeded tloona::debugger 1.0 [list source [file join $dir debugger.itk]]
 
 package ifneeded tloona::htmlparser 1.0 [list source [file join $dir htmlparser.tcl]]
@@ -26,3 +26,5 @@ package ifneeded tloona::kitbrowser 2.0.0 [list source [file join $dir kitbrowse
 package ifneeded tloona::projectoutline 2.0.0 [list source [file join $dir projectoutline.tcl]]
 package ifneeded tloona::mainapp 2.0.0 [list source [file join $dir mainapp.tcl]]
 package ifneeded tloona::file 2.0.0 [list source [file join $dir file.tcl]]
+package ifneeded tloona::codecompletion 2.0.0 [list source [file join $dir codecompletion.tcl]]
+package ifneeded tloona::wrapwizzard 2.0.0 [list source [file join $dir wrapwizzard.tcl]]

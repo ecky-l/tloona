@@ -8,5 +8,6 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::wizzard 1.0 [list source [file join $dir wizzard.itk]]
+package ifneeded tmw::wizzard1 1.0 [list source [file join $dir wizzard.itk]]
+package ifneeded tmw::wizzard 2.0.0 [list source [file join $dir wizzard.tcl]]
 

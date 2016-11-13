@@ -4,7 +4,7 @@ package require -exact Itk 3.4
 package require tile 0.7.5
 package require tmw::dialog1 1.0
 
-package provide tmw::wizzard 1.0
+package provide tmw::wizzard1 1.0
 
 itk::usual TLabel {}
 itk::usual TMenubutton {}
@@ -142,7 +142,7 @@ body ::Tmw::Wizzard::onOk {} {
     eval $itk_option(-okcmd)
 }
 
-proc ::Tmw::wizzard {path args} {
+proc ::Tmw::wizzard1 {path args} {
     # @c command to create the start wizzard
     uplevel ::gui::Wizzard $path $args
 }

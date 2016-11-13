@@ -15,6 +15,8 @@ namespace eval ::Tmw {
     option -buttonpos -default center -configuremethod ConfigButtonPos
     option -master -default . -configuremethod ConfigMaster
     option -block -default yes -configuremethod ConfigBlock
+    option {-buttonpadx buttonPadx Padx} -default 1 -configuremethod ConfigButtonPadx
+    option {-buttonpady buttonPady Pady} -default 1 -configuremethod ConfigButtonPady
     
     component buttonbox
     component childsite
@@ -128,7 +130,7 @@ namespace eval ::Tmw {
     
     method buttonconfigure {tag args} {
         set t [string tol $tag]
-        if {![winfo exists $t]} {
+        if {![winfo exists $buttonbox.$t]} {
             return -code error "$tag does not exist"
         }
         $buttonbox.$t configure {*}$args
@@ -189,6 +191,15 @@ namespace eval ::Tmw {
         wm title $win $value
     }
     
+    method ConfigButtonPadx {option value}  {
+        set options($option) $value
+        pack configure $buttonbox -padx $value
+    }
+    
+    method ConfigButtonPady {option value} {
+        set options($option) $value
+        pack configure $buttonbox -pady $value
+    }    
 }
 
 # \brief Displays a message dialog

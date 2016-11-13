@@ -1,7 +1,8 @@
 ## kitbrowser.tcl (created by Tloona here)
 package require snit 2.3.2
-package require tloona::codebrowser 2.0.0
 package require tmw::dialog 2.0.0
+package require tloona::codebrowser 2.0.0
+package require tloona::wrapwizzard 2.0.0
 
 namespace eval Tloona {
 
@@ -132,11 +133,11 @@ snit::widgetadaptor kitbrowser {
         $self remove $file
         file delete -force [$file cget -name]
         if {[set parDir [$file getParent]] == {}} {
-            delete object $file
+            destroy $file
             return
         }
         $parDir removeChild $file
-        delete object $file
+        destroy $file
     }
         
     ## callback handler for wrapping a vfs project
@@ -168,7 +169,7 @@ snit::widgetadaptor kitbrowser {
             .wrapwizz setDeployDetails [$file cget -name]
             
             if {[.wrapwizz show] == "Cancel"} {
-                delete object .wrapwizz
+                destroy .wrapwizz
                 return
             }
             
@@ -192,10 +193,11 @@ snit::widgetadaptor kitbrowser {
         } trap {} {err errOpts} {
             tk_messageBox -type ok -icon error -title "Error, Code: [dict get $errOpts -errorcode]" \
                 -parent $TloonaApplication -message $err
+            puts $err,$errOpts
         } finally {
             $mw showProgress 0
             $mw configure -status $defst
-            catch { delete object .wrapwizz }
+            destroy .wrapwizz
         }
     }
     

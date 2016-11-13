@@ -590,12 +590,18 @@ snit::widgetadaptor mainapp {
             
         # adjust code browser view
         $codebrowser remove all
-        if {[set tree [$_CurrFile getTree]] != ""} {
-            $codebrowser add $tree 1 0
-            if {[$codebrowser children ""] != {}} {
-                $codebrowser see [lindex [$codebrowser children ""] 0]
+        
+        switch -- [$_CurrFile info type] {
+        ::Tloona::tclfile {
+            if {[set tree [$_CurrFile getTree]] != ""} {
+                $codebrowser add $tree 1 0
+                if {[$codebrowser children ""] != {}} {
+                    $codebrowser see [lindex [$codebrowser children ""] 0]
+                }
             }
         }
+        }
+        
         
         return $_CurrFile
     }
@@ -1159,7 +1165,7 @@ snit::widgetadaptor mainapp {
         global UserOptions
         
         set T $textnb
-        set cls [::Tmw::visualfile1 $T.file$_FileIdx -filename $uri -font $options(-filefont) \
+        set cls [::Tmw::visualfile $T.file$_FileIdx -filename $uri -font $options(-filefont) \
                 -tabsize $options(-filetabsize) -expandtab $options(-filetabexpand) \
                 -mainwindow $win -backupfile $UserOptions(File,Backup)]
         

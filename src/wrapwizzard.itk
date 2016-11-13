@@ -1,9 +1,9 @@
 # tide::ui::WrapWizzard
 package require tmw::icons 1.0
-package require tmw::wizzard 1.0
+package require tmw::wizzard1 1.0
 package require tloona::starkit 1.0
 
-package provide tloona::wrapwizzard 1.0
+package provide tloona::wrapwizzard1 1.0
 
 
 catch {
@@ -256,6 +256,6 @@ class ::Tloona::WrapWizzard {
 }
 
 
-proc ::Tloona::wrapwizzard {path args} {
+proc ::Tloona::wrapwizzard1 {path args} {
     uplevel 0 WrapWizzard $path $args
 }

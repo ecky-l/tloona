@@ -1,7 +1,7 @@
 ## file.tcl (created by Tloona here)
 package require snit 2.3.2
 package require tmw::browsablefile 2.0.0
-package require tloona::codecompletion 1.0
+package require tloona::codecompletion 2.0.0
 package require tloona::htmlparser 1.0
 
 namespace eval Tloona {
@@ -39,7 +39,8 @@ snit::widgetadaptor tclfile {
     
     constructor {args} {
         installhull using Tmw::browsablefile
-        install completor using ::Tloona::Completor $win.cmpl -textwin [$self textwin]
+        #install completor using ::Tloona::Completor $win.cmpl -textwin [$self textwin]
+        install completor using ::Tloona::completor $win.cmpl -textwin [$self textwin]
         
         # TODO: review
         $self SetBindings
