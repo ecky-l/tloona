@@ -117,11 +117,14 @@ snit::widgetadaptor visualfile {
     
     
     destructor {
+        $self destruct
+    }
+    
+    method destruct {} {
         if {$options(-backupfile) && $options(-filename) != ""} {
-            set fn $options(-backupfile).bak
+            set fn $options(-filename).bak
             file delete $fn
         }
-        
     }
     
     method textwin {args} {

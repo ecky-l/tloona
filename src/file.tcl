@@ -49,7 +49,7 @@ snit::widgetadaptor tclfile {
     }
     
     destructor {
-        #bind [$self textwin] <KeyPress> {}
+        $self destruct
     }
     
     # @c overrides the openFile method

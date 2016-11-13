@@ -418,7 +418,6 @@ snit::widgetadaptor mainapp {
                 [$file cget -filename]
             
             if {![$file modified]} {
-                #delete object $file
                 destroy $file
                 continue
             }
@@ -530,7 +529,6 @@ snit::widgetadaptor mainapp {
             
             $cons displayResult run "Sourced Script $fname" $errInfo
         }
-        #$cons eval [list puts "Sourced "]
     }
     
     ## \brief Create a new REPL

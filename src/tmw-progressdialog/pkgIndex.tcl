@@ -8,5 +8,5 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::progressdialog 1.0 [list source [file join $dir progressdialog.itk]]
-
+package ifneeded tmw::progressdialog1 1.0 [list source [file join $dir progressdialog.itk]]
+package ifneeded tmw::progressdialog 2.0.0 [list source [file join $dir progressdialog.tcl]]
