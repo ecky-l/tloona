@@ -895,7 +895,7 @@ snit::widget console {
 #    uplevel ::Tmw::SlaveConsole $path $args
 #}
 
-package provide tmw::console 2.0
+package provide tmw::console 2.0.0
 
 #
 #Tmw::console .c -wrap none -font {"Lucida Sans Typewriter" 13} \

@@ -4,13 +4,13 @@ package require tmw::platform 2.0.0
 package require tmw::icons 1.0
 package require tloona::kitbrowser 2.0.0
 package require tloona::projectoutline 2.0.0
-package require tmw::console 2.0
+package require tmw::console 2.0.0
 #package require tloona::file1 1.0
 package require tloona::file 2.0.0
 
 package require fileutil 1.7
 package require parser::parse 1.0
-package require tloona::debugger 1.0
+#package require tloona::debugger 1.0
 package require comm 4.3
 package require tmw::dialog 2.0.0
 

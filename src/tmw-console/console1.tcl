@@ -1,10 +1,9 @@
 # need to be commented
 
-package provide tmw::console 1.0
 package require -exact Itcl 3.4
 package require -exact Itk 3.4
 
-package provide tmw::console 1.0
+package provide tmw::console1 1.0
 
 usual Ctext {
 	keep -width -height -background -borderwidth \

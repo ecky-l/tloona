@@ -8,6 +8,5 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded tmw::console 1.0 [list source [file join $dir console1.tcl]]
-package ifneeded tmw::console 2.0 [list source [file join $dir console.tcl]]
-package ifneeded tmw::backendconsole 1.0 [list source [file join $dir backendconsole.tcl]]
+package ifneeded tmw::console1 1.0 [list source [file join $dir console1.tcl]]
+package ifneeded tmw::console 2.0.0 [list source [file join $dir console.tcl]]
