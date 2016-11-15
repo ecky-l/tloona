@@ -449,6 +449,7 @@ snit::widgetadaptor tclfile {
         set ci [$self index insert]
         set iStr ""
         set insPos 2c
+        set tabsize [$self cget -tabsize]
         switch -- $word {
             for {
                 set iStr " \{\} \{\} \{\} \{\n"
@@ -467,7 +468,7 @@ snit::widgetadaptor tclfile {
                 set innerInd [expr {$indent + $tabsize}]
                 set iStr " \{\n"
                 append iStr "[string repeat " " $innerInd]\n"
-                set insPos [expr {[string length $iStr] - 1}]
+                set insPos [expr {[string length $iStr] - 1}]c
                 append iStr "[string repeat " " $indent]\}"
             }
             switch {
