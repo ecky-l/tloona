@@ -80,7 +80,6 @@ proc ::Tloona::initIcons {} {
     global Icons TloonaRoot
     array set Icons {}
     set IconPath [file join $TloonaRoot icons]
-    
     set Icons(TclTestfile) [image create photo -file [file join $IconPath tcltestfile.png]]
     
     set Icons(TclPublic) [image create photo -file [file join $IconPath public_method.png]]
