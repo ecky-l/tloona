@@ -142,10 +142,6 @@ snit::widget console {
             -cutlinecmd [mymethod CutLine] \
             -yanklinecmd [mymethod YankLine]
         
-        bind $textwin <Control-x> [list $textwin cut]
-        bind $textwin <Control-c> [list $textwin copy]
-        bind $textwin <Control-v> [list $textwin paste]
-        
         grid $hscroll -row 1 -column 0 -padx 0 -pady 0 -sticky wes
         grid $vscroll -row 0 -column 1 -padx 0 -pady 0 -sticky nes
         
