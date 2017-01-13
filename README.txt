@@ -18,7 +18,7 @@ ActiveTcl 8.6 installation, but binary dependencies are not included.
 
 ==
 
-Release 2.0b2 : Date 2016/11/16 :
+Release 2.0b3 : Date 2016/12/23 :
   * switch from Itk to snit
   * removed Itcl 3.4 and Itk 3.4 from libs directory
   * added itcl 4.0.3 to libs directory

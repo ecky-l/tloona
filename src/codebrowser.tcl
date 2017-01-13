@@ -347,6 +347,11 @@ snit::widgetadaptor projectbrowser {
             }
         }
         
+        lmap x $nodes {
+            set i [lsearch $Starkits $x] 
+            set Starkits [lreplace $Starkits $i $i]
+        }
+        
         $self remove $nodes yes
     }
 

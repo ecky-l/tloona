@@ -414,8 +414,7 @@ snit::widgetadaptor mainapp {
         
         set UserOptions(LastOpenDocuments) {}
         foreach {fn file hn} $_Files {
-            lappend UserOptions(LastOpenDocuments) \
-                [$file cget -filename]
+            lappend UserOptions(LastOpenDocuments) [$file cget -filename]
             
             if {![$file modified]} {
                 destroy $file
