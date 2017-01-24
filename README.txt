@@ -18,11 +18,12 @@ ActiveTcl 8.6 installation, but binary dependencies are not included.
 
 ==
 
-Release 2.0b3 : Date 2016/12/23 :
+Release 2.0b4 : Date 2017/01/24 :
   * switch from Itk to snit
   * removed Itcl 3.4 and Itk 3.4 from libs directory
   * added itcl 4.0.3 to libs directory
   * linux lib binaries added, runs on linux again
+  * deploy output directory is configurable underneath project dir
 
 Release 1.7.1 : Date 2016/06/18 :
   *  Bugfix: openFile from Workspace browser didn't generate tree properly

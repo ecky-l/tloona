@@ -22,6 +22,7 @@ snit::widgetadaptor wrapwizzard {
     component l_runtime
     component packsel
     component version
+    component e_outputdir
     
     delegate method * to hull
     delegate option * to hull
@@ -36,7 +37,10 @@ snit::widgetadaptor wrapwizzard {
 
     ## \brief The application version. Empty if no version
     variable _Version ""
-        
+    
+    ## \brief The output directory underneath project dir
+    variable _DeployDir target
+    
     variable _Options
     array set _Options {
         c_interp 0
@@ -50,12 +54,6 @@ snit::widgetadaptor wrapwizzard {
     constructor {args} {
         installhull using Tmw::wizzard
         
-        $self InitKitPackSel [$self addPage]
-        $self InitOptions [$self addPage]
-        
-        $self configure -title "Create deployable runtime" -buttonpadx 20 \
-            -nextcmd [mymethod _updateOptions]
-        
         array set _Options {
             c_interp 0
             v_interp ""
@@ -65,6 +63,12 @@ snit::widgetadaptor wrapwizzard {
             c_nocomp 0
         }
         
+        $self InitKitPackSel [$self addPage]
+        $self InitOptions [$self addPage]
+        
+        $self configure -title "Create deployable runtime" -buttonpadx 20 \
+            -nextcmd [mymethod _updateOptions]
+        
         $self configurelist $args
         $self buttonconfigure OK -command [mymethod onOk] -state disabled
     }
@@ -73,9 +77,10 @@ snit::widgetadaptor wrapwizzard {
     # 
     # Output directory is target/ inside the project. The extension depends
     # on the platform and type (.exe/.bin for starpacks, .kit for starkits)
-    method setDeployDetails {file} {
+    method setDeployDetails {file deployDir} {
         set _AppName [::Tloona::Fs::getStarkitApplicationName $file]
         set _Version [::Tloona::Fs::getStarkitVersion $file]
+        set _DeployDir $deployDir
         
         set baseName "<Application Name>"
         append baseName - <version>
@@ -89,7 +94,8 @@ snit::widgetadaptor wrapwizzard {
     method getOptions {} {
         set opts {}
         
-        lappend opts -type $_KitSel -version $_Version -appname $_AppName
+        lappend opts -type $_KitSel -version $_Version -appname $_AppName \
+            -deploydir $_DeployDir
         if {$_Options(c_interp)} {
             lappend opts -interp $_Options(v_interp)
         }
@@ -126,6 +132,17 @@ snit::widgetadaptor wrapwizzard {
         install packsel using ttk::radiobutton $parent.packsel -text "Create Starpack" \
             -variable [myvar _KitSel] -value pack
         
+        # the output directory
+        set ff [ttk::frame $parent.foutput]
+        ttk::label $ff.loutput -text "Output directory"
+        install e_outputdir using ttk::entry $ff.e_outputdir \
+            -textvariable [myvar _DeployDir] -text $_DeployDir 
+        grid $ff.loutput -row 3 -column 0 -sticky w -padx 5 -pady 2
+        grid $e_outputdir -row 3 -column 1 -sticky we -padx 5 -pady 2
+        grid columnconfig $ff 1 -weight 1
+        
+        $e_outputdir configure -textvar [myvar _DeployDir]
+        
         # the appname and version
         set f [ttk::frame $parent.fselsdx]
         ttk::label $f.lappname -text "Application Name (required): "
@@ -134,10 +151,10 @@ snit::widgetadaptor wrapwizzard {
         ttk::label $f.lversion -text "Version (empty for no version): "
         install version using ttk::entry $f.version -width 15 -textvar [myvar _Version]
         
-        grid $f.lappname $appname -padx 5 -pady 5 -sticky we
-        grid $f.lversion $version -padx 5 -pady 5 -sticky we
+        grid $f.lappname $appname -padx 5 -pady 2 -sticky we
+        grid $f.lversion $version -padx 5 -pady 2 -sticky we
         
-        pack $kitsel $packsel $f -side top -expand y -fill both -padx 20 -pady 10
+        pack $kitsel $packsel $ff $f -side top -expand y -fill both -padx 20 -pady 5
     }
     
     method InitOptions {parent} {

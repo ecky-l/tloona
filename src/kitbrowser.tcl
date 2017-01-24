@@ -166,7 +166,7 @@ snit::widgetadaptor kitbrowser {
         set defst [$mw cget -status]
         try {
             Tloona::wrapwizzard .wrapwizz -master $TloonaApplication
-            .wrapwizz setDeployDetails [$file cget -name]
+            .wrapwizz setDeployDetails [$file cget -name] [$file cget -deploydir]
             
             if {[.wrapwizz show] == "Cancel"} {
                 destroy .wrapwizz
@@ -184,7 +184,8 @@ snit::widgetadaptor kitbrowser {
                     -parent $TloonaApplication -message $m
                 return
             }
-            set n [eval $file wrap [.wrapwizz getOptions] -varptr var]
+            $file configure -deploydir [dict get $a -deploydir]
+            set n [eval $file wrap [dict remove $a -deploydir] -varptr var]
             $self refresh
             Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
         } trap README_NOT_EXIST {err errOpts} {
