@@ -46,14 +46,12 @@ proc bp {args} {
                 puts $result
             } elseif {$code == 3} {
                 break
-                #error "aborted debugger"
             } elseif {$code == 4} {
                 # continue
                 return $result
             } else {
                 puts stderr $result
             }
-            #set prompt "Debug ($level) % "
             set cmd ""
         } else {
             set rompt "    "

@@ -8,8 +8,7 @@ set TloonaVersion {}
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
-set env(ITCL_LIBRARY) [file join $::TloonaRoot lib Itcl3.4]
-set env(ITK_LIBRARY) [file join $::TloonaRoot lib Itk3.4]
+set env(ITCL_LIBRARY) [file join $::TloonaRoot lib itcl4.0.3]
 
 ::tcl::tm::add [file join $::TloonaRoot lib]
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
@@ -37,7 +36,6 @@ Tmw::Splash::Progress 15
 package require log 1.2
 Tmw::Splash::Message "Loading tloona::mainapp"
 Tmw::Splash::Progress 16
-#package require tloona::mainapp 1.0
 package require tloona::mainapp 2.0.0
 Tmw::Splash::Message "Loading tloona::starkit"
 Tmw::Splash::Progress 20
@@ -47,7 +45,6 @@ Tmw::Splash::Progress 22
 package require debug 1.0
 Tmw::Splash::Message "Loading starkit"
 Tmw::Splash::Progress 25
-#package require starkit
 
 Tmw::Splash::Message "Generating comm id"
 Tmw::Splash::Progress 30
