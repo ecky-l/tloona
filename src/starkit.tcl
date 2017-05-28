@@ -33,10 +33,10 @@ proc ::Tloona::Fs::getStarkitApplicationName {baseDir} {
 # starting with a #
 proc ::Tloona::Fs::getStarkitVersion {baseDir} {
     set version ""
-    set fh [open [file join $baseDir README.txt] r]
+    set fh [open [file join $baseDir README.md] r]
     while {[gets $fh line] >= 0} {
-        if {[regexp ^Release $line] && [llength [split $line]] >= 2} {
-            set version [lindex [split $line] 1]
+        if {[regexp {^### Release} $line] && [llength [split $line]] >= 2} {
+            set version [lindex [split $line] 2]
             break
         }
     }
