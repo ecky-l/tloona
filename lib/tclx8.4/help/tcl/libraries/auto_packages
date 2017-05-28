@@ -1,0 +1,4 @@
+auto_packages ?-location?
+Returns  a  list  of the names of all defined packages. If -location is speci-
+fied, a list of pairs of package name and the  .tlib  path  name,  offset  and
+length of the package within the library.

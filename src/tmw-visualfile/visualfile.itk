@@ -1,0 +1,624 @@
+#
+# visualfile.itk
+#
+package require -exact Itcl 3.4
+package require -exact Itk 3.4
+package require ctext 3.1
+
+package require tmw::toolbarframe1 1.0
+
+catch {
+    namespace import ::itcl::*
+    namespace import ::itk::*
+}
+
+package provide tmw::visualfile1 1.0
+
+# unset some of the Text default bindings. They are rebound later
+bind Text <Control-v> {}
+bind Text <Control-f> {}
+bind Text <<Paste>> {}
+bind Text <Control-o> {}
+bind Text <Control-n> {}
+bind Text <Alt-Key-Left> {}
+bind Text <Alt-Key-Right> {}
+
+
+
+usual Ctext {
+	keep -width -height -background -borderwidth \
+     -exportselection -foreground \
+     -highlightbackground -highlightcolor \
+     -highlightthickness \
+     -insertbackground -insertborderwidth \
+     -insertontime -insertofftime \
+     -insertwidth -relief \
+     -selectbackground -selectborderwidth \
+     -selectforeground -setgrid \
+     -takefocus -tabs
+}
+
+usual TScrollbar {}
+
+# @c general class for a visual file. Files are represented by
+# @c a ctext widget with proper highlighting mode and
+# @c autocompletion helpers
+class ::Tmw::VisualFile {
+    inherit Tmw::ToolbarFrame1
+    
+    itk_option define -font font Font {fixed 14} {
+        set ts $tabsize
+        component textwin configure -font $itk_option(-font)
+        configure -tabsize $ts
+    }
+    
+    itk_option define -modifiedcmd modifiedCmd Command "" {
+        set T [component textwin]
+        bind $T <<Modified>> {}
+        bind $T <<Modified>> $itk_option(-modifiedcmd)
+    }
+    
+    constructor {args} {
+        itk_component add textwin {
+            ctext [childsite].textwin
+        } {
+            usual
+            rename -borderwidth -textbd textBd Borderwidth
+            rename -relief -textrelief textRelief Relief
+            keep -width -height -background \
+                    -exportselection -foreground \
+                    -highlightbackground -highlightcolor \
+                    -highlightthickness \
+                    -insertbackground -insertborderwidth \
+                    -insertontime -insertofftime \
+                    -insertwidth -wrap \
+                    -selectbackground -selectborderwidth \
+                    -selectforeground -setgrid \
+                    -takefocus -tabs -undo
+        }
+    
+        set T [component textwin]
+    
+        itk_component add -private vscroll {
+            ttk::scrollbar [childsite].vscroll -command "$T yview" \
+                -class TScrollbar
+        }
+    
+        itk_component add -private hscroll {
+            ttk::scrollbar [childsite].hscroll -command "$T xview" \
+                    -orient horizontal -class TScrollbar
+        }
+        
+        set vs [component vscroll]
+        set hs [component hscroll]
+        component textwin configure -xscrollcommand "$hs set" \
+                -yscrollcommand "$vs set"
+        
+        grid [component textwin] -column 0 -row 0 -sticky news
+        grid [component vscroll] -column 1 -row 0 -sticky nsw
+        grid [component hscroll] -column 0 -row 1 -sticky wen
+        
+        grid rowconfigure [childsite] 0 -weight 1
+        grid columnconfigure [childsite] 0 -weight 1
+        
+        component textwin configure -cursor xterm
+        
+        configure -relief flat -background white -wrap none \
+            -borderwidth 0 -textrelief flat -textbd 0 -undo 1 \
+            -selectforeground white -selectbackground blue
+        
+        # colorize the line where the insert cursor is
+        set tw [component textwin].t
+        bind $tw <Key-Up> [code $this colorizeInsert]
+        bind $tw <Key-Down> [code $this colorizeInsert]
+        bind $tw <Key-Left> [code $this colorizeInsert]
+        bind $tw <Key-Right> [code $this colorizeInsert]
+        bind $tw <Key-Return> [code $this colorizeInsert]
+        bind $tw <Key-BackSpace> [code $this colorizeInsert]
+        bind $tw <KeyPress> [code $this colorizeInsert %K]
+        bind $tw <Button-1> [code $this colorizeInsert]
+        bind $tw <Button-1> +[code $this adjustSearchIndex]
+        bind $tw <<Selection>> [code $this colorizeInsert]
+        bind $tw <FocusIn> [list $tw tag delete sflash]
+        eval itk_initialize $args
+    }
+    
+    
+    destructor {
+        if {$backupfile && $filename != ""} {
+            set fn "[cget -filename].bak"
+            file delete $fn
+        }
+        
+    }
+    
+    public {
+        
+        ## \brief line ending for save. lf (unix), crlf (windows) or auto
+        variable savelineendings auto
+        
+        ## \brief the browser object for the file. Used for display in file browsers (not code browsers)
+        variable browserobj {}
+        
+        # @v mainwindow: the main window where the file lives
+        variable mainwindow ""
+        # @v filename: the filename
+        variable filename ""
+        # @v backupfile: create a backup file
+        variable backupfile 1
+        # @v tabsize: the tab size in spaces
+        variable tabsize 4
+        # @v expandtab: expand tab characters with spaces
+        variable expandtab 1
+        # @v SearchFor: String to search for in the file
+        variable searchstring "" {
+            set state disabled
+            if {$searchstring != ""} {
+                set state normal
+            }
+            foreach {w} [lrange $WSearch 1 end] {
+                $w configure -state $state
+            }
+        }
+        # @v ReplaceBy: String that replaces occurence of SearchFor
+        variable replacestring "" {
+            set state disabled
+            if {$replacestring != ""} {
+                set state normal
+            }
+            foreach {w} [lrange $WReplace 1 end] {
+                $w configure -state $state
+            }
+        }
+        # @v SearchExact: Search parameter for -exact flag
+        variable searchexact 1
+        # @v SearchRegex: Search parameter for -regexp flag
+        variable searchregex 0
+        # @v SearchNocase: Search parameter for -nocase flag
+        variable searchnocase 0
+        
+        ## \brief add to a file browser
+        method addToFileBrowser {browser} {
+            if {![$browser exists $browserobj]} {
+                $browser add $browserobj 1 0
+            }
+            
+            if {[lsearch $FileBrowsers $browser] < 0} {
+                lappend FileBrowsers $browser
+            }
+        }
+        
+        ## \brief remove from a file browser
+        method removeFromFileBrowser {browser} {
+            $browser remove $browserobj
+            set idx [lsearch $FileBrowsers $browser]
+            lvarpop BrowserDisplays $idx
+        }
+        
+        # @c saves the file. If file is given as argument,
+        # @c it is set as the new filename. Otherwise, the
+        # @c filename of this object is used. If no filename
+        # @c was set, an error is generated
+        method saveFile {{file ""}}
+        
+        # @c open a file, set the file name if it is not ""
+        method openFile {{file ""}}
+        
+        # @r whether the text is modified
+        method modified {{setit ""}}
+        
+        # @c translates the cursor position at x/y to a byte in the text.
+        #
+        # @a x,y: x and y position. If both are -1, the insert cursor
+        # @a x,y: position is taken
+        method getTextPos {{x -1} {y -1}}
+        
+        # @c undo a step of operation. Delegates to [edit undo]
+        #
+        # @a steps: number of steps to undo
+        method undo {{steps 1}} {
+            for {set i 0} {$i < $steps} {incr i} {
+                catch {component textwin edit undo}
+            }
+        }
+        
+        # @c redo a previously undone operation. Delegates to [edit redo]
+        #
+        # @a steps: number of steps to redo
+        method redo {{steps 1}} {
+            for {set i 0} {$i < $steps} {incr i} {
+                catch {component textwin edit redo}
+            }
+        }
+        
+        # @c Shows the search toolbar at the top of the file content. This
+        # @c enables for searching (and replacing) text inside the file
+        #
+        # @a show: 1 for showing, 0 for hiding the toolbar
+        method showSearch {show}
+        
+        # @r whether the search toolbar is showing
+        method showingSearch {} {
+            return $ShowingSearch
+        }
+        
+        # @c Triggers a search in the text window. The String in the
+        # @c protected variable SearchFor is used for search, if it is
+        # @c not empty
+        #
+        # @a direction: the direction in which to search
+        method doSearch {direction}
+        
+        # @c Triggers a replace action in the text window. The highlighted
+        # @c region in the text is replaced by the content of ReplaceBy, if
+        # @c it is equal to the SearchFor string.
+        method doReplace {}
+        
+        # @r the search entry widget
+        method getSearchEntry {} {
+            return [lindex $WSearch 0]
+        }
+        
+        # @r the replace entry widget
+        method getReplaceEntry {} {
+            return [lindex $WReplace 0]
+        }
+        
+        # @c update highlights dummy method. Meant to be overwritten by
+        # @c client classes
+        method updateHighlights {} {
+        }
+        
+        # @c Displays a byte range in the file. If offset is < 0,
+        # @c every display from before is cleared
+        #
+        # @a offset: byte offset for display start
+        # @a length: byte length
+        # @a color: background color for the text
+        method displayByteRange {offset length color}
+    }
+    
+    protected {
+        # @v _IndentLevel: the current indentation level
+        variable IndentLevel 0
+        # @v LastKey: the last pressed key
+        variable LastKey ""
+        # @v LastModifier: The last pressed modifier
+        variable LastModifier ""
+        # @v ShowingSearch: indicates whether search bar is showing
+        variable ShowingSearch 0
+        # @v SearchIndex: The actual search Index
+        variable SearchIndex 1.0
+        # @v WSearch: the search entry widget
+        variable WSearch ""
+        # @v WReplace: the replace entry widget
+        variable WReplace ""
+        
+        ## \brief List of file only browsers where this object appears
+        variable FileBrowsers {}
+        
+        method deleteCharBefore {index} {
+            component textwin delete "$index -1c" "$index"
+        }
+        
+        method expandTab {}
+        
+        # @c displays a different colored background for the
+        # @c insert line. Triggered on different key bindings
+        method colorizeInsert {{key ""}}
+        
+        # @c validation command for search entries. Enables the
+        # @c buttons according on whether the entries are empty
+        #
+        # @a var: either SearchFor or ReplaceBy
+        # @a args: list of buttons to enable/disable
+        method enableSearchButtons {varPtr args}
+        
+        # @c helper method to generate event on changing search
+        # @c options
+        #
+        # @a varPtr: variable to configure
+        method searchOptsChanged {varPtr} {
+            configure -$varPtr [set $varPtr]
+            event generate $itk_interior <<SearchOptionsChanged>>
+        }
+        
+        # @c adjusts the search index, when the user clicks
+        # @c in the file
+        method adjustSearchIndex {} {
+            set SearchIndex [component textwin index insert]
+        }
+        
+    }
+    
+    private {
+        variable _OldLinePos 1
+    }
+}
+
+configbody ::Tmw::VisualFile::tabsize {
+    set fnt [cget -font]
+    set spaceSize [font measure $fnt -displayof \
+            [component textwin] " "]
+    configure -tabs [list [expr {$tabsize * $spaceSize}]]
+}
+
+
+body ::Tmw::VisualFile::saveFile {{file ""}} {
+    if {$file != ""} {
+        set filename $file
+    }
+    if {$filename == ""} {
+        return -code error "no filename was given"
+    }
+    
+    if {$backupfile && [file exists $filename]} {
+        set bkf $filename
+        append bkf ".bak"
+        file copy -force -- $filename $bkf
+    }
+    
+    set ctn [component textwin get 1.0 end]
+    set ctn [string range $ctn 0 end-1]
+    set fh [open $filename w]
+    fconfigure $fh -translation $savelineendings
+    puts -nonewline $fh $ctn
+    close $fh
+    
+    return $ctn
+}
+
+body ::Tmw::VisualFile::openFile {{file ""}} {
+    if {$file != ""} {
+        set filename $file
+    }
+    if {$filename == ""} {
+        return -code error "no filename was given"
+    }
+    component textwin delete 1.0 end
+    
+    if {[catch {open $filename r} fh]} {
+        puts $::errorInfo
+        return -code error $fh
+    }
+    
+    set ctn [read $fh]
+    close $fh
+    component textwin insert 1.0 $ctn
+    component textwin mark set insert 1.0
+    component textwin edit reset
+    colorizeInsert
+}
+
+body ::Tmw::VisualFile::modified {{setit ""}} {
+    if {$setit != "" && \
+                [catch {
+                    component textwin edit modified $setit
+                } msg]} {
+        
+        return -code error $msg
+    }
+    
+    return [component textwin edit modified]
+}
+
+body ::Tmw::VisualFile::getTextPos {{x -1} {y -1}} {
+    # @c returns the cursors byte position.
+    set T [component textwin]
+    set curPos @$x,$y
+    if {$x == -1 && $y == -1} {
+        set curPos insert
+    }
+    return [string length [$T get 1.0 [$T index $curPos]]]
+}
+
+body ::Tmw::VisualFile::showSearch {show} {
+    if {! $show} {
+        set ShowingSearch 0
+        if {[tbexists searchtool]} {
+            tbhide searchtool
+        }
+        return
+    }
+    
+    set ShowingSearch 1
+    set SearchIndex 1.0
+    if {[tbexists searchtool]} {
+        tbshow searchtool
+        return
+    }
+    
+    set S [toolbar searchtool -pos n -compound none]
+    
+    # the search widgets: an entry for the search string, a
+    # drop widget for search options and up/down buttons
+    ttk::label $S.sfl -text "Search:"
+    ttk::entry $S.sentry -textvariable [scope searchstring]
+    pack $S.sfl $S.sentry -expand n -fill none -side left \
+        -padx 3 -pady 1
+    
+    set f [dropframe preferences -toolbar searchtool -separate 1 \
+        -image $Tmw::Icons(AppTools) -relpos 0]
+    ttk::checkbutton $f.exact -text Exact -variable [scope searchexact] \
+        -command [code $this searchOptsChanged searchexact]
+    ttk::checkbutton $f.regex -text Regex -variable [scope searchregex] \
+        -command [code $this searchOptsChanged searchregex]
+    ttk::checkbutton $f.nocase -text Nocase -variable [scope searchnocase] \
+        -command [code $this searchOptsChanged searchnocase]
+    pack $f.exact $f.regex $f.nocase -side top -anchor w -expand y -fill both
+    
+    set upb [toolbutton up -toolbar searchtool -type command \
+        -image $Tmw::Icons(NavUp) -separate 0 -state disabled \
+        -command [code $this doSearch -backwards]]
+    set downb [toolbutton down -toolbar searchtool -type command \
+        -image $Tmw::Icons(NavDown) -separate 1 -state disabled \
+        -command [code $this doSearch -forwards]]
+    
+    # the replace widgets: an entry for the replace string, a
+    # button for replacing the current selection
+    ttk::label $S.rpb -text "Replace:"
+    ttk::entry $S.rentry -textvariable [scope replacestring]
+    pack $S.rpb $S.rentry -expand n -fill none -side left \
+        -padx 3 -pady 1
+    
+    set replb [toolbutton replace -toolbar searchtool -separate 0 \
+        -image $Tmw::Icons(ActCheck) -state disabled \
+        -command [code $this doReplace] -type command]
+    
+    # bindings for validation and such
+    bind $S.sentry <KeyRelease> [code $this \
+        enableSearchButtons searchstring $upb $downb]
+    bind $S.rentry <KeyRelease> [code $this \
+        enableSearchButtons replacestring $replb]
+    bind $S.sentry <Return> [code $this doSearch -forwards]
+    bind $S.rentry <Return> [code $this doSearch -forwards]
+    bind $S.sentry <Alt-r> [code $this doReplace]
+    bind $S.rentry <Alt-r> [code $this doReplace]
+    
+    lappend WSearch $S.sentry $upb $downb
+    lappend WReplace $S.rentry $replb
+}
+
+body ::Tmw::VisualFile::doSearch {direction} {
+    global tcl_platform
+    set T [component textwin]
+    $T tag delete sflash
+    
+    if {$searchstring == ""} {
+        return
+    }
+    switch -- $direction {
+        -forwards -
+        -backwards {
+        }
+        default {
+            error "direction can only be -forwards or -backwards"
+        }
+    }
+    
+    catch {
+        set s0 [$T index sel.first]
+        set s1 [$T index sel.last]
+        $T tag remove sel $s0 $s1
+    }
+    
+    set tmpsi $SearchIndex
+    set SearchIndex [eval $T search $direction \
+        [expr {$searchexact ? "-exact" : ""}] \
+        [expr {$searchregex ? "-regexp" : ""}] \
+        [expr {$searchnocase ? "-nocase" : ""}] \
+        [list $searchstring] $SearchIndex]
+    
+    if {$SearchIndex == ""} {
+        # not found
+        set SearchIndex $tmpsi
+        return
+    }
+    
+    set len [string length $searchstring]
+    $T tag add sel $SearchIndex "$SearchIndex + $len chars"
+    $T see "$SearchIndex wordend"
+    
+    # on windows, the text is only highlighted if the textwin has focus
+    # this is a fake selection in adddition to the normal one
+    if {[string match $tcl_platform(platform) windows] \
+            && ![string match [focus] [component textwin].t]} {
+        $T tag add sflash $SearchIndex "$SearchIndex + $len chars"
+        $T tag configure sflash -background blue -foreground white
+    }
+    
+    set SearchIndex [component textwin index "$SearchIndex + $len chars"]
+}
+
+body ::Tmw::VisualFile::doReplace {} {
+    if {$replacestring == "" || $searchstring == ""} {
+        return
+    }
+    
+    if {[catch {
+            set s0 [component textwin index sel.first]
+            set s1 [component textwin index sel.last]
+        } msg]} {
+        return
+    }
+    
+    component textwin delete $s0 $s1
+    component textwin fastinsert $s0 $replacestring
+    set len [string length $replacestring]
+    set SearchIndex [component textwin index "$s0 + $len chars"]
+}
+
+body ::Tmw::VisualFile::displayByteRange {offset length color} {
+    # TODO: implement this
+    set T [component textwin]
+    $T tag configure inscolorize -background white
+    eval $T tag remove inscolorize [$T tag ranges inscolorize]
+    
+    set ni [$T index "1.0 + $offset chars"]
+    set li [$T index "1.0 + [expr {$offset + $length}] chars"]
+    $T tag add inscolorize $ni $li
+    $T tag configure inscolorize -background $color
+    $T see $ni
+}
+
+body ::Tmw::VisualFile::expandTab {} {
+    # @c sets up the bindings
+    set LastKey Tab
+    if {! $expandtab} {
+        return
+    }
+    
+    set T [component textwin]
+    $T fastinsert insert [string repeat " " $tabsize]
+    incr IndentLevel $tabsize
+    after 1 [code $this deleteCharBefore insert]
+}
+
+body ::Tmw::VisualFile::colorizeInsert {{key ""}} {
+    # Tab is the template expansion trigger. If template
+    # expansion is switched on, no colorizing should be done
+    # explicitely, because otherwise all the lines in the 
+    # inserted template will be colorized
+    
+    # TODO: 
+    #if {$key == "Tab" && $::UserOptions(File,InsertCodeTemplates)} {
+    #    return
+    #}
+    if {$key == "Tab"} {
+        return
+    }
+    
+    
+    set T [component textwin].t
+    set line [lindex [split [$T index insert] .] 0]
+    set nline [expr {$line + 1}]
+    
+    $T tag configure inscolorize -background white
+    $T tag remove inscolorize $line.0 $nline.0
+    set script "if \{!\[winfo exists $T\]\} return\n"
+    append script "set line \[lindex \[split \[$T index insert\] .\] 0\]\n"
+    append script "set nline \[expr \{\$line + 1\}\]\n"
+    append script "$T tag add inscolorize \$line.0 \$nline.0\n"
+    append script "$T tag configure inscolorize -background #e0f1ff\n"
+    append script "$T tag raise sel\n"
+    
+    after 2 $script
+}
+
+body ::Tmw::VisualFile::enableSearchButtons {varPtr args} {
+    # for some reason the value can not be obtained via [cget]
+    # before this is done:
+    configure -$varPtr [set $varPtr]
+    
+    set state [expr {([set $varPtr] == "") ? "disabled" : "normal"}]
+    foreach {widget} $args {
+        $widget configure -state $state
+    }
+    event generate [namespace tail $this] <<SearchOptionsChanged>>
+    return 1
+}
+
+# @c convenience command for constructing files
+proc ::Tmw::visualfile1 {path args} {
+    uplevel ::Tmw::VisualFile $path $args
+}

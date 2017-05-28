@@ -1,0 +1,52 @@
+
+package require Itree 1.0
+package require parser::parse 1.0
+package require htmlparse 1.1.1
+
+package provide web::parser 1.0
+
+namespace eval ::Web {}
+namespace eval ::Web::Parser {}
+
+proc ::Web::Parser::parse {node off content} {
+}
+
+# @c represents a file with mixed Html and Tcl content. If
+# @c no Tcl content is present, is treated as Html only. 
+# @c The parser can handle both, .tml and .adp syntax.
+class ::Web::Parser::Webscript {
+    inherit ::parser::Script
+    
+    constructor {args} {
+    }
+    
+    destructor {
+    }
+    
+    public {
+        
+        # @c parses a web file
+        method parseFile {filename}
+    }
+    
+    protected {
+    }
+    
+    private {
+    }
+    
+}
+
+body ::Web::Parser::Webscript::parseFile {filename} {
+    # @c parses the file content
+    if {[catch {set fh [open $filename "r"]} msg]} {
+        return -code error "can not open file: $msg"
+    }
+    
+    set definition [read $fh]
+    close $fh
+    set name [file tail $filename]
+    set type "webscript"
+    ::parser::web::parse $this 0 $definition
+}
+

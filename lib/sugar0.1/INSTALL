@@ -1,0 +1,4 @@
+MANUAL INSTALL
+
+ - Copy the directory named "sugar0.1" in a place where your Tcl/Tk
+   install will search for. Under unix it's "/usr/lib" in many cases.

@@ -1,0 +1,95 @@
+#
+# filebrowser.itk
+#
+package require tmw::browser1 1.0
+package require tmw::filesystem 1.0
+
+package provide tmw::filebrowser1 1.0
+
+class ::Tmw::FileBrowser1 {
+    inherit Tmw::Browser1
+    
+    # @v ignorebackup: indicates whether to ignore backup files
+    public variable ignorebackup 1
+    
+    # @v Filter: variable for filter pattern and widgets
+    protected variable Filter
+    array set Filter {}
+    
+    # @v FileSystems: list of all file trees. Used for filtering, so
+    # @v FileSystems: that no code tree gets lost
+    protected variable FileSystems {}
+    
+    constructor {args} {
+        set Filter(pattern) ""
+        set Filter(widgets) {}
+        
+        setNodeIcons [list directory $Tmw::Icons(FileOpen) \
+            webscript $Tmw::Icons(WebFile) \
+            tclfile $Tmw::Icons(TclFile) \
+            starkit $Tmw::Icons(KitFile) \
+            image $Tmw::Icons(ImageFile) \
+            exefile $Tmw::Icons(ExeFile) \
+            file $Tmw::Icons(DocumentFile)]
+        
+        eval itk_initialize $args
+    }
+    
+    # @c adds a filesystem to the browser. This involves
+    # @c building the file system and - for virtual file
+    # @c systems - eventually extracting them.
+    public method addFileSystem {root {fstype ""}} {
+        if {![file exists $root]} {
+            error "$root does not exist"
+        }
+        set fs [::Tmw::Fs::filesystem -name $root -type "filesystem" -expanded 0]
+        
+    }
+        
+    # @r returns a list of file systems
+    public method getFileSystems {} {
+        return [lsort -unique [concat $FileSystems [children {}]]]
+    }
+        
+    public method getFilesys {namePattern} {
+        foreach {fs} [getFileSystems] {
+            if {[string match $namePattern [$fs cget -name]]} {
+                return $fs
+            }
+        }
+    }
+        
+    # @c refresh a filesystem in this browser
+    public method refresh {{fsys ""}} {
+        if {$fsys == ""} {
+            set fsys [selection]
+        }
+        if {[$fsys getParent] != {}} {
+            set fsys [$fsys getTopnode]
+        }
+        
+        set newList {}
+        set oldList {}
+        Tmw::Fs::rebuild $fsys [cget -ignorebackup] newList oldList
+        remove $oldList
+        add $newList 0 0
+    }
+        
+    # @c callback for filtering code items
+    public method onFilter {method} {
+        set FileSystems [lsort -unique [concat $FileSystems [children {}]]]
+        if {$Filter(pattern) == ""} {
+            configure -filter ""
+        } else {
+            configure -filter [list $method $Filter(pattern)]
+        }
+        
+        remove [children {}]
+        add $FileSystems 1 1
+    
+    }
+    
+}
+
+
+

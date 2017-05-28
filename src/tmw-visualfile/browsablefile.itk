@@ -1,0 +1,145 @@
+
+package require tmw::visualfile1 1.0
+package require Tclx 8.4
+package require parser::script 1.0
+
+package provide tmw::browsablefile1 1.0
+
+# @c This class implements a visual file which can be
+# @c displayed and used in a browser
+class ::Tmw::BrowsableFile {
+    inherit Tmw::VisualFile
+    
+    constructor {args} {
+        bind [component textwin] <Button-1> \
+            [code $this updateCurrentNode %x %y]
+        
+        eval configure $args
+    }
+    
+    public {
+        
+        # @c adds the file to the given code browser
+        method addToBrowser {browser} {
+            if {![$browser exists $BrowserTree]} {
+                $browser add $BrowserTree 1 0
+            }
+            
+            if {[lsearch $BrowserDisplays $browser] < 0} {
+                lappend BrowserDisplays $browser
+            }
+        }
+        
+        # @c removes this file from the given file browser
+        method removeFromBrowser {browser} {
+            $browser remove $BrowserTree
+            set idx [lsearch $BrowserDisplays $browser]
+            lvarpop BrowserDisplays $idx
+        }
+        
+        # @c Creates a code tree that represents this file.
+        method createTree {}
+        
+        # @c set the browsable tree
+        method setTree {tree} {
+            set BrowserTree $tree
+        }
+        
+        # @r the browsable tree
+        method getTree {} {
+            return $BrowserTree
+        }
+        
+        # @c Reparse the tree. This is meant to be overwritten by
+        # @c deriving classes
+        method reparseTree {} {
+        }
+        
+        # @r the browsers where the file is visible
+        method getBrowsers {} {
+            return $BrowserDisplays
+        }
+        
+        # @c overrides [openFile] in VisualFile. The default
+        # @c implementation here configures the file name
+        # @c for the BrowserTree
+        method openFile {{file ""}}
+        
+        # @c update the highlighting. By default, does nothing.
+        # @c Subclasses may override
+        method updateKwHighlight {keyWords} {
+        }
+        
+        # @c selects the code fragment at mouse position x, y or the 
+        # @c insert cursor.
+        method selectTreeDisplay {}
+    }
+    
+    protected {
+        # @v BrowserTree: a tree to display in the browser
+        variable BrowserTree ""
+        
+        # @v BrowserDisplays: a list of displays, where the file content
+        # @v BrowserDisplays: is displayed
+        variable BrowserDisplays {}
+        
+        # @v CurrentNode: The node we are currently in. This is updated
+        # @v CurrentNode: when the cursor position changes in the file
+        variable CurrentNode ""
+        
+        #
+        # @a x: the x position of mouse cursor
+        # @a y: the y position of mouse cursor
+        method updateCurrentNode {{x -1} {y -1}}
+    }
+    
+    private {
+    }
+    
+}
+
+
+body ::Tmw::BrowsableFile::createTree {} {
+    if {[getTree] != ""} {
+        return
+    }
+    setTree [::Parser::StructuredFile ::#auto -type "file"]
+}
+
+body ::Tmw::BrowsableFile::openFile {{file ""}} {
+    ::Tmw::VisualFile::openFile $file
+    $BrowserTree configure -file [cget -filename] \
+        -displayformat {"%s (%s)" -name -dirname}
+}
+
+body ::Tmw::BrowsableFile::selectTreeDisplay {} {
+    if {[getTree] == ""} {
+        return
+    }
+    
+    foreach browser [getBrowsers] {
+        set bwin [$browser treeview]
+        if {!([$browser exists $CurrentNode] && [winfo ismapped $bwin]
+                && [$browser cget -syncronize])} {
+            continue
+        }
+        
+        $browser selection set $CurrentNode
+        $browser see $CurrentNode
+    }
+}
+
+body ::Tmw::BrowsableFile::updateCurrentNode {{x -1} {y -1}} {
+    event generate [namespace tail $this] <<TextPositionChanged>>
+    set tmp $CurrentNode
+    set CurrentNode [[getTree] lookupRange [getTextPos $x $y]]
+    if {$CurrentNode != "" && ![string equal $tmp $CurrentNode]} {
+        selectTreeDisplay
+    }
+}
+
+
+# @c convenience command for constructing files
+proc ::Tmw::browsablefile1 {path args} {
+    uplevel ::Tmw::BrowsableFile $path $args
+}

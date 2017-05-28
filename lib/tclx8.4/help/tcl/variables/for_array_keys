@@ -1,0 +1,4 @@
+       for_array_keys var array_name code
+              This procedure performs a foreach-style loop for each key in the
+              named array.  The break and continue  statements  work  as  with
+              foreach.

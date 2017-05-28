@@ -1,0 +1,9 @@
+       read_file ?-nonewline? fileName
+
+       read_file fileName numBytes
+              This  procedure reads the file fileName and returns the contents
+              as a string.  If -nonewline is specified, then the last  charac-
+              ter  of  the  file  is discarded if it is a newline.  The second
+              form specifies exactly how many bytes will be read and returned,
+              unless  there are fewer than numBytes bytes left in the file; in
+              this case, all the remaining bytes are returned.

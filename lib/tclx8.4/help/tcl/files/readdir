@@ -1,0 +1,7 @@
+       readdir ?-hidden? dirPath
+
+              Returns a list containing the contents of the directory dirPath.
+              The directory entries "." and ".." are not returned.
+
+              On Windows, -hidden maybe specified to include hidden  files  in
+              the result.  This flag is ignored on Unix systems.

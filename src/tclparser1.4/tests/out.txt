@@ -1,0 +1,124 @@
+
+==== Proc test a single proc FAILED
+==== Contents of test case:
+
+    set content {
+        proc testProc {a1 a2} {
+            puts dummy
+        }
+    }
+    set root [::iparser::Script ::#auto -name "Proc"  -definition $content -type "script"]
+    $root parse
+    return [$root print 4]
+
+---- Result was:
+    proc: testProc (1)
+script: Proc (0)
+
+---- Result should have been (exact matching):
+script: Proc (0)
+    proc: testProc (1)
+
+==== Proc FAILED
+
+
+==== NsProc a proc inside a namespace FAILED
+==== Contents of test case:
+
+    set content {
+        namespace eval ns {
+            proc testProc {a1 a2} {
+                puts dummy
+            }
+        }
+    }
+    set root [::iparser::Script ::#auto -name "NsProc"  -definition $content -type "script"]
+    $root parse
+    return [$root print 4]
+
+---- Result was:
+        proc: testProc (2)
+    namespace: ns (1)
+script: NsProc (0)
+
+---- Result should have been (exact matching):
+script: NsProc (0)
+    namespace: ns (1)
+        proc: testProc (2)
+
+==== NsProc FAILED
+
+
+==== NestedNsProc a proc inside a nested namespace FAILED
+==== Contents of test case:
+
+    set content {
+        namespace eval ns {
+            namespace eval ns {
+                proc testProc1 {a1 a2} {
+                    puts dummy
+                }
+            }
+            proc testProc2 {a3 a4} {
+                return "dummy"
+            }
+        }
+    }
+    set root [::iparser::Script ::#auto -name "NestedNsProc"  -definition $content -type "script"]
+    $root parse
+    return [$root print 4]
+
+---- Result was:
+            proc: testProc1 (3)
+        namespace: ns (2)
+        proc: testProc2 (2)
+    namespace: ns (1)
+script: NestedNsProc (0)
+
+---- Result should have been (exact matching):
+script: NestedNsProc (0)
+    namespace: ns (1)
+        namespace: ns (2)
+            proc: testProc1 (3)
+        proc: testProc2 (2)
+
+==== NestedNsProc FAILED
+
+
+==== NsProcOutside a proc defined for a namespace outside FAILED
+==== Contents of test case:
+
+    set content {
+        namespace eval ns {
+        }
+        namespace eval ns::ns1 {
+        }
+        
+        proc ns::testProc1 {a1 a2} {
+            puts "dummy"
+        }
+        
+        proc ns::ns1::testProc2 {a3 a4} {
+            return "dummy"
+        }
+    }
+    set root [::iparser::Script ::#auto -name "NsProcOutside"  -definition $content -type "script"]
+    $root parse
+    return [$root print 4]
+
+---- Result was:
+            proc: testProc2 (3)
+        namespace: ns1 (2)
+        proc: testProc1 (2)
+    namespace: ns (1)
+script: NsProcOutside (0)
+
+---- Result should have been (exact matching):
+script: NsProcOutside (0)
+    namespace: ns (1)
+        namespace: ns1 (2)
+            proc: testProc2 (3)
+        proc: testProc1 (2)
+
+==== NsProcOutside FAILED
+

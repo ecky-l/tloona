@@ -1,0 +1,280 @@
+################################################################################
+# itree.itcl
+#
+# visual tree implementation. Object oriented and better than iwidget
+################################################################################
+package require itcl 4.0.3
+package require Tclx 8.4
+
+catch {
+    namespace import ::itcl::*
+}
+
+namespace eval ::itree {
+}
+
+class ::itree::Node {
+    # @c an object oriented tree that can be visualized by a tide::ui::TreeWin
+    
+    # @v name: the node name, which is also displayed
+    public variable name ""
+    # @v image: an image to display in front of the name. If, no image is
+    # @v image: displayed. The image consists of data
+    public variable image ""
+    # @v level: the depth of this tree
+    public variable level 0
+    # @v displayformat: a display format list. It is made up of a format
+    # @v displayformat: string as accepted by [format] (e.g. %s) followed by
+    # @v displayformat: the attributes that should be displayed, e.g. -name
+    # @v displayformat: example: {%s -name}. The resulting string is displayed
+    # @v displayformat: as the node's name in a tree display
+    public variable displayformat ""
+    # @v displayed: indicates whether the node is displayed
+    public variable displayed 0
+    # @v type: a type associated with the node
+    public variable type "unknown"
+    # @v expanded: indicates whether the item is expanded on a display
+    public variable expanded 1
+    # @v data: Data that is associated with an item.
+    # @v data: When the node is displayed in some kind of browser, this is
+    # @v data: the data that goes in the columns. It is in the responsibility
+    # @v data: of the developer that data matches the column count then
+    public variable data {}
+    
+    protected variable _Children {}
+    # @v _Children: the child nodes
+    protected variable _Parent ""
+    # @v _Parent: the parent node
+    protected variable _DisplayTree ""
+    # @v _DisplayTree: the graphical tree representation for that node
+    
+    constructor {args} {
+        eval configure $args
+    }
+    
+    destructor {
+        foreach child $_Children {
+            catch {::itcl::delete object $child}
+        }
+    }
+    
+    # @c Adds a given node to the tree node
+    #
+    # @a node: the node to add
+    public method addChild {node} {
+        if {![lcontain $_Children $node]} {
+            lappend _Children $node
+            $node configure -level [expr {$level + 1}]
+            $node setParent $this
+        }
+        
+        return $node
+    }
+    
+    # @c adds a list of nodes as children
+    #
+    # @a nodes: the nodes
+    public method addChildren {nodes} {
+        foreach {chd} $nodes {
+            addChild $chd
+        }
+    }
+    
+    public method removeChild {node} {
+        set idx [lsearch $_Children $node]
+        lvarpop _Children $idx
+    }
+    
+    # @c Removes all children from this node
+    public method removeChildren {} {
+        set _Children {}
+    }
+    
+    public method setParent {node} {
+        set _Parent $node
+        #$node addChild $this
+    }
+    
+    # @r the children of this node. If deep is true, a list of
+    # @r all children is returned. Otherwise only direct children
+    #
+    # @a deep: bool argument. See above
+    public method getChildren {{deep 0}} {
+        if {! $deep || $_Children == {}} {
+            return $_Children
+        }
+        
+        set lst $_Children
+        foreach ch $_Children {
+            set lst [concat $lst [$ch getChildren 1]]
+        }
+        
+        return $lst
+    }
+    
+    public method deleteChildren {} {
+        foreach {ch} $_Children {
+            ::itcl::delete object $ch
+        }
+        set _Children {}
+    }
+    
+    public method getParent {} {
+        return $_Parent
+    }
+    
+    ## \brief Find a parent node by type or name
+    public method findParent {args} {
+        set parent $this
+        while {$parent != ""} {
+            set found 1
+            foreach {k v} $args {
+                set found [expr {$found && [cget $k] == $v}]
+            }
+            if {$found} {
+                break
+            }
+            set parent [$parent getParent]
+        }
+        return $parent
+    }
+    
+    # @c get the topmost node in the tree. If type is not "", the
+    # @c it terminates the topnode search by a type - If the node
+    # @c in question is not of that type, it is returned
+    public method getTopnode {{type ""}} {
+        if {$type == ""} {
+            if {$_Parent == ""} {
+                return $this
+            }
+        } else {
+            if {$_Parent == "" || ![isa $type]} {
+                return $this
+            }
+        }
+        
+        return [$_Parent getTopnode $type]
+    }
+    
+    public method nextSibling {} {
+        if {[getParent] == ""} {
+            return ""
+        }
+        set ach [[getParent] getChildren]
+        set idx [lsearch $ach $this]
+        return [lindex $ach [incr idx]]
+    }
+    
+    public method prevSibling {} {
+        if {[getParent] == ""} {
+            return ""
+        }
+        set ach [[getParent] getChildren]
+        set idx [lsearch $ach $this]
+        return [lindex $ach [incr idx -1]]
+    }
+    
+    public method print {{chind 4}} {
+        puts -nonewline [string repeat " " [expr {$chind * $level}]]
+        puts "$this : [cget -name] ([cget -level])"
+        foreach ch $_Children {
+            $ch print $chind
+        }
+    }
+    
+    # @c looks up a token(name) in its context. The
+    # @c context is given as a list of consequent
+    # @c namespace/class names. If it is empty, only
+    # @c the children of the actual node are searched
+    # @c if the token is found, it is returned,
+    # @c otherwise "" is returned
+    #
+    # @a token: the token to look up
+    # @a context: list of context tokens
+    public method lookup {token {context {}}} {
+        foreach child $_Children {
+            if {$context != {}} {
+                if {[lindex $context 0] == [$child cget -name]} {
+                    return [$child lookup $token [lrange $context 1 end]]
+                }
+            } else  {
+                if {[$child cget -name] eq $token} {
+                    return $child
+                    #return $child
+                }
+            }
+        }
+    }
+    
+    public method lookupExpr {expr {context {}}} {
+        set e [regsub -all {%n} $expr {$n}]
+        foreach {n} $_Children {
+            if {$context != {}} {
+                if {[lindex $context 0] == [$n cget -name]} {
+                    return [$n lookupExpr $expr [lrange $context 1 end]]
+                }
+            } elseif {$e} {
+                return $n
+            }
+        }
+    }
+    
+    public method lookupAll {token {class ""}} {
+        set res {}
+        foreach child $_Children {
+            if {[$child cget -name] eq $token} {
+                if {$class != {} && ![$child isa $class]} {
+                    continue
+                }
+                lappend res $child
+            }
+        }
+        return $res
+    }
+    
+    ## \brief Find children that match certain properties
+    #
+    # The properties to find are specified by args and must be valid properties
+    # for the child nodes. One special argument -context must not be a valid 
+    # property for any child node and specifies the context for child nodes to
+    # do a recursive search. The recusrion is only triggered if the properties
+    # in the list given as -context argument match the child properties (but
+    # independent from the search result itself). If no -context argument is
+    # given, the recursive search is done over all nodes.
+    public method findChildren {args} {
+        set result {}
+        
+        foreach {child} [getChildren] {
+            set found 1
+            foreach {k v} $args {
+                set found [expr {$found && [$child cget $k] == $v}]
+            }
+            if {$found} {
+                lappend result $child
+            }
+            
+            if {[dict exist $args -context]} {
+                # recursive search only in context nodes
+                set foundc 1
+                foreach {k v} [dict get $args -context] {
+                    set foundc [expr {$foundc && [$child cget $k] == $v}]
+                }
+                if {$foundc} {
+                    lappend result {*}[$child findChildren {*}$args]
+                }
+            } else {
+                lappend result {*}[$child findChildren {*}$args]
+            }
+        }
+        
+        return $result
+    }
+    
+}
+
+proc ::itree::node {path args} {
+    uplevel ::itree::Node $path $args
+}
+
+
+package provide Itree 1.0

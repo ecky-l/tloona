@@ -1,0 +1,5 @@
+       replicate string countExpr
+              Returns  string, replicated the number of times indicated by the
+              expression countExpr.
+
+              This command is UTF-aware and will work with binary data.

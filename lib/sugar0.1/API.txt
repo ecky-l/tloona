@@ -1,0 +1,129 @@
+--------------------------------------------------------------------------------
+GENERAL INFORMATION
+--------------------------------------------------------------------------------
+
+To require the sugar package, use:
+
+	package require sugar
+
+--------------------------------------------------------------------------------
+SUGAR MACRO API
+--------------------------------------------------------------------------------
+
+sugar::proc name args body
+	Creates a Tcl procedure exactly like [proc] does, but
+	performs macro expansion in the body of the procedure
+	just before to create it.
+
+sugar::macro name arglist body
+	Define a command macro with the specified name. The macro body is
+	called for every "macro usage", with the arguments of the usage.
+	The macro must return a Tcl list with every element representing
+	an argument of the code to expand in place of the macro usage.
+
+	Example:
+
+	sugar::macro first {macroname list} {
+		list lindex $list 0
+	}
+
+	The macro can have more than a name, like in the following
+	example:
+
+	sugar::macro {first second third} {macroname list} {
+		set idx [lsearch -exact {first second third} $macroname]
+		list lindex $list $idx
+	}
+
+sugar::syntaxmacro name arglist body
+	Define a syntax macro: a macro that is called regardless of
+	it's name for every command in a procedure defined with sugar::proc.
+	Syntax macros works like command macros defined with sugar::macro.
+
+	For syntax macros, the arglist argument is often "args" because
+	a syntax macro can't know the number of agruments in input
+	in advance (being called for every command in the script).
+
+sugar::transformermacro name list body
+	Define a transformer macro. The transformer macro is called
+	for every element of the program the is belived a script (for example
+	the second argument of the [while] command). The list argument
+	is a Tcl list representing the script in an easy to parse form.
+	Every element of the list is a list represeting a Tcl command
+	of the original script.
+	Every element of the command is a two-element list representing
+	an element an element of the command in the original source
+	code, where the first element represents the type of the token,
+	and the second the actual value of the token.
+
+	The following are the only token types defined:
+
+	SPACE - A separator between arguments. A command may start
+	        with a space due to indentation.
+	TOK   - Every valid Tcl argument, including the command name.
+	EOL   - A command separator argument. May be ";" or a newline, or
+	        a mix between spaces, newlines, and ";".
+
+	An example of script in list form is the following:
+
+	{{{TOK puts} {SPACE { }} {TOK Hello} {EOL {;}}}
+	 {{TOK set} {SPACE { }} {TOK x} {SPACE { }} {TOK 10} {EOL {;}}}}
+
+	A transformer macro should return a list of the same form
+	that will be converted back to a Tcl script in source form
+	by token concatenation.
+
+sugar::scriptToList script
+	Lower-level API to turn a script into its list representation.
+
+sugar::listToScript list
+	Lower-level API to turn a list representing a script into a
+	script.
+
+sugar::expandScriptToken script
+	Expand macros in the Tcl script 'script', and return it.
+	Useful to write macros for commands with script as arguments,
+	in order to perform macro expansion for they.
+
+sugar::expandExprToken expr
+	Expand macros in the [expr] expression 'expr', and return it.
+	Useful to write macros for commands with [expr] expressions
+	as arguments, in order to perform macro expansion for they.
+
+sugar::currentProcName
+	Return the fully-qualified name of the procedure currently
+	processed by the macro system. Macros can call this function
+	to know the name of the procedure in which the expansion
+	is being performed. The following macro expands to a
+	[put] call with the name of the procedure where it is used:
+
+	sugar::macro PrintMyProc args {
+		list puts [sugar::currentProcName]
+	}
+
+sugar::currentProcTail
+	Equivalent to [namespace tail [sugar::currentProcName]]
+
+sugar::currentProcNamespace
+	Equivalent to [namespace qualifiers [sugar::currentProcName]]
+
+sugar::uniqueName
+	Return a name guaranteed to be unique for every call. It's
+	used to create non-colliding variable or procedure names
+	for macro expansion.
+
+--------------------------------------------------------------------------------
+READY TO USE MACROS PART OF SUGAR
+--------------------------------------------------------------------------------
+sugar::tailrecproc name args body
+	A wrapper to [proc] that converts tail recursive calls in
+	iterations. The user should not use [return] to return
+	the value of the tail call (Tcl will return the value
+	of the last command executed, so [return] is useless in
+	such a case, and tailrecproc will not be able to perform
+	the conversion). Tailcalls are detected inside [if] branches
+	at any depth. Currently tail calls inside [switch] are not
+	processed, so the user should write the tail-recursive procedure
+	using if/elseif/else.
+
+	An usage example is inside the exaple directory, tailcall.tcl.

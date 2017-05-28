@@ -1,0 +1,15 @@
+       kill ?-pgroup ?signal? idlist
+
+              Send a signal to the each process in the list idlist, if permit-
+              ted.  Signal, if present, is the signal number or  the  symbolic
+              name of the signal, see the signal system call manual page.  The
+              leading ``SIG'' is optional when the signal is specified by  its
+              symbolic name.  The default for signo is 15, SIGTERM.
+
+              If  -pgroup  is  specified,  the  numbers  in idlist are take as
+              process group ids and the signal is sent to all of  the  process
+              in  that  process  group.  A process group id of 0 specifies the
+              current process group.
+
+              On Windows,  the  kill  command  is  capable  of  terminating  a
+              process, but not of sending an arbitrary signal.

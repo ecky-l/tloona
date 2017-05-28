@@ -1,0 +1,638 @@
+# toolbarwidget
+package require -exact Itcl 3.4
+package require -exact Itk 3.4
+package require Tclx 8.4
+
+package require tmw::icons 1.0
+
+package provide tmw::toolbarframe1 1.0
+
+catch {
+    namespace import ::itcl::*
+    namespace import ::itk::*
+}
+
+namespace eval ::Tmw {}
+
+itk::usual TFrame {}
+itk::usual TButton {}
+itk::usual Toolbar {}
+itk::usual TLabel {}
+itk::usual TProgressbar {}
+
+itk::usual Toolbar {}
+itk::usual ToolbarFrame1 {
+    keep -relief -borderwidth -width -height
+}
+
+# @c This class represents a frame that can contain toolbars. Toolbars
+# @c are frames in Toolbar style (@see toolbutton.tcl) that are created
+# @c and configured with the [toolbar] method. All toolbars can be displayed
+# @c at the top, left, right or bottom of the frame (toolbar region frames
+# @c serve as containers for the toolbars technically).
+# @c Every megawidget that should be able to display toolbars can derive
+# @c from this widget.
+class ::Tmw::ToolbarFrame1 {
+    inherit ::itk::Widget
+    
+    constructor {args} {
+        _addRegions
+        _addChildsite
+        
+        eval itk_initialize $args
+    }
+    
+    destructor {
+    }
+    
+    public {
+        # @v mainwindow: The mainwindow where the browser lives. This is 
+        # @v mainwindow: useful for dialogs and the like
+        variable mainwindow ""
+        # @v threadpool: A threadpool to run long running procedures
+        variable threadpool ""
+        
+        # @c constructs a toolbar with a given tag (name). If the toolbar
+        # @c exists already, it is configured. The args specify how the 
+        # @c toolbar is generated or configured.
+        #
+        # @a name: the tag for the toolbar. Needed later to refer to it
+        # @a args: -pos determines the position (n w e or s)
+        # @a args: -compound determines which compound the toolbar should have
+        # @a args: They are the same as the compounds for menus, default is none
+        #
+        # @r the path of the toolbar frame
+        method toolbar {name args}
+        
+        # @c hides a named toolbar, without deleting it. The toolbar must
+        # @c have been created previously
+        #
+        # @a name: the toolbar name.
+        method tbhide {name}
+        
+        # @c shows a named toolbar that was hidden previously
+        #
+        # @a name: the toolbar name
+        method tbshow {name}
+        
+        # @c checks whether a toolbar or toolbuttons in it exist. With
+        # @c one argument the existence of the toolbar name is checked,
+        # @c with two arguments the existence of the toolbutton or dropwidget
+        # @c button is evaluated as well
+        method tbexists {toolbar {toolbutton ""}}
+        
+        # @c creates a toolbutton in a particular toolbar (given by the
+        # @c -toolbar option). If the name tag already exists and is
+        # @c associated with a toolbutton, this is configured. The args
+        # @c specify options for the toolbutton. It is possible to create
+        # @c all kinds of buttons for toolbars, e.g. checkbuttons, 
+        # @c radiobuttons, normal buttons. The buttons are styled as 
+        # @c appropriate for toolbars (@see toolbutton.tcl). Most arguments
+        # @c apply to button configuration, some special ones apply to
+        # @c the configuration of the button within it's toolbar. The
+        # @c -compound argument for a toolbar determines how text and images
+        # @c are displayed. By default, only either images or texxt is 
+        # @c displayed
+        #
+        # @a name: name tag for the toolbutton
+        # @a args: configuration arguments
+        # @a args: -toolbar specifies the toolbar where to create the button
+        # @a args: -type specifies the button type (checkbutton, radiobutton,
+        # @a args: command = normal button)
+        # @a args: -stickto specifies where to stick the button. May be either
+        # @a args: front ot back. Front means left if the toolbar pos is n or s
+        # @a args: and top if the toolbar pos is w or e. Back means the opposite
+        # @a args: all other arguments are equal to the button args according
+        # @a args: to -type.
+        #
+        # @r the path of the newly created button
+        method toolbutton {name args}
+        
+        # @c This method creates a drop widget in the given toolbar.
+        # @c A drop widget is a toplevel frame that can contain arbitrary
+        # @c widgets. It is connected to a checkbutton style toolbutton.
+        # @c When toolbutton is checked, the widget is made visible and
+        # @c vice versa. The position of the dropframe depends on the 
+        # @c position of the toolbar where the checkbutton is created. The
+        # @c frame is displayed next below the checkbutton if the toolbar
+        # @c position is n, next above the checkbutton if the toolbar pos is s,
+        # @c right next to the checkbutton if the toolbar pos is w and left
+        # @c next to the checkbutton if the tolbar pos is e.
+        # @c Arguments are for the connected toolbutton and for
+        # @c the frame.
+        #
+        # @a name: tag for the created toolbutton and drop frame
+        # @a args: all arguments as for [toolbutton] are accepted. In addition
+        # @a args: -anchor specifies the anchor for placing the frame. See the
+        # @a args: anchor option to [place] how it works
+        # @a args: -relpos specifies the position of the dropframe relative to
+        # @a args: the free edge of the toolbutton that triggers display (See
+        # @a args: above for dropframe display)
+        # @a args: -showcmd command is evaluated when the frame is displayed
+        # @a args: -hidecmd command is evaluated when the frame is hidden
+        #
+        # @r the frame where to place widgets
+        method dropframe {name args}
+        
+        # @r the childsite of the window
+        method childsite {} {
+            return [component childsite]
+        }
+    }
+    
+    protected {
+        
+        # @v Separators: category separators for several toolbars.
+        variable Separators
+        array set Separators {}
+        
+        # @v Compounds: the compound for several toolbars.
+        variable Compounds
+        array set Compounds {}
+        
+        # @v Positions: positions for several toolbars.
+        variable Positions
+        array set Positions {}
+        
+        # @v Buttons: toolbutton widgets in several toolbars. Needed
+        # @v Buttons: for reconfiguration
+        variable Buttons
+        array set Buttons {}
+        
+        # @v Dropframes: dropframes per toolbar
+        variable Dropframes
+        array set Dropframes {}
+        
+        method showRegions {}
+        
+        # @c shows a dropframe widget
+        method showDropframe {toolbar name}
+    }
+    
+    private {
+        method _addRegions {}
+        method _addChildsite {}
+    }
+    
+}
+
+body ::Tmw::ToolbarFrame1::toolbar {name args} {
+    array set aargs $args
+    
+    set T ""
+    if {[catch {component $name} T]} {
+        # toolbar does not exist
+        itk_component add $name {
+            ttk::frame $itk_interior.$name -class Toolbar
+        } {
+            usual
+        }
+        
+        set Buttons($name) {}
+    }
+    
+    set T [component $name]
+    
+    if {[info exists aargs(-pos)]} {
+        if {[lcontain [pack slaves $itk_interior] $T]} {
+            pack forget $T
+        }
+        
+        set M [component childsite]
+        switch -- $aargs(-pos) {
+            n {
+                pack $T -in [component topregion] -side top -fill x
+            }
+            s {
+                pack $T -in [component bottomregion] -side bottom -fill x
+            }
+            w {
+                pack $T -in [component leftregion] -side left -fill y
+            }
+            e {
+                pack $T -in [component rightregion] -side right -fill y
+            }
+        }
+        
+        # reconfigure widgets
+        switch -- $aargs(-pos) {
+            n - s {
+                foreach {ltype lpath stickto} $Buttons($name) {
+                    if {[string match $stickto front]} {
+                        set side left
+                    } else {
+                        set side right
+                    }
+                    switch -- $ltype {
+                        separator {
+                            $lpath configure -orient vertical
+                            pack configure $lpath -side $side -fill y
+                        }
+                        innersep {
+                            $lpath configure -orient vertical
+                            pack configure $lpath -side $side -fill none
+                        }
+                        default {
+                            pack configure $lpath -side $side
+                        }
+                    }
+                    
+                }
+            }
+            
+            w - e {
+                foreach {ltype lpath stickto} $Buttons($name) {
+                    if {[string match $stickto front]} {
+                        set side top
+                    } else {
+                        set side bottom
+                    }
+                    switch -- $ltype {
+                        separator {
+                            $lpath configure -orient horizontal
+                            pack configure $lpath -side $side -fill x
+                        }
+                        innersep {
+                            $lpath configure -orient horizontal
+                            pack configure $lpath -side $side -fill none
+                        }
+                        default {
+                            pack configure $lpath -side $side
+                        }
+                    }
+                    
+                }
+            }
+        }
+        
+        showRegions
+        
+        set Positions($name) $aargs(-pos)
+    }
+    
+    if {[info exists aargs(-compound)]} {
+        set Compounds($name) $aargs(-compound)
+    } elseif {![info exists Compounds($name)]} {
+        # the default compound
+        set Compounds($name) none
+    }
+    
+    return $T
+}
+
+body ::Tmw::ToolbarFrame1::tbhide {name} {
+    set T [component $name]
+    pack forget $T
+    showRegions
+}
+
+body ::Tmw::ToolbarFrame1::tbshow {name} {
+    set T [component $name]
+    switch -- $Positions($name) {
+        n {
+            pack $T -in [component topregion] -side top -fill x
+        }
+        s {
+            pack $T -in [component bottomregion] -side bottom -fill x
+        }
+        w {
+            pack $T -in [component leftregion] -side left -fill y
+        }
+        e {
+            pack $T -in [component rightregion] -side right -fill y
+        }
+    }
+    showRegions
+}
+
+body ::Tmw::ToolbarFrame1::tbexists {toolbar {toolbutton ""}} {
+    if {[catch {component $toolbar} msg]} {
+        return 0
+    }
+    if {$toolbutton == ""} {
+        return 1
+    }
+    
+    foreach {ltype lpath stickto} $Buttons($toolbar) {
+        if {[string match $lpath $toolbutton]} {
+            return 1
+        }
+    }
+    return 0
+}
+
+body ::Tmw::ToolbarFrame1::toolbutton {name args} {
+    set toolbar ""
+    set type ""
+    set stickto "front"
+    set separate 1
+    
+    # check for special arguments
+    if {[set i [lsearch $args -type]] >= 0} {
+        lvarpop args $i
+        set type [lvarpop args $i]
+    }
+    if {[set i [lsearch $args -toolbar]] >= 0} {
+        lvarpop args $i
+        set toolbar [lvarpop args $i]
+    }
+    if {[set i [lsearch $args -stickto]] >= 0} {
+        lvarpop args $i
+        set stickto [lvarpop args $i]
+        switch -- $stickto {
+            front - back {
+            }
+            default {
+                error "-stickto must be \"front\" or \"back\""
+            }
+        }
+    }
+    if {[set i [lsearch $args -separate]] >= 0} {
+        lvarpop args $i
+        set separate [lvarpop args $i]
+    }
+    
+    # toolbar component name must be provided
+    set T ""
+    set path [regsub -all {\.} [string tolower $name] {_}]
+    
+    if {$toolbar == "" || [catch {component $toolbar} T]} {
+        error "-toolbar must be provided and valid! ($T)"
+    }
+    
+    # if the widget path exists, configure or delete it
+    if {[winfo exists $T.$path]} {
+        if {[llength $args] == 1} {
+            if {$args == "delete"} {
+                destroy $T.$path
+                set newl {}
+                foreach {ltype lpath} $Buttons($toolbar) {
+                    if {[string match $lpath $T.$path]} {
+                        continue
+                    }
+                    lappend newl $ltype $lpath
+                }
+                
+                set Buttons($toolbar) $newl
+                return
+            }
+            
+            return [$T.$path cget $args]
+        }
+        
+        eval $T.$path configure $args
+        return
+    }
+    
+    # At this stage, create the toolbutton. The first dot component
+    # determines a category. Each category is separated by a 
+    # ttk::separator - if the category (and hence the separator)
+    # does not exist yet, create it
+    set rName [string tolower [lindex [split $name .] 0]]
+    set tbm $T.$rName
+    
+    switch -- $Positions($toolbar) {
+        n - s {
+            if {[string match $stickto front]} {
+                set side left
+            } else {
+                set side right
+            }
+            set orient vertical
+            set tsfill y
+        }
+        w - e {
+            if {[string match $stickto front]} {
+                set side top
+            } else {
+                set side bottom
+            }
+            set orient horizontal
+            set tsfill x
+        }
+    }
+            
+    if {$separate && ![info exists Separators($tbm)]} {
+        set sep [set rName]sep
+        set Separators($tbm) [ttk::separator $T.$sep -orient $orient]
+        pack $Separators($tbm) -expand n -fill $tsfill -side $side \
+            -padx 2 -pady 2
+        lappend Buttons($toolbar) separator $Separators($tbm) $stickto
+    }
+    
+    # compound configuration
+    if {[set i [lsearch $args -compound]] >= 0} {
+        lset args [incr i] $Compounds($toolbar)
+    } else {
+        lappend args -compound $Compounds($toolbar)
+    }
+    
+    # define widget and pack/widget arguments, depending on which 
+    # type of toolbutton is to create
+    set cmd ttk::button
+    set packArgs [list -side $side -expand n -fill both]
+    switch -- $type {
+        command {
+            set cmd ttk::button
+            lappend args -style Toolbutton
+        }
+        checkbutton {
+            set cmd ttk::checkbutton
+            lappend args -style Toolbutton
+        }
+        radiobutton {
+            set cmd ttk::radiobutton
+            lappend args -style Toolbutton
+        }
+        menubutton -
+        cascade {
+            set cmd ttk::menubutton
+            #lappend args -style Toolbutton
+        }
+        separator {
+            set cmd ttk::separator
+            set args [list -orient $orient]
+            set packArgs [list -expand n -side $side -fill none -padx 1]
+            set type innersep
+        }
+        default {
+            error "type $type cannot be handeled"
+        }
+    }
+    
+    # create the widget
+    set b [eval $cmd $T.$path $args]
+    if {$separate} {
+        eval pack $b -before $Separators($tbm) $packArgs
+    } else {
+        eval pack $b $packArgs
+    }
+    
+    lappend Buttons($toolbar) $type $T.$path $stickto
+    #puts $Buttons($toolbar)
+    return $T.$path
+}
+
+body ::Tmw::ToolbarFrame1::dropframe {name args} {
+    
+    if {[set idx [lsearch $args -toolbar]] < 0} {
+        error "-toolbar must be provided"
+    }
+    set toolbar [lindex $args [incr idx]]
+    
+    set anchor nw
+    if {[set idx [lsearch $args -anchor]] >= 0} {
+        set args [lreplace $args $idx $idx]
+        set anchor [lindex $args $idx]
+        set args [lreplace $args $idx $idx]
+    }
+    
+    set relpos .5
+    if {[set idx [lsearch $args -relpos]] >= 0} {
+        set args [lreplace $args $idx $idx]
+        set relpos [lindex $args $idx]
+        set args [lreplace $args $idx $idx]
+    }
+    
+    set showcmd ""
+    if {[set idx [lsearch $args -showcmd]] >= 0} {
+        set args [lreplace $args $idx $idx]
+        set showcmd [lindex $args $idx]
+        set args [lreplace $args $idx $idx]
+    }
+    set hidecmd ""
+    if {[set idx [lsearch $args -hidecmd]] >= 0} {
+        set args [lreplace $args $idx $idx]
+        set hidecmd [lindex $args $idx]
+        set args [lreplace $args $idx $idx]
+    }
+    
+    
+    if {[info exists Dropframes($toolbar,$name)]} {
+        # configure it
+        return
+    }
+    
+    if {[set idx [lsearch $args -type]] >= 0} {
+        lset args [incr idx] checkbutton
+    } else {
+        lappend args -type checkbutton
+    }
+    
+    # append command to show the frame to args
+    set cmd [code $this showDropframe $toolbar $name]
+    if {[set idx [lsearch $args -command]] >= 0} {
+        lset args [incr idx] $cmd
+    } else {
+        lappend args -command $cmd
+    }
+    
+    set Dropframes($toolbar,$name,show) 0
+    if {[set idx [lsearch $args -variable]] >= 0} {
+        lset args [incr idx] [scope Dropframes($toolbar,$name,show)]
+    } else {
+        lappend args -variable [scope Dropframes($toolbar,$name,show)]
+    }
+    
+    set Dropframes($toolbar,$name) [list \
+        [ttk::frame $itk_interior.$toolbar,$name] \
+        [eval toolbutton $name $args] $anchor $relpos $showcmd $hidecmd]
+    
+    return [lindex $Dropframes($toolbar,$name) 0]
+}
+
+body ::Tmw::ToolbarFrame1::showRegions {} {
+    
+    set is [pack slaves $itk_interior]
+    foreach {w} {topregion bottomregion \
+        leftregion rightregion childsite} {
+        if {[lcontain $is [component $w]]} {
+            pack forget [component $w]
+        }
+    }
+    
+    foreach {side fill} {top x bottom x left y right y} {
+        set w [component [set side]region]
+        set s [pack slaves $w]
+        if {[pack slaves $w] != {}} {
+            pack $w -side $side -expand n -fill $fill
+        }
+    }
+    
+    pack [component childsite] -expand yes -fill both
+}
+
+body ::Tmw::ToolbarFrame1::showDropframe {toolbar name} {
+    set relx 0
+    set rely 0
+    switch -- $Positions($toolbar) {
+        n {
+            set relx [lindex $Dropframes($toolbar,$name) 3]
+            set rely 1
+        }
+        w {
+            set relx 1
+            set rely [lindex $Dropframes($toolbar,$name) 3]
+        }
+        s {
+            set relx [lindex $Dropframes($toolbar,$name) 3]
+            set rely 0
+        }
+        e {
+            set relx 0
+            set rely [lindex $Dropframes($toolbar,$name) 3]
+        }
+    }
+    
+    set frm [lindex $Dropframes($toolbar,$name) 0]
+    set cmd ""
+    if {$Dropframes($toolbar,$name,show)} {
+        set btn [lindex $Dropframes($toolbar,$name) 1]
+        set cmd [lindex $Dropframes($toolbar,$name) 4]
+        place $frm -in $btn -relx $relx -rely $rely -anchor \
+            [lindex $Dropframes($toolbar,$name) 2]
+    } else {
+        set cmd [lindex $Dropframes($toolbar,$name) 5]
+        place forget $frm
+    }
+    
+    eval $cmd
+}
+
+body ::Tmw::ToolbarFrame1::_addRegions {} {
+    itk_component add topregion {
+        ttk::frame $itk_interior.topregion -relief groove
+    }
+    itk_component add bottomregion {
+        ttk::frame $itk_interior.bottomregion -relief groove
+    }
+    itk_component add leftregion {
+        ttk::frame $itk_interior.leftregion -relief groove
+    }
+    itk_component add rightregion {
+        ttk::frame $itk_interior.rightregion -relief groove
+    }
+    
+    #showToolbarRegions
+    pack [component topregion] -side top -expand n -fill x
+    pack [component bottomregion] -side bottom -expand n -fill x
+    pack [component leftregion] -side left -expand n -fill y
+    pack [component rightregion] -side right -expand n -fill y
+}
+
+body ::Tmw::ToolbarFrame1::_addChildsite {} {
+    
+    itk_component add childsite {
+        ttk::frame $itk_interior.childsite
+    } {
+        usual
+        keep -relief -borderwidth -width -height
+    }
+    
+    configure -relief flat -borderwidth 0
+    pack [component childsite] -expand yes -fill both
+}
+
+proc ::Tmw::toolbarframe1 {path args} {
+    uplevel 0 ToolbarFrame1 $path $args
+}

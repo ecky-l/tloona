@@ -1,0 +1,7 @@
+       funlock fileId ?start? ?length? ?origin?
+              Remove  a locked from a file that was previously placed with the
+              flock command.  The arguments are the same as for the flock com-
+              mand, see that command for more details.
+
+              The  funlock  command  is  not  available  on Windows 95.  It is
+              available on Windows NT.
