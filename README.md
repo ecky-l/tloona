@@ -19,7 +19,7 @@ The minimum Tcl version required to run Tloona is 8.6.
 
 # Release Notes
 
-### Release 2.0b5 : Date 2017/05/06 :
+### Release 2.0b6 : Date 2017/05/06 :
   * switch from Itk to snit
   * removed Itcl 3.4 and Itk 3.4 from libs directory
   * added itcl 4.0.3 to libs directory

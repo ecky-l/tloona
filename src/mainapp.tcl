@@ -136,7 +136,7 @@ snit::widgetadaptor mainapp {
         if {$uri == ""} {
             return
         }
-        openFile $uri 1
+        $self openFile $uri 1
     }
 
     # @c callback handler for File.Open.Project menu entry.
