@@ -52,7 +52,7 @@ namespace eval ::Tmw::Fs {
     proc getFileType {file} {
         set type file
         switch -- [file extension $file] {
-            .tcl - .itcl - .xotcl - .tk - .itk - .ws3 {
+            .tcl - .tm - .itcl - .xotcl - .tk - .itk - .ws3 {
                 set type tclfile
             }
             .test {
