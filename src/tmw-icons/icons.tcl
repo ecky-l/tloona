@@ -1,5 +1,5 @@
 
-package require -exact img::png 1.4.2
+package require img::png 1.4.2
 package provide tmw::icons 1.0
 
 

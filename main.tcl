@@ -24,7 +24,7 @@ Tmw::Splash::Progress 5
 package require comm 4.6
 Tmw::Splash::Message "Loading img::png"
 Tmw::Splash::Progress 7
-package require -exact img::png 1.4.2
+package require img::png 1.4.2
 Tmw::Splash::Message "Loading tmw::dialog"
 Tmw::Splash::Progress 8
 package require tmw::dialog 2.0.0
