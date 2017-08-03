@@ -21,7 +21,7 @@ if {[lsearch -exact $::auto_path $::vfs::self] == -1} {
     lappend ::auto_path $::vfs::self
 }
 
-#load [file join $::vfs::self libvfs1.4.2[info sharedlibext]]
+load [file join $::vfs::self libvfs1.4.2[info sharedlibext]]
 
 if {$::vfs::redir} {
     set ::vfs::self $::env(VFS_LIBRARY)
