@@ -187,7 +187,8 @@ snit::widgetadaptor kitbrowser {
             $file configure -deploydir [dict get $a -deploydir]
             set n [eval $file wrap [dict remove $a -deploydir] -varptr var]
             $self refresh
-            Tmw::message $TloonaApplication "Deployment finished" ok "Created $n"
+            tk_messageBox -type ok -icon info -title "Deployment finished" \
+                -parent $TloonaApplication -message "Created $n"
         } trap README_NOT_EXIST {err errOpts} {
             tk_messageBox -type ok -icon error -title "Deployment Error" \
                 -parent $TloonaApplication -message $err

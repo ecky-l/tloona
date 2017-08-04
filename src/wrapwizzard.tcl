@@ -23,6 +23,9 @@ snit::widgetadaptor wrapwizzard {
     component packsel
     component version
     component e_outputdir
+    component l_sdx
+    component t_sdx
+    component b_sdx
     
     delegate method * to hull
     delegate option * to hull
@@ -49,6 +52,7 @@ snit::widgetadaptor wrapwizzard {
         v_runtime ""
         c_writable 0
         c_nocomp 0
+        v_sdx ""
     }
         
     constructor {args} {
@@ -61,6 +65,7 @@ snit::widgetadaptor wrapwizzard {
             v_runtime ""
             c_writable 0
             c_nocomp 0
+            v_sdx $::UserOptions(PathToSDX)
         }
         
         $self InitKitPackSel [$self addPage]
@@ -120,6 +125,13 @@ snit::widgetadaptor wrapwizzard {
                 -parent $win -message $m
             return
         }
+        if {$::UserOptions(PathToSDX) == {} || ![file exists $::UserOptions(PathToSDX)]} {
+            set m "Path to SDX is not valid. It must point to an executable sdx\n\n"
+            append m "Please specify one"
+            tk_messageBox -type ok -icon error -title "Path to SDX not valid" \
+                -parent $win -message $m
+            return
+        }
         $self hide
         uplevel #0 [$self cget -okcmd]
     }
@@ -158,6 +170,7 @@ snit::widgetadaptor wrapwizzard {
     }
     
     method InitOptions {parent} {
+        global UserOptions
         # interp option
         install c_interp using ttk::checkbutton $parent.c_interp -text "-interp" \
             -variable [myvar _Options(c_interp)] \
@@ -192,6 +205,17 @@ snit::widgetadaptor wrapwizzard {
         
         grid $c_writable -row 2 -column 0 -sticky w -padx 10 -pady 2
         grid $c_nocomp -row 2 -column 1 -sticky w -padx 10 -pady 2
+        
+        frame $parent.sdx_spacer -height 2
+        grid $parent.sdx_spacer -row 3 -column 0 -columnspan 3 -sticky we -pady 4
+        
+        install l_sdx using ttk::label $parent.l_sdx -text "SDX executable"
+        install t_sdx using ttk::entry $parent.t_sdx -textvar ::UserOptions(PathToSDX)
+        install b_sdx using ttk::button $parent.b_sdx -style Toolbutton \
+            -command [mymethod _openFile sdx] -image $Tmw::Icons(FileOpen)
+        grid $l_sdx -row 4 -column 0 -sticky w -padx 10 -pady 2
+        grid $t_sdx -row 4 -column 1 -sticky we -padx 10 -pady 2
+        grid $b_sdx -row 4 -column 2 -sticky w -padx 10 -pady 2
     }
     
     method _switchState {bState args} {
@@ -210,6 +234,12 @@ snit::widgetadaptor wrapwizzard {
             }
             "runtime" {
                 set _Options(v_runtime) [tk_getOpenFile -filetypes $eFt]
+            }
+            sdx {
+                set p [tk_getOpenFile]
+                if {$p != {}} {
+                    set ::UserOptions(PathToSDX) $p
+                }
             }
         }
     }
@@ -248,7 +278,9 @@ snit::widgetadaptor wrapwizzard {
         if {$_KitSel == "pack" && ![file exists $_Options(v_runtime)]} {
             return 1
         }
-        
+        if {$::UserOptions(PathToSDX) == {} || ![file exists $::UserOptions(PathToSDX)]} {
+            return 1
+        }
         return 0
     }
     

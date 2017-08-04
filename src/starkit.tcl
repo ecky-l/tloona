@@ -188,8 +188,8 @@ class ::Tloona::Fs::Starkit {
             
             # execute SDX wrap
             set curDir [pwd]
-            cd $tmpDir 
-            sdx::sdx wrap $deployFile {*}$nargs
+            cd $tmpDir
+            exec $UserOptions(PathToSDX) wrap $deployFile {*}$nargs 
             cd $curDir
             
             # copy the kit into the target folder
@@ -201,9 +201,7 @@ class ::Tloona::Fs::Starkit {
             
             # delete the temporary directory
             file delete -force $tmpDir
-            
             return $targetFile
-            
         }
         
         ## Returns whether the starkit is extracted
