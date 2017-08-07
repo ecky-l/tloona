@@ -27,7 +27,7 @@ The minimum Tcl version required to run Tloona is 8.6.
   * deploy output directory is configurable underneath project dir
   * fixed destructor to REPL creation bug for TclOO classes
   * tm modules are displayed with tcl icon in browser
-  * fixed issues with vfs, i.e. deployment is now possible when running from tclkit
+  * deployment via external SDX, since internal always makes trouble
 
 ### Release 1.7.1 : Date 2016/06/18 :
   *  Bugfix: openFile from Workspace browser didn't generate tree properly
