@@ -778,7 +778,8 @@ snit::widgetadaptor mainapp {
             
             set ending [file extension $uri]
             set fCls ""
-            switch -- $ending {
+	    # "string tolower" to catch .TCL or .Tcl, etc 
+            switch -- [string tolower $ending] {
                 .tcl - .tk - .tm - .itcl - .itk - .xotcl - .test - .ws3 {
                     if {[set fileObj [$self isOpen $uri]] != ""} {
                         $textnb select $fileObj
