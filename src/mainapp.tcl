@@ -1,4 +1,9 @@
 ## mainapp.tcl (created by Tloona here)
+
+::tcl::tm::path add lib
+
+package require helpBalloon
+
 package require snit 2.3.2
 package require tmw::platform 2.0.0
 package require tmw::icons 1.0
@@ -13,6 +18,7 @@ package require parser::parse 1.0
 #package require tloona::debugger 1.0
 package require comm 4.3
 package require tmw::dialog 2.0.0
+
 
 namespace eval ::Tloona {
 

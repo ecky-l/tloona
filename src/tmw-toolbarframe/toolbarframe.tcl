@@ -257,10 +257,15 @@ namespace eval ::Tmw {
     method toolbutton {name args} {
         set toolbar ""
         set type ""
+        set tip ""
         set stickto "front"
         set separate 1
-        
+
         # check for special arguments
+        if {[set i [lsearch $args -tip]] >= 0} {
+            lvarpop args $i
+            set tip [lvarpop args $i]
+        }
         if {[set i [lsearch $args -type]] >= 0} {
             lvarpop args $i
             set type [lvarpop args $i]
@@ -400,6 +405,10 @@ namespace eval ::Tmw {
         } else {
             eval pack $b $packArgs
         }
+	
+	if {$tip ne ""} {
+	  catch {balloon $b $tip}
+	}
         
         lappend Buttons($toolbar) $type $T.$path $stickto
         return $T.$path
@@ -429,10 +438,18 @@ namespace eval ::Tmw {
     #
     # \return the frame where to place widgets
     method dropframe {name args} {
+        set tip ""
+
         if {[set idx [lsearch $args -toolbar]] < 0} {
             error "-toolbar must be provided"
         }
         set toolbar [lindex $args [incr idx]]
+
+        if {[set idx [lsearch $args -tip]] >= 0} {
+            set args [lreplace $args $idx $idx]
+            set tip [lindex $args $idx]
+            set args [lreplace $args $idx $idx]
+        }
         
         set anchor nw
         if {[set idx [lsearch $args -anchor]] >= 0} {
@@ -490,7 +507,7 @@ namespace eval ::Tmw {
         
         set Dropframes($toolbar,$name) \
             [list [ttk::frame $win.$toolbar,$name] \
-                [$self toolbutton $name {*}$args] $anchor $relpos $showcmd $hidecmd]
+                [$self toolbutton $name {*}$args -tip $tip] $anchor $relpos $showcmd $hidecmd]
         
         lindex $Dropframes($toolbar,$name) 0
     }

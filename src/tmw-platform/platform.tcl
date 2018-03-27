@@ -246,6 +246,11 @@ namespace eval ::Tmw {
             if {[set i [lsearch $nargs -accelerator]] >= 0} {
                 set nargs [lreplace $nargs $i [incr i]]
             }
+	    if {[set pos [lsearch $nargs -text]] >= 0} {
+	      incr pos
+	      set tip [lindex $nargs $pos]
+	      lappend nargs -tip $tip
+	    }
             set toolButton [$self toolbutton $name -type $type -toolbar $toolbar {*}$nargs]
             
             # if it is a cascade, create a menu for it. This is filled
