@@ -93,7 +93,7 @@ snit::widgetadaptor codeoutline {
     method createToolbar {} {
         global Icons
         set f [$self dropframe showcfg -toolbar tools -image $Tmw::Icons(ActWatch) \
-            -separate 1  -hidecmd [mymethod onFilter] -relpos 0]
+            -tip "Show Config" -separate 1  -hidecmd [mymethod onFilter] -relpos 0]
         $self CreateShowButtons $f
         
         # the filter-by-type variables
@@ -107,7 +107,7 @@ snit::widgetadaptor codeoutline {
         set ShowingNodes(private) 1
         
         $self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
-            -type command -separate 0 -command [mymethod collapseAll]
+            -tip "Collapse" -type command -separate 0 -command [mymethod collapseAll]
     }
     
     ## \brief Creates a contextmenu and displays it
