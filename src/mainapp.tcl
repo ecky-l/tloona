@@ -1,4 +1,9 @@
 ## mainapp.tcl (created by Tloona here)
+::tcl::tm::path add lib
+
+package require helpBalloon
+package require topoSort
+
 package require snit 2.3.2
 package require tmw::platform 2.0.0
 package require tmw::icons 1.0
@@ -13,6 +18,7 @@ package require parser::parse 1.0
 #package require tloona::debugger 1.0
 package require comm 4.3
 package require tmw::dialog 2.0.0
+
 
 namespace eval ::Tloona {
 
@@ -798,6 +804,8 @@ snit::widgetadaptor mainapp {
                         $fCls addToFileBrowser $kitbrowser
                     }
                     update
+                    tclFlow::addFile $uri
+                    ::tclFlow::showFlow 
                 }
                 ".tml" -
                 ".html" -
@@ -1049,6 +1057,19 @@ snit::widgetadaptor mainapp {
         $kitbrowser setNodeIcons [concat [$kb getNodeIcons] $Icons(ScriptIcons)]
         $bnb add $kitbrowser -text "Workspace"
         bind $kitbrowser <<SortSeqChanged>> [mymethod setOption %W "KitBrowser,Sort"]
+	
+	set fr [frame $bnb.flowFrame]
+	# Initialize tclFlow with tree widget.
+	set tree [ttk::treeview $fr.flowTree -yscrollcommand [list $fr.ysb set]]
+	tclFlow::init $tree
+	bind $tree <Double-Button-1> "tclFlow::loadRef $tree %x %y"
+
+        scrollbar $fr.ysb -orient vertical -command [list $fr.flowTree yview]
+        grid $fr.flowTree -sticky news -row 0 -column 0
+        grid $fr.ysb -sticky ns -row 0 -column 1
+        grid rowconfigure $fr 0 -weight 1
+        grid columnconfigure $fr 0 -weight 1
+        $bnb add $fr -text "Tcl Flow"
         
         # The code outline
         install codebrowser using ::Tloona::codeoutline $outlinenb.codebrowser \

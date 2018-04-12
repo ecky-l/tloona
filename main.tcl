@@ -5,6 +5,8 @@
 ################################################################################
 set TloonaVersion {}
 
+tk appname Tloona
+
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
@@ -13,6 +15,7 @@ set env(ITCL_LIBRARY) [file join $::TloonaRoot lib itcl4.0.3]
 set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::TloonaRoot lib]]
 
 package require tmw::splash 1.0
+
 
 # create the splash screen
 Tmw::Splash::Create -topdir $::TloonaRoot -showprogress 1 -title Tloona
@@ -50,6 +53,8 @@ Tmw::Splash::Progress 30
 
 puts "Tloona comm ID: [set ::CommId [::comm::comm self]]"
 source [file join $::TloonaRoot src toolbutton.tcl]
+source [file join $::TloonaRoot src tclFlow.tcl]
+
 
 # Toolbar options
 # See toolbutton.tcl.

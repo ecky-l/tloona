@@ -67,22 +67,28 @@ snit::widgetadaptor codebrowser {
         
         # create a toolbar with codebrowser specific actions
         set toolBar [$self toolbar tools -pos n -compound none]
-        $self toolbutton sortalpha -toolbar tools -image $Tmw::Icons(SortAlpha) \
+	
+        set w [$self toolbutton sortalpha -toolbar tools -image $Tmw::Icons(SortAlpha) \
             -type checkbutton -variable [myvar options(-sortalpha)] -separate 0 \
-            -command [mymethod onSort]
-        $self toolbutton sortseq -toolbar tools -image $Icons(SortSeq) \
+            -tip "Alphabet sort" -command [mymethod onSort]]
+
+        set w [$self toolbutton sortseq -toolbar tools -image $Icons(SortSeq) \
             -type checkbutton -variable [myvar options(-dosortseq)] -separate 0 \
-            -command [mymethod onSort]
-        set f [$self dropframe sortseqcfg -toolbar tools -image $Icons(SortSeqCfg) \
-            -separate 0 -hidecmd [mymethod UpdateSortSeq] -relpos 0]
+            -tip "Sequence sort" -command [mymethod onSort]]
+
+        set w [set f [$self dropframe sortseqcfg -toolbar tools -image $Icons(SortSeqCfg) \
+            -tip "Modify Sort Order" -separate 0 -hidecmd [mymethod UpdateSortSeq] -relpos 0]]
         
         $self CreateSortList $f
         
         set Filter(pattern) ""
         ttk::entry $toolBar.efilter -textvariable [myvar Filter(pattern)] -width 15
         set Filter(widgets) $toolBar.efilter
-        $self toolbutton filter -toolbar tools -image $Tmw::Icons(ActFilter) \
-            -type command -separate 0 -command [mymethod onFilter] -stickto back
+
+        set w [$self toolbutton filter -toolbar tools -image $Tmw::Icons(ActFilter) \
+            -type command -separate 0 -command [mymethod onFilter] -stickto back]
+        balloon $w "Filter report"
+
         pack $toolBar.efilter -expand n -fill none -side right -padx 2 -pady 1
         bind $toolBar.efilter <Return> [mymethod onFilter]
     }
