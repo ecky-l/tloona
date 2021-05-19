@@ -16,6 +16,8 @@ package require parser::macros 1.0
 
 namespace eval ::Parser {
     
+    variable TclOOhCoreCommands {extends construct property field}
+    
     ## \brief The base class for all OO systems.
     class ClassNode {
         inherit ::Parser::Script
@@ -318,7 +320,7 @@ namespace eval ::Parser::TclOO {
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
-                superclass - (superclass) {
+                superclass - extends {
                     parseInherit $node $codeTree $content
                 }
                 
@@ -330,7 +332,7 @@ namespace eval ::Parser::TclOO {
                     $node addMethod $mNode
                 }
                 
-                constructor - (constructor) {
+                constructor - construct {
                     set defOff 0
                     set csNode [parseConstructor $node $codeTree $content 0 defOff]
                     $csNode configure -token $token -byterange $cmdRange
@@ -344,7 +346,7 @@ namespace eval ::Parser::TclOO {
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
                 
-                variable - (variable) {
+                variable - field - property {
                     set vNode [parseVar $node $codeTree $content $off 0]
                     if {$vNode != ""} {
                         $vNode configure -token $token -byterange $cmdRange

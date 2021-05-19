@@ -59,7 +59,7 @@ class ::Parser::Script {
     
     constructor {args} {
         set _Commands [concat $::Parser::CoreCommands $::Parser::ItclCoreCommands \
-            $::Parser::XotclCoreCommands]
+            $::Parser::XotclCoreCommands $::Parser::TclOOhCoreCommands]
         configure -filename $::Parser::CurrentFile
         eval configure $args
     }
@@ -190,7 +190,9 @@ class ::Parser::Script {
     # @c and all children
     public method setCommands {cmds} {
         # TODO: check for byte ranges...
-        set _Commands [concat $cmds $::Parser::ItclCoreCommands]
+        #set _Commands [concat $cmds $::Parser::ItclCoreCommands]
+        set _Commands [concat $cmds $::Parser::CoreCommands $::Parser::ItclCoreCommands \
+            $::Parser::XotclCoreCommands $::Parser::TclOOhCoreCommands]
         # set nsib [nextSibling]
         # while {$nsib != ""} {
             # puts [$nsib cget -name]
