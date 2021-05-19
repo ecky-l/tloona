@@ -230,7 +230,7 @@ namespace eval ::Parser {
             *itcl::class -
             *itcl::widget -
             *oo::class -
-            *tcloolib::(class) -
+            *tclooh::(class) -
             (class) -
             Class -
             *xotcl::Class - 

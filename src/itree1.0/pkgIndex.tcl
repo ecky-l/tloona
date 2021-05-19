@@ -9,4 +9,3 @@
 # full path name of this file's directory.
 
 package ifneeded Itree 1.0 [list source [file join $dir itree.itcl]]
-package ifneeded otree 1.0 [list source [file join $dir otree.tcl]]

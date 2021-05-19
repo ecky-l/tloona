@@ -5,8 +5,6 @@
 ################################################################################
 set TloonaVersion {}
 
-tk appname Tloona
-
 set ::TloonaRoot [file normalize [file dirname [info script]]]
 set ::TloonaApplication .tloona
 # adjust auto_path
@@ -16,6 +14,7 @@ set auto_path [linsert $auto_path 0 [file join $::TloonaRoot src] [file join $::
 
 package require tmw::splash 1.0
 
+tk appname Tloona
 
 # create the splash screen
 Tmw::Splash::Create -topdir $::TloonaRoot -showprogress 1 -title Tloona
