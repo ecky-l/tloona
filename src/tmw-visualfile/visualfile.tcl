@@ -10,11 +10,11 @@ namespace eval Tmw {
 
 ## \brief general class for a visual file. 
 snit::widgetadaptor visualfile {
-    
+
     #### Options
     option {-modifiedcmd modifiedCmd Command} -default {} -configuremethod ConfigModifiedCmd
     option {-button1cmd button1Cmd Command} -default {} -configuremethod ConfigButton1Cmd
-    
+
     ## \brief line ending for save. lf (unix), crlf (windows) or auto
     option -savelineendings auto
     ## \brief the browser object for the file. Used for display in file browsers (not code browsers)
@@ -39,7 +39,7 @@ snit::widgetadaptor visualfile {
     option -searchregex 0
     ## \brief Search parameter for -nocase flag
     option -searchnocase 0
-        
+
     #### Components
     delegate method childsite to hull
     delegate method dropframe to hull
@@ -48,23 +48,23 @@ snit::widgetadaptor visualfile {
     delegate method tbshow to hull
     delegate method toolbar to hull
     delegate method toolbutton to hull
-    
+
     delegate option -relief to hull
     delegate option -borderwidth to hull
     delegate option -height to hull
     delegate option -width to hull
-    
+
     component vscroll
     component hscroll
-    
+
     component textwin
     delegate method * to textwin
     delegate option -textrelief to textwin as -relief
     delegate option -textbd to textwin as -borderwidth
     delegate option * to textwin
-    
+
     #### Variables
-    
+
     ## \brief the current indentation level
     variable IndentLevel 0
     ## \brief the last pressed key
@@ -82,9 +82,9 @@ snit::widgetadaptor visualfile {
 
     ## \brief List of file only browsers where this object appears
     variable FileBrowsers {}
-    
+
     variable _OldLinePos 1
-        
+
     constructor {args} {
         installhull using Tmw::toolbarframe
         set cs [$self childsite]
@@ -94,19 +94,19 @@ snit::widgetadaptor visualfile {
             -command "$textwin yview" -orient vertical
         install hscroll using ttk::scrollbar $cs.hscroll \
             -command "$textwin xview" -orient horizontal
-        
+
         $textwin configure -xscrollcommand "$hscroll set" \
             -yscrollcommand "$vscroll set"
-        
+
         grid $textwin -column 0 -row 0 -sticky news
         grid $vscroll -column 1 -row 0 -sticky nsw
         grid $hscroll -column 0 -row 1 -sticky wen
-        
+
         grid rowconfigure $cs 0 -weight 1
         grid columnconfigure $cs 0 -weight 1
-        
+
         $self configure -wrap none -textrelief flat -textbd 0
-        
+
         # colorize the line where the insert cursor is
         bind $textwin.t <KeyPress> +[mymethod colorizeInsLine]
         bind $textwin.t <Button-1> +[mymethod colorizeInsLine %x %y]
@@ -114,44 +114,44 @@ snit::widgetadaptor visualfile {
         bind $textwin.t <FocusIn> [list $self tag delete sflash]
         $self configurelist $args
     }
-    
-    
+
+
     destructor {
         $self destruct
     }
-    
+
     method destruct {} {
         if {$options(-backupfile) && $options(-filename) != ""} {
             set fn $options(-filename).bak
             file delete $fn
         }
     }
-    
+
     method textwin {args} {
         if {$args == {}} {
             return $textwin
         }
         $textwin {*}$args
     }
-    
+
     ## \brief add to a file browser
     method addToFileBrowser {browser} {
         if {![$browser exists $options(-browserobj)]} {
             $browser add $options(-browserobj) 1 0
         }
-        
+
         if {[lsearch $FileBrowsers $browser] < 0} {
             lappend FileBrowsers $browser
         }
     }
-    
+
     ## \brief remove from a file browser
     method removeFromFileBrowser {browser} {
         $browser remove $browserobj
         set idx [lsearch $FileBrowsers $browser]
         lvarpop BrowserDisplays $idx
     }
-    
+
     # @c saves the file. If file is given as argument,
     # @c it is set as the new filename. Otherwise, the
     # @c filename of this object is used. If no filename
@@ -163,23 +163,40 @@ snit::widgetadaptor visualfile {
         if {$options(-filename) == ""} {
             return -code error "no filename was given"
         }
-        
+
         if {$options(-backupfile) && [file exists $options(-filename)]} {
             set bkf $options(-filename)
             append bkf ".bak"
             file copy -force -- $options(-filename) $bkf
         }
-        
+
         set ctn [$self get 1.0 end]
         set ctn [string range $ctn 0 end-1]
+
+        # adjust empty lines. We don't want to save them
+        set realCtn ""
+        foreach {line} [split $ctn \n] {
+            if {$line != {} && [string trim $line] == {}} {
+                append realCtn \n
+            } else {
+                append realCtn $line \n
+            }
+        }
+        set realCtn [string range $realCtn 0 end-1]
+
         set fh [open $options(-filename) w]
         fconfigure $fh -translation $options(-savelineendings)
-        puts -nonewline $fh $ctn
+        puts -nonewline $fh $realCtn
         close $fh
-        
-        return $ctn
+
+        # reload the content
+        set m [$self index insert]
+        $self delete 1.0 end
+        $self insert 1.0 $realCtn
+        $self mark set insert $m
+        return $realCtn
     }
-    
+
     ## \brief open a file, set the file name if it is not ""
     method openFile {{file ""}} {
         if {$file != ""} {
@@ -189,28 +206,28 @@ snit::widgetadaptor visualfile {
             return -code error "no filename was given"
         }
         $self delete 1.0 end
-        
+
         if {[catch {open $options(-filename) r} fh]} {
             puts $::errorInfo
             return -code error $fh
         }
-        
+
         set ctn [read $fh]
         close $fh
         $self insert 1.0 $ctn
         $self mark set insert 1.0
         $self edit reset
     }
-    
+
     # @r whether the text is modified
     method modified {{setit ""}} {
         if {$setit != ""} {
             $self edit modified $setit
         }
-        
+
         $self edit modified
     }
-    
+
     ## \brief translates the cursor position at x/y to a byte in the text.
     #
     # \param x,y: x and y position. If both are -1, the insert cursor position
@@ -222,7 +239,7 @@ snit::widgetadaptor visualfile {
         }
         string length [$self get 1.0 [$self index $curPos]]
     }
-    
+
     # @c undo a step of operation. Delegates to [edit undo]
     #
     # @a steps: number of steps to undo
@@ -231,7 +248,7 @@ snit::widgetadaptor visualfile {
             $self edit undo
         }
     }
-    
+
     # @c redo a previously undone operation. Delegates to [edit redo]
     #
     # @a steps: number of steps to redo
@@ -240,7 +257,7 @@ snit::widgetadaptor visualfile {
             $self edit redo
         }
     }
-    
+
     # @c Shows the search toolbar at the top of the file content. This
     # @c enables for searching (and replacing) text inside the file
     #
@@ -253,22 +270,22 @@ snit::widgetadaptor visualfile {
             }
             return
         }
-        
+
         set ShowingSearch 1
         set SearchIndex 1.0
         if {[$self tbexists searchtool]} {
             $self tbshow searchtool
             return
         }
-        
+
         set S [$self toolbar searchtool -pos n -compound none]
-        
+
         # the search widgets: an entry for the search string, a
         # drop widget for search options and up/down buttons
         ttk::label $S.sfl -text "Search:"
         ttk::entry $S.sentry -textvariable [myvar options(-searchstring)]
         pack $S.sfl $S.sentry -expand n -fill none -side left -padx 3 -pady 1
-        
+
         set f [$self dropframe preferences -toolbar searchtool -separate 1 \
             -image $Tmw::Icons(AppTools) -relpos 0]
         ttk::checkbutton $f.exact -text Exact -variable [myvar options(-searchexact)] \
@@ -278,25 +295,25 @@ snit::widgetadaptor visualfile {
         ttk::checkbutton $f.nocase -text Nocase -variable [myvar options(-searchnocase)] \
             -command [mymethod searchOptsChanged searchnocase]
         pack $f.exact $f.regex $f.nocase -side top -anchor w -expand y -fill both
-        
+
         set upb [$self toolbutton up -toolbar searchtool -type command \
             -image $Tmw::Icons(NavUp) -separate 0 -state disabled \
             -command [mymethod doSearch -backwards]]
         set downb [$self toolbutton down -toolbar searchtool -type command \
             -image $Tmw::Icons(NavDown) -separate 1 -state disabled \
             -command [mymethod doSearch -forwards]]
-        
+
         # the replace widgets: an entry for the replace string, a
         # button for replacing the current selection
         ttk::label $S.rpb -text "Replace:"
         ttk::entry $S.rentry -textvariable [myvar options(-replacestring)]
         pack $S.rpb $S.rentry -expand n -fill none -side left \
             -padx 3 -pady 1
-        
+
         set replb [$self toolbutton replace -toolbar searchtool -separate 0 \
             -image $Tmw::Icons(ActCheck) -state disabled \
             -command [mymethod doReplace] -type command]
-        
+
         # bindings for validation and such
         bind $S.sentry <KeyRelease> [mymethod enableSearchButtons -searchstring $upb $downb]
         bind $S.rentry <KeyRelease> [mymethod enableSearchButtons -replacestring $replb]
@@ -304,11 +321,11 @@ snit::widgetadaptor visualfile {
         bind $S.rentry <Return> [mymethod doSearch -backwards]
         bind $S.sentry <Alt-r> [mymethod doReplace]
         bind $S.rentry <Alt-r> [mymethod doReplace]
-        
+
         lappend WSearch $S.sentry $upb $downb
         lappend WReplace $S.rentry $replb
     }
-    
+
     ## \brief callback for colorizing insert line
     method colorizeInsLine {{x -1} {y -1}} {
         set currPos insert
@@ -320,7 +337,7 @@ snit::widgetadaptor visualfile {
             $self tag configure inscolorize -background white
             $self tag remove inscolorize inscolorize.first inscolorize.last
         }
-        
+
         #after 2 [list apply {{}}]
         after 2 [list apply {{W currPos} {
             $W tag add inscolorize [list $currPos linestart] \
@@ -330,12 +347,12 @@ snit::widgetadaptor visualfile {
             $W see $currPos
         }} $self $currPos]
     }
-    
+
     # @r whether the search toolbar is showing
     method showingSearch {} {
         return $ShowingSearch
     }
-    
+
     # @c Triggers a search in the text window. The String in the
     # @c protected variable SearchFor is used for search, if it is
     # @c not empty
@@ -343,9 +360,9 @@ snit::widgetadaptor visualfile {
     # @a direction: the direction in which to search
     method doSearch {direction} {
         global tcl_platform
-        
+
         $self tag delete sflash
-        
+
         if { $options(-searchstring) == "" } {
             return
         }
@@ -357,28 +374,28 @@ snit::widgetadaptor visualfile {
                 error "direction can only be -forwards or -backwards"
             }
         }
-        
+
         if {"sel" in [$self tag names] && [$self tag ranges sel] != {}} {
             $self tag remove sel sel.first sel.last
         }
-        
+
         set tmpsi $SearchIndex
         set SearchIndex [eval $self search $direction \
             [expr { $options(-searchexact) ? "-exact" : "" } ] \
             [expr { $options(-searchregex) ? "-regexp" : "" } ] \
             [expr { $options(-searchnocase) ? "-nocase" : "" } ] \
             [list $options(-searchstring)] $SearchIndex]
-        
+
         if {$SearchIndex == ""} {
             # not found
             set SearchIndex $tmpsi
             return
         }
-        
+
         set len [string length $options(-searchstring)]
         $self tag add sel $SearchIndex "$SearchIndex + $len chars"
         $self see "$SearchIndex wordend"
-        
+
         # on windows, the text is only highlighted if the textwin has focus
         # this is a fake selection in adddition to the normal one
         if {[string match $tcl_platform(platform) windows] \
@@ -386,10 +403,10 @@ snit::widgetadaptor visualfile {
             $self tag add sflash $SearchIndex "$SearchIndex + $len chars"
             $self tag configure sflash -background blue -foreground white
         }
-        
+
         set SearchIndex [$self index "$SearchIndex + $len chars"]
     }
-    
+
     # @c Triggers a replace action in the text window. The highlighted
     # @c region in the text is replaced by the content of ReplaceBy, if
     # @c it is equal to the SearchFor string.
@@ -398,69 +415,69 @@ snit::widgetadaptor visualfile {
                 || $options(-searchstring) == ""} {
             return
         }
-        
+
         if {[catch {
                 set s0 [$self index sel.first]
                 set s1 [$self index sel.last]
             } msg]} {
             return
         }
-        
+
         $self delete $s0 $s1
         $self fastinsert $s0 $options(-replacestring)
         set len [string length $options(-replacestring)]
         set SearchIndex [$self index "$s0 + $len chars"]
     }
-    
+
     # @r the search entry widget
     method getSearchEntry {} {
         return [lindex $WSearch 0]
     }
-    
+
     # @r the replace entry widget
     method getReplaceEntry {} {
         return [lindex $WReplace 0]
     }
-    
+
     # @c update highlights dummy method. Meant to be overwritten by
     # @c client classes
     method updateHighlights {} {
     }
-    
+
     ## \brief Displays a byte range in the file. 
     #
     # If offset is < 0, every display from before is cleared.
-    
+
     # \param offset byte offset for display start
     # \param length byte length
     # \param color background color for the text
     method displayByteRange {offset length color} {
         $self tag configure inscolorize -background white
         eval $self tag remove inscolorize [$self tag ranges inscolorize]
-        
+
         set ni [$self index "1.0 + $offset chars"]
         set li [$self index "1.0 + [expr {$offset + $length}] chars"]
         $self tag add inscolorize $ni $li
         $self tag configure inscolorize -background $color
         $self see $ni
     }
-    
+
     method deleteCharBefore {index} {
         $self delete "$index -1c" "$index"
     }
-    
+
     method expandTab {} {
         # @c sets up the bindings
         set LastKey Tab
         if {! $options(-expandtab)} {
             return
         }
-        
+
         $self fastinsert insert [string repeat " " $options(-tabsize)]
         incr IndentLevel $options(-tabsize)
         after 1 [mymethod deleteCharBefore insert]
     }
-    
+
     ## \brief validation command for search entries. 
     # Enables the buttons according on whether the entries are empty
     #
@@ -470,7 +487,7 @@ snit::widgetadaptor visualfile {
         # for some reason the value can not be obtained via [cget]
         # before this is done:
         #$self configure -$varPtr [set $varPtr]
-        
+
         set state [expr {($options($varPtr) == "") ? "disabled" : "normal"}]
         foreach {widget} $args {
             $widget configure -state $state
@@ -478,7 +495,7 @@ snit::widgetadaptor visualfile {
         event generate $win <<SearchOptionsChanged>>
         return 1
     }
-        
+
     # @c helper method to generate event on changing search
     # @c options
     #
@@ -487,25 +504,25 @@ snit::widgetadaptor visualfile {
         configure -$varPtr [set $varPtr]
         event generate $itk_interior <<SearchOptionsChanged>>
     }
-    
+
     # @c adjusts the search index, when the user clicks
     # @c in the file
     method adjustSearchIndex {} {
         set SearchIndex [$self index insert]
     }
-    
+
     ## \brief configuremethod for -modifiedcmd
     method ConfigModifiedCmd {option value} {
         set options($option) $value
         bind $textwin <<Modified>> $value
     }
-    
+
     ## \brief configuremethod for -button1cmd
     method ConfigButton1Cmd {option value} {
         set options($option) $value
         bind $textwin.t <Button-1> $value
     }
-    
+
     ## \brief configuremethod for -searchstring
     method ConfigSearchString {option value} {
         set options($option) $value
@@ -517,7 +534,7 @@ snit::widgetadaptor visualfile {
             $w configure -state $state
         }
     }
-    
+
     ## \brief configuremethod for -replacestring
     method ConfigReplaceString {option value} {
         set options($option) $value
@@ -529,7 +546,7 @@ snit::widgetadaptor visualfile {
             $w configure -state $state
         }
     }
-        
+
 } ;# visualfile
 
 } ;# namespace Tmw
@@ -540,3 +557,5 @@ package provide tmw::visualfile 2.0.0
 #package re Tk
 #Tmw::visualfile .v -vimode true
 #pack .v
+
+

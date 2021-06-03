@@ -57,7 +57,7 @@ proc ::Tloona::Fs::copyFiles {src dest exclude} {
         } else {
             file copy -force $f $dest
         }
-        
+
     }
 }
 
@@ -73,8 +73,8 @@ proc ::Tloona::Fs::copyForDeployment {src dest appName ver} {
     set baseDir [file join $dest $rootDir]
     file delete -force $baseDir
     file mkdir $baseDir
-    
-    set exclude {{name} {regexp {^#|~$|^target$|\.bak$} $name}}
+
+    set exclude {{name} {regexp {^#|~$|^target$|\.bak|.git|.gitignore$} $name}}
     copyFiles $src $baseDir $exclude
     return $baseDir
 }
@@ -85,11 +85,11 @@ proc ::Tloona::Fs::copyForDeployment {src dest appName ver} {
 # can be displayed in the kit browser.
 class ::Tloona::Fs::Starkit {
     inherit ::Tmw::Fs::FileSystem
-    
+
     constructor {args} {
         eval configure $args
     }
-    
+
     public {
         # @v name: overrides name attribute. Checks for extrated
         variable name "" {
@@ -103,21 +103,21 @@ class ::Tloona::Fs::Starkit {
             }
             configure -tail [file tail $name] -dirname [file dirname $name]
         }
-        
+
         variable vfsid ""
-        
+
         ## The subdirectory where deployed kit/pack files should go
         variable deploydir target
-        
+
         ## Extracts a starkit. 
         # If wThread is not "", the extraction is done in this thread
         method extract {tPool varPtr} {
             if {[extracted]} {
                 return
             }
-            
+
             upvar $varPtr var
-            
+
             set script "eval sdx::unwrap::unwrap [cget -name] \n"
             #thread::send -async $wThread $script var
             if {$tPool != ""} {
@@ -127,10 +127,10 @@ class ::Tloona::Fs::Starkit {
                 eval $script
             }
             configure -name [file rootname [cget -name]].vfs
-            
+
             return ""
         }
-        
+
         ## Wraps a starkit. 
         # If wThread is not "", this is done in this thread
         method wrap {args} {
@@ -138,7 +138,7 @@ class ::Tloona::Fs::Starkit {
             if {![extracted]} {
                 return
             }
-            
+
             set nargs {}
             set ktype "kit"
             set tPool ""
@@ -170,10 +170,10 @@ class ::Tloona::Fs::Starkit {
                         lappend nargs [lindex $args 0]
                     }
                 }
-                
+
                 set args [lrange $args 1 end]
             }
-            
+
             # copy the kit for deployment. First, determine value of tmp
             set tmpDir /tmp/
             if {$::tcl_platform(platform) == "windows"} {
@@ -181,43 +181,43 @@ class ::Tloona::Fs::Starkit {
             }
             set tmpDir [file join $tmpDir TloonaDeploy]
             set deployDir [::Tloona::Fs::copyForDeployment [cget -name] $tmpDir $appName $version]
-            
+
             set deployFile [file root $deployDir].[expr {
                 ($ktype eq "pack") ? "exe" : "kit"
             }]
-            
+
             # execute SDX wrap
             set curDir [pwd]
             cd $tmpDir
             exec $UserOptions(PathToSDX) wrap $deployFile {*}$nargs 
             cd $curDir
-            
+
             # copy the kit into the target folder
             set targetDir [file join [cget -name] [cget -deploydir]]
             file mkdir $targetDir
             set targetFile [file join $targetDir [file tail $deployFile]]
             file delete -force $targetFile
             file copy -force $deployFile $targetDir
-            
+
             # delete the temporary directory
             file delete -force $tmpDir
             return $targetFile
         }
-        
+
         ## Returns whether the starkit is extracted
         method extracted {{e -1}} {
             if {$e < 0} {
                 return $_Extracted
             }
-            
+
             if {![string is boolean -strict $e]} {
                 error "argument e must be boolean"
             }
             set _Extracted $e
         }
-        
+
     }
-    
+
     private {
         variable _Extracted 0
     }
