@@ -8,24 +8,24 @@ namespace eval Tloona {
 
 ## \brief The browser widget for starkit projects 
 snit::widgetadaptor kitbrowser {
-    
+
     #### Options
-    
+
     #### Components
     delegate method * to hull except {addFileSystem expand}
     delegate option * to hull
-    
+
     #### Variables
-    
+
     constructor {args} {
         installhull using Tloona::projectbrowser
-        
+
         set tb [$self toolbar tools -pos n -compound none]
         $self configure -sortalpha 0 -nodeformat {"%s" -tail}
         $self configurelist $args
-        
+
         set T [$self treeview]
-        
+
         if {[tk windowingsystem] eq "aqua"} {
             # On Mac the right mouse button is Button-2
             bind $T <Button-2> [mymethod contextMenu %X %Y %x %y]
@@ -35,7 +35,7 @@ snit::widgetadaptor kitbrowser {
         bind $T <Double-Button-1> [mymethod onFileOpen %x %y]
         bind $T <Control-Button-1> [mymethod selectCode %x %y 1]
     }
-    
+
     # @v overrides addFileSystem in filebrowser. Kit files are
     # @v extracted immediately
     method addFileSystem {root} {
@@ -43,7 +43,7 @@ snit::widgetadaptor kitbrowser {
         switch -- [file extension $root] {
             .kit {
                 set kf [file rootname $root].vfs
-                
+
                 # check whether the vfs directory exists already
                 # If so, ask to delete it
                 if {[file isdirectory $kf]} {
@@ -66,7 +66,7 @@ snit::widgetadaptor kitbrowser {
             .vfs {
             }
         }
-        
+
         set fs [::Tloona::Fs::starkit -name $root -type "starkit" -expanded 0]
         if {![$fs extracted]} {
             set mw [$self cget -mainwindow]
@@ -78,7 +78,7 @@ snit::widgetadaptor kitbrowser {
                 $mw showProgress 0
                 $mw configure -status $defst
             }
-            
+
             # if the vfs already exists, refresh its directory
             set dn [$fs cget -name]
             foreach {myFs} [$self getFileSystems] {
@@ -94,7 +94,7 @@ snit::widgetadaptor kitbrowser {
                 }
             }
         }
-        
+
         # parse the tcl files
         Tmw::Fs::build $fs 1
         $self add $fs 1 0
@@ -102,34 +102,34 @@ snit::widgetadaptor kitbrowser {
         $self addStarkit $fs
         return $fs
     }
-    
+
     # @c callback for open files from kit projects
     method onFileOpen {x y {file ""}} {
         set ofCmd [$self cget -openfilecmd]
         if {$ofCmd == ""} {
             return
         }
-        
+
         if {$file == ""} {
             set file [$self selection]
         }
         uplevel #0 $ofCmd [$file cget -name] 1
     }
-        
+
     # @c callback for file delete
     method onFileDelete {{file ""}} {
         global TloonaApplication
         if {$file == ""} {
             set file [$self selection]
         }
-        
+
         set m "Are you sure that you want to delete the file\n\n"
         append m "[$file cget -name]?"
         set q [Tmw::message $TloonaApplication "Delete File?" yesno $m]
         if {$q != "yes"} {
             return
         }
-        
+
         $self remove $file
         file delete -force [$file cget -name]
         if {[set parDir [$file getParent]] == {}} {
@@ -139,43 +139,36 @@ snit::widgetadaptor kitbrowser {
         $parDir removeChild $file
         destroy $file
     }
-        
+
     ## callback handler for wrapping a vfs project
     method onWrapKit {{file ""}} {
         global TloonaApplication tcl_version
-        
+
         # wrapping only works in Tcl >= 8.6
         if {$tcl_version < 8.6} {
             tk_messageBox -type ok -icon error -title "Tcl Version not supported" \
                 -parent $TloonaApplication -message "Deployment works only in Tcl >= 8.6"
             return
         }
-        
-        if {[catch {package require starkit}]} {
-            tk_messageBox -type ok -icon error -title "starkit not available" \
-                -parent $TloonaApplication \
-                    -message "starkit package is not present, but needed for deployment"
-            return
-        }
-        
+
         set mw $TloonaApplication
         if {$mw == ""} {
             return
         }
-        
+
         set defst [$mw cget -status]
         try {
             Tloona::wrapwizzard .wrapwizz -master $TloonaApplication
             .wrapwizz setDeployDetails [$file cget -name] [$file cget -deploydir]
-            
+
             if {[.wrapwizz show] == "Cancel"} {
                 destroy .wrapwizz
                 return
             }
-            
+
             $mw configure -status "creating standalone runtime..."
             $mw showProgress 1
-        
+
             set a [.wrapwizz getOptions]
             if {[dict exists $a -runtime] && [dict get $a -runtime] == {}} {
                 set m "Can not create a Starpack without a valid Tclkit runtime\n\n"
@@ -202,7 +195,7 @@ snit::widgetadaptor kitbrowser {
             destroy .wrapwizz
         }
     }
-    
+
     ## \brief callback handler for new Tclscript menu entry
     method onFileNew {parentItem} {
         global TloonaApplication
@@ -215,23 +208,23 @@ snit::widgetadaptor kitbrowser {
             Tmw::message $TloonaApplication "File exists" ok "File $fileName already exists here!"
             return
         }
-        
+
         set fh [open $uri w]
         puts $fh "## $fileName (created by Tloona here)"
         close $fh
-        
+
         ::Tmw::Fs::rebuild $parentItem 1 nf of
         $self add [$parentItem lookup $uri] 1 1
    	    set cls [uplevel #0 [$self cget -openfilecmd] $uri 0]
     }
-    
+
     ## \brief Change directory in the slave console that is configured
     method onCdConsoleThere {item} {
         global TloonaApplication
         set cons [$TloonaApplication consolenb select]
         $cons eval [list cd [$item cget -name]] -showlines 1
     }
-    
+
     # @r All Tcl files in a particular starkit
     method getTclFiles {starKit} {
         set tclFiles {}
@@ -241,10 +234,10 @@ snit::widgetadaptor kitbrowser {
             }
             lappend tclFiles $file
         }
-        
+
         return $tclFiles
     }
-    
+
     # @c Overrides the expand method
     method expand {open {item ""}} {
         if {$item == ""} {
@@ -253,7 +246,7 @@ snit::widgetadaptor kitbrowser {
         $self refreshFile $item
         $hull expand $open $item
     }
-    
+
     # @c Reparses and updates a Tcl file. This is triggered by a click
     # @c on the open cross before the file or when files are opened initially
     method refreshFile {item} {
@@ -270,7 +263,7 @@ snit::widgetadaptor kitbrowser {
         }
         }
     }
-    
+
     # @c pops up a context menu
     method contextMenu {xr yr x y} {
         global TloonaApplication
@@ -284,11 +277,11 @@ snit::widgetadaptor kitbrowser {
                 set realItem [lindex $itm 1]
             }
         }
-        
+
         if {$realItem == ""} {
             return
         }
-        
+
         $self selection set $realItem
         #Tmw::Browser::selection set $realItem
         # create context menu
@@ -296,10 +289,10 @@ snit::widgetadaptor kitbrowser {
             destroy .kitcmenu
         }
         menu .kitcmenu -tearoff no
-        
+
         if {[$realItem getParent] == ""} {
             # it's a topnode (extracted) starkit
-            
+
             if {[$realItem extracted]} {
                 .kitcmenu add command -label "CD Console There" -image $Tmw::Icons(FileOpen) \
                     -command [mymethod onCdConsoleThere $realItem] -compound left
@@ -312,7 +305,7 @@ snit::widgetadaptor kitbrowser {
                 set d [file join [file dirname [$realItem cget -name]] \
                     [file root [file tail [$realItem cget -name]]].kit]
             }
-            
+
             .kitcmenu add separator
             .kitcmenu add command -label "Remove from Browser" -compound left \
                 -command [mymethod removeProjects $realItem] -image $Tmw::Icons(ActCross)
@@ -341,16 +334,16 @@ snit::widgetadaptor kitbrowser {
                 .kitcmenu add separator
             }
             }
-            
+
             .kitcmenu add command -label "Delete" -command [mymethod onFileDelete $realItem]
-            
+
         } else {
             menu .kitcmenu.commm -tearoff no
             .kitcmenu add cascade -label "Send to Comm" -menu .kitcmenu.commm
             if {[set mw $TloonaApplication] != "" &&
                     [$mw isa ::Tloona::Mainapp] && 
                     [$mw getCommIDs] != {}} {
-                
+
                 foreach {cid} [$mw getCommIDs] {
                     .kitcmenu.commm add command -label "Comm $cid" \
                         -command [mymethod sendDefinition $realItem comm $cid]
@@ -359,15 +352,15 @@ snit::widgetadaptor kitbrowser {
             }
             .kitcmenu.commm add command -label "New Comm ID" \
                 -command [mymethod sendDefinition $realItem comm ""]
-            
+
             # to the console
             .kitcmenu add command -label "Send to Console" -command \
                 [mymethod sendDefinition $realItem console ""]
         }
-        
+
         tk_popup .kitcmenu $xr $yr
     }
-    
+
 }
 
 namespace eval KitBrowser {
