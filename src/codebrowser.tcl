@@ -12,26 +12,26 @@ namespace eval Tloona {
 # etc.) The sort sequence can be configured via a dropwidget that contains a list 
 # of tokens and buttons to change the sequence
 snit::widgetadaptor codebrowser {
-    
+
     #### Options
     option -sortsequence -default {} -configuremethod ConfigSortSequence -cgetmethod CgetHullOption
     option -sortalpha -default 1 -configuremethod ConfigHullOption -cgetmethod CgetHullOption
     option -dosortseq -default 1 -configuremethod ConfigHullOption -cgetmethod CgetHullOption
     option -getfilefromitemcmd {}
     option -filtercmd {}
-    
+
     #### Components
     component sortlist
-    
+
     delegate method * to hull
     delegate option * to hull except { -sortsequence -sortalpha }
-    
+
     #### Variables
-    
+
     ## \brief list of all code trees. Used for filtering, so that no code tree 
     # gets lost
     variable CodeTrees {}
-    
+
     ## \brief list of commands that are executed to send a code definition to 
     # one or more foreign interpreters
     variable SendCmds {}
@@ -41,33 +41,33 @@ snit::widgetadaptor codebrowser {
     array set Filter {}
     set Filter(pattern) ""
     set Filter(widgets) {}
-    
+
     constructor {args} {
         installhull using Tmw::filebrowser
         $self createToolbar
         $self configurelist $args
     }
-    
+
     ## \brief Callback for sort. Configures the options first, then sorts
     method onSort {} {
         $hull configure -sortsequence $options(-sortsequence) \
             -sortalpha $options(-sortalpha) -dosortseq $options(-dosortseq)
         $self sort
     }
-    
+
     method onFilter {} {
         if {$options(-filtercmd) != {}} {
             uplevel #0 $options(-filtercmd) [list $Filter(pattern)]
         }
     }
-    
+
     # @c fills the local toolbar
     method createToolbar {} {
         global Icons
-        
+
         # create a toolbar with codebrowser specific actions
         set toolBar [$self toolbar tools -pos n -compound none]
-	
+
         set w [$self toolbutton sortalpha -toolbar tools -image $Tmw::Icons(SortAlpha) \
             -type checkbutton -variable [myvar options(-sortalpha)] -separate 0 \
             -tip "Alphabet sort" -command [mymethod onSort]]
@@ -78,9 +78,9 @@ snit::widgetadaptor codebrowser {
 
         set w [set f [$self dropframe sortseqcfg -toolbar tools -image $Icons(SortSeqCfg) \
             -tip "Modify Sort Order" -separate 0 -hidecmd [mymethod UpdateSortSeq] -relpos 0]]
-        
+
         $self CreateSortList $f
-        
+
         set Filter(pattern) ""
         ttk::entry $toolBar.efilter -textvariable [myvar Filter(pattern)] -width 15
         set Filter(widgets) $toolBar.efilter
@@ -92,7 +92,7 @@ snit::widgetadaptor codebrowser {
         pack $toolBar.efilter -expand n -fill none -side right -padx 2 -pady 1
         bind $toolBar.efilter <Return> [mymethod onFilter]
     }
-    
+
     # @c Add a command to the list of commands that are used to send
     # @c scripts to foreign interpreters
     method addSendCmd {cmd} {
@@ -100,7 +100,7 @@ snit::widgetadaptor codebrowser {
             lappend SendCmds $cmd
         }
     }
-    
+
     # @c Sends a code definition per comm to another interpreter
     # @c This can serve as a callback for a menu entry
     #
@@ -113,7 +113,7 @@ snit::widgetadaptor codebrowser {
         if {$node == ""} {
             set node [$self selection]
         }
-        
+
         switch -- $typ {
         comm {
             $self SendCommDefinition $node $id
@@ -131,7 +131,7 @@ snit::widgetadaptor codebrowser {
         }
         }
     }
-    
+
     # @c creates the listbox and associated widgets for the sort
     # @c sequence configuration and fills the listbox
     #
@@ -139,24 +139,24 @@ snit::widgetadaptor codebrowser {
     method CreateSortList {parent} {
         install sortlist using listbox $parent.sortlist -height 18 -width 16 \
             -background white -borderwidth 1 -relief flat
-        
+
         set bup [ttk::button $parent.up -image $Tmw::Icons(NavUp) -style Toolbutton \
             -command [mymethod MoveSortConfig up]]
         set bdown [ttk::button $parent.down -image $Tmw::Icons(NavDown) \
             -style Toolbutton -command [mymethod MoveSortConfig down]]
-        
+
         grid $sortlist -row 0 -column 0 -rowspan 2 -sticky news
         grid $bup -row 0 -column 1 -sticky swe -padx 1
         grid $bdown -row 1 -column 1 -sticky nwe -padx 1
     }
-    
+
     # @c moves the selected item in the sort config listbox up or down
     # 
     # @a updown: up or down
     method MoveSortConfig {where} {
         set actIdx [$sortlist index active]
         set sel [$sortlist get active]
-        
+
         switch -- $where {
         "up" {
             incr actIdx -1
@@ -171,13 +171,13 @@ snit::widgetadaptor codebrowser {
             }
         }
         }
-        
+
         $sortlist delete active
         $sortlist insert $actIdx $sel
         $sortlist activate $actIdx
         $sortlist selection set $actIdx
     }
-        
+
     # @c updates the sort sequence from sort listbox and triggers
     # @c resorting
     method UpdateSortSeq {} {
@@ -185,15 +185,15 @@ snit::widgetadaptor codebrowser {
         $self sort
         event generate $win <<SortSeqChanged>>
     }
-    
+
     # @c Sends the definition of a node via comm to an interpreter
     method SendCommDefinition {node id} {
         set mw [$self cget -mainwindow]
-        
+
         set msg "This Comm ID does not exist"
         if {$id == ""} {
             while {1} {
-                set id [Tmw::input [cget -mainwindow] "Comm ID:" okcancel]
+                set id [Tmw::input [$self cget -mainwindow] "Comm ID:" okcancel]
                 if {$id == ""} {
                     return
                 }
@@ -206,21 +206,21 @@ snit::widgetadaptor codebrowser {
                 }
             }
         }
-        
-        if {$getfilefromitemcmd == {}} {
+
+        if {$options(-getfilefromitemcmd) == {}} {
             set script [::Tloona::getNodeDefinition $node]
         } else {
             set script [::Tloona::getNodeDefinition $node \
-                [uplevel #0 $getfilefromitemcmd $node]]
+                [uplevel #0 $options(-getfilefromitemcmd) $node]]
         }
-        
+
         #puts $script
         if {[catch {comm::comm send $id $script} m]} {
             Tmw::message $mw "Error from $id" ok \
                 "The application at $id raised an error: $m"
         }
     }
-    
+
     ## \brief config method for the sort sequence
     method ConfigSortSequence {option value} {
         set options($option) $value
@@ -248,32 +248,32 @@ snit::widgetadaptor codebrowser {
                 namespace
             }
         }
-        
+
         $sortlist delete 0 end
         $sortlist configure -height [llength $value]
         foreach {c} $value {
             $sortlist insert end $c
         }
     }
-    
+
     method ConfigHullOption {option value} {
         set options($option) $value
         $hull configure -sortalpha $value
     }
-    
+
     method CgetHullOption {option} {
         $hull cget $option
     }
-    
+
 } ;# codebrowser
 
 ## \brief A basic project browser.
 #
 # This is the base class for kit browser and project outline
 snit::widgetadaptor projectbrowser {
-    
+
     #### Options
-    
+
     ## \brief a piece of code that is executed to open files
     option {-newfilecmd newFileCmd Command} -default ""
     ## \brief a piece of code that is executed to open files
@@ -284,26 +284,26 @@ snit::widgetadaptor projectbrowser {
     option {-isopencmd isOpenCmd Command} -default ""
     ## \brief a command that is executed when a code fragment is selected
     option {-selectcodecmd selectCodeCmd Command} -default ""
-    
+
     ### Components
-    
+
     delegate method * to hull except {onFilter createToolbar}
     delegate option * to hull
-    
+
     #### Variables
-    
+
     ## \brief A list of File systems
     variable Starkits {}
     ## \brief A scope variable for the checkbutton to synchronize with editor
     variable Syncronize 1
-    
+
     constructor {args} {
         installhull using codebrowser
         $self createToolbar
         $self configure -filtercmd [mymethod onFilter]
         $self configurelist $args
     }
-    
+
     ## \brief selects the code definition of Itcl methods. 
     # 
     # Essentially, dispatches to the -selectcodecmd option.
@@ -313,12 +313,12 @@ snit::widgetadaptor projectbrowser {
         }
         uplevel #0 $options(-selectcodecmd) $self $x $y $def
     }
-    
+
     # @c Callback for collapse the tree view
     method onSyncronize {} {
         $self configure -syncronize $Syncronize
     }
-    
+
     method onFilter {pattern} {
         $self configure -filter [expr { 
             ($pattern == {}) ? "" : [list ::Tmw::Browser::globFilter $pattern]
@@ -326,7 +326,7 @@ snit::widgetadaptor projectbrowser {
         $self remove [$self children {}]
         $self add $Starkits 1 1
     }
-    
+
     ## \brief Overrides remove in Tmw::Browser1.
     # 
     # Closes files that are still open
@@ -348,16 +348,16 @@ snit::widgetadaptor projectbrowser {
                 if {$fCls == ""} {
                     continue
                 }
-                
+
                 uplevel #0 $options(-closefilecmd) $fCls
             }
         }
-        
+
         lmap x $nodes {
             set i [lsearch $Starkits $x] 
             set Starkits [lreplace $Starkits $i $i]
         }
-        
+
         $self remove $nodes yes
     }
 
@@ -371,15 +371,15 @@ snit::widgetadaptor projectbrowser {
         $self toolbutton collapse -toolbar tools -image $Icons(Collapse) \
             -type command -separate 0 -command [mymethod collapseAll]
     }
-    
+
     method addStarkit {starKit} {
         lappend Starkits $starKit
     }
-    
+
     method getStarkits {} {
         return $Starkits
     }
-    
+
     # @c checks whether a file is open already. The method
     # @c invokes the -isopencmd code. If no -isopencmd is
     # @c given, the check can not be performed
@@ -392,18 +392,18 @@ snit::widgetadaptor projectbrowser {
         if {$file == ""} {
             set file [$self selection]
         }
-        
+
         set fname ""
         if {[$file isa ::Tmw::Fs::FSContent]} {
             set fname [$file cget -name]
         } elseif {[$file isa ::Parser::Script]} {
             set fname [$file cget -filename]
         }
-        
+
         expr {$fname != "" && [apply $options(-isopencmd) $fname] != {}}
     }
-    
-    
+
+
 }
 
 
@@ -437,15 +437,15 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
     set script ""
     set tokenType [$node cget -type]
     switch -glob -- $tokenType {
-        
+
     *method - constructor - destructor {
         set clNode [$node getParent]
-        
+
         set tktyp method
         set tknam [$node cget -name]
         set tkargs [list [$node cget -arglist]]
         append tkdef \{ [string trim [$node cget -definition] "{}"] \}
-        
+
         switch -glob -- $tokenType {
         *method {
         }
@@ -459,7 +459,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             set tkargs "{ }"
         }
         }
-        
+
         switch -glob -- [$clNode info class] {
         *SnitTypeNode - *SnitWidgetNode {
             # obviously a snit type. handle appropriately. Need to redefine constructor/destructor
@@ -486,7 +486,7 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             } else {
                 append script $scopedCmd " [getNSQ $clNode] $tktyp $tknam $tkargs $tkdef"
             }
-            
+
         }
         *ItclClassNode {
             append script "::itcl::body "
@@ -494,21 +494,21 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         }
         }
     }
-    
-    
+
+
     macro {
         append script "::sugar::macro [$node cget -name] [list [$node cget -arglist]] {"
         append script [string trim [$node cget -definition] "{}"]
         append script "}"
     }
-    
+
     proc {
         append script [expr {[$node cget -sugarized] ? "::sugar::proc " : "proc "}]
         append script [getNSQ $node] " [list [$node cget -arglist]] {"
         append script [string trim [$node cget -definition] "{}"]
         append script "}"
     }
-    
+
     *variable {
         set clNode [$node getParent]
         switch -glob -- [$clNode info class] {
@@ -526,10 +526,10 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             append script variable " [getNSQ $node] " 
             append script [string trim [$node cget -definition] "{}"]
         }
-        
+
         }
     }
-    
+
     namespace -
     webcmd -
     xo_* {
@@ -541,14 +541,14 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
             # want to send the class definition itself, since Attributes
             # can not be sent
             set node [$node getParent]
-            
+
         }
         if {$file == {}} {
             return
         }
         return [$file flashCode $node]
     }
-    
+
     class {
         # build up the node definition
         set name [$node cget -name]
@@ -568,27 +568,27 @@ proc ::Tloona::getNodeDefinition {node {file {}}} {
         }
         }
     }
-    
+
     package {
         append script [$node cget -definition]
     }
-    
+
     tcltest {
         append script [$node cget -testcmd]
     }
-    
+
     default {
         # not implemented
         return
     }
-    
+
     }
-    
+
     # flash the code for consistency
     if {$file != {}} {
         $file flashCode $node
     }
-    
+
     return $script
 }
 
