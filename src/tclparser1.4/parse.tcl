@@ -22,9 +22,9 @@ sugar::macro getarg {cmd arg args} {
 
 namespace eval ::Parser {
     variable CurrentAccess ""
-    
+
     variable CurrentFile ""
-    
+
     ## \brief Parse a class node and returns it as tree.
     #
     # This method creates class nodes depending on the definition
@@ -89,16 +89,19 @@ namespace eval ::Parser {
             # if this condition holds true, we have a TclOO class with
             # definition. Otherwise we fall through and parse NX classes
             # or XOTcl classes
-            if {[string eq $clsCreate create] && 
-                    ([string match *class $clsTkn] || [string match *(class) $clsTkn])} {
-               lassign [m-parse-defrange $cTree 3] defOff defEnd
-               set cnode [TclOO::createClass $node $clsName $clsDef [list $defOff $defEnd]]
-               $cnode configure -byterange $byteRange
-               TclOO::parseClassDef $cnode [expr {$off + $defOff}] [$cnode cget -definition]
-               return $cnode
+            if {[string eq $clsCreate create]} {
+                switch -glob -- $clsTkn {
+                    *class - *singleton - *factory {
+                       lassign [m-parse-defrange $cTree 3] defOff defEnd
+                       set cnode [TclOO::createClass $node $clsName $clsDef [list $defOff $defEnd]]
+                       $cnode configure -byterange $byteRange
+                       TclOO::parseClassDef $cnode [expr {$off + $defOff}] [$cnode cget -definition]
+                       return $cnode
+                    }
+                }
             }
         }
-        
+
         # XOTcl or NX. The only half way reliable method is to check whether
         # the first subcommand after Class is "create". This means, that XOTcl
         # classes with the name "create" will be threated as NX classes and will
@@ -112,7 +115,7 @@ namespace eval ::Parser {
             set $tkn [::parse getstring $content \
                 [list [lindex $range 0] [lindex $range 1]]]
         }
-        
+
         if {[string match *nx:: $clsTkn] || [string eq $clsCreate create]} {
             set defOff 0
             set slotOff -1
@@ -142,7 +145,7 @@ namespace eval ::Parser {
         }
         return $cnode
     }
-    
+
 
     ## \brief Build a tree of commands (tokens) in a Tcl script. 
     #
@@ -164,7 +167,7 @@ namespace eval ::Parser {
             return
         }
         set size [::parse getrange $content]
-        
+
         while {1} {
             # if this step fails, we must not proceed
             if {[catch {::parse command $content {0 end}} res]} {
@@ -178,15 +181,15 @@ namespace eval ::Parser {
             set cmdRange [lindex $res 1]
             lset cmdRange 0 [expr {[lindex $cmdRange 0] + $off}]
             lset cmdRange 1 [expr {[lindex $cmdRange 1] - 1}]
-            
+
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
-                
+
             package {
                 set pkg [Tcl::parsePkg $node $codeTree $content $cmdRange $off]
             }
-            
+
             namespace {
                 switch -- [$node cget -type] {
                 script - namespace {
@@ -199,7 +202,7 @@ namespace eval ::Parser {
                 }
                 }
             }
-            
+
             proc -
             ::sugar::proc -
             sugar::proc -
@@ -209,7 +212,7 @@ namespace eval ::Parser {
             <substproc> {
                 Tcl::parseProc $node $codeTree $content $cmdRange $off
             }
-            
+
             "command" -
             "web::command" {
                 set defOff 0
@@ -219,7 +222,7 @@ namespace eval ::Parser {
                     parse $pn [expr {$defOff + $off}] [$pn cget -definition]
                 }
             }
-            
+
             type -
             *snit::type -
             widget -
@@ -231,6 +234,8 @@ namespace eval ::Parser {
             *itcl::widget -
             *oo::class -
             *ooh::class -
+            *ooh::singleton -
+            *ooh::factory -
             Class -
             *xotcl::Class - 
             *nx::Class {
@@ -239,14 +244,14 @@ namespace eval ::Parser {
                     $clsNode configure -token $token
                 }
             }
-            
+
             define - objdefine - *oo::define - *oo::objdefine {
                 # not yet working
                 if {$node == {} || [$node cget -type] eq "namespace"} {
                     TclOO::parseDefine $node $codeTree $content $cmdRange $off
                 }
             }
-            
+
             Attribute -
             xotcl::Attribute -
             ::xotcl::Attribute {
@@ -264,7 +269,7 @@ namespace eval ::Parser {
                     set defOff -1
                     set preOff -1
                     set postOff -1
-                    
+
                     set nm [::parse getstring $content [lindex [lindex $codeTree 0] 1]]
                     set nsAll [regsub -all {::} [string trimleft $nm :] " "]
                     set nm [lindex $nsAll end]
@@ -278,10 +283,10 @@ namespace eval ::Parser {
                         parse $iNode [expr {$off + $postOff}] [$iNode cget -postassertion]
                     }
                 }
-                
+
                 }
             }
-            
+
             variable {
                 set vNode [Tcl::parseVar $node $codeTree $content $off]
                 if {$vNode != ""} {
@@ -289,18 +294,18 @@ namespace eval ::Parser {
                 }
                 Tcl::ParseLocal::_variable $node $codeTree $content $off
             }
-            
+
             set - foreach - for - if - switch - while - lassign -
             upvar - global {
                 Tcl::ParseLocal::_$token $node $codeTree $content $off
             }
-            
+
             body - *itcl::body {
                 set defOff 0
                 if {[catch {
                         Itcl::parseBody $node $codeTree $content defOff
                     } bNode]} {
-                    
+
                     set bNode ""
                 }
                 if {$bNode != ""} {
@@ -309,7 +314,7 @@ namespace eval ::Parser {
                     parse $bNode [expr {$off + $defOff}] [$bNode cget -definition]
                 }
             }
-            
+
             itk_component {
                 set dBdOff 0
                 set compNode [Itcl::parseItkComponent $node $codeTree $content \
@@ -318,7 +323,7 @@ namespace eval ::Parser {
                     $compNode configure -byterange $cmdRange
                 }
             }
-            
+
             *tcltest::test -
             test {
                 set setupOff 0
@@ -334,7 +339,7 @@ namespace eval ::Parser {
                     parse $testNode [expr {$off + $cleanupOff}] [$testNode cget -cleanupdef]
                 }
             }
-            
+
             default {
                 # check for xotcl or nx classes. First, check for valid names
                 # Filter out everything that does not look like a self defined Xotcl/NX class.
@@ -343,7 +348,7 @@ namespace eval ::Parser {
                 # instprocs in the browser. But at least its getting faster...
                 variable CoreCommands
                 if {[regexp {^(:{0,2}\w+)+} $token] && [lsearch -exact $CoreCommands $token] < 0} {
-                
+
                 set nsAll [regsub -all {::} [string trimleft $token :] " "]
                 set ns [lrange $nsAll 0 end-1]
                 if {[Util::checkNamespace $node $ns]} {
@@ -369,20 +374,20 @@ namespace eval ::Parser {
                     }
                 }
                 }
-                
+
             }
-                
+
             } ;# end switch
-            
+
             # step forward in the content
             set idx [lindex [lindex $res 2] 0]
             incr off $idx
             set content [::parse getstring $content [list $idx end]]
         }
-        
-        
+
+
     }
-    
+
     ## \brief reparses the tree, given content. 
     #
     # The newNodesPtr and oldNodesPtr are filled with a list of nodes that 
@@ -398,7 +403,7 @@ namespace eval ::Parser {
         $node removeVariables
         $node configure -definition $content
         ::Parser::parse $node 0 $content
-        
+
         foreach child [$node getChildren 1] {
             if {[$child cget -isvalid]} {
                 if {![lcontain $aChBefore $child]} {
@@ -413,8 +418,8 @@ namespace eval ::Parser {
             }
         }
     }
-    
-        
+
+
 }
 
 package provide parser::parse 1.0

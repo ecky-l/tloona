@@ -15,31 +15,31 @@ package require parser::macros 1.0
 }
 
 namespace eval ::Parser {
-    
+
     variable TclOOhCoreCommands {extends construct property field}
-    
+
     ## \brief The base class for all OO systems.
     class ClassNode {
         inherit ::Parser::Script
         constructor {args} {chain {*}$args} {
             addVariable this 0 1
         }
-        
+
         ## \brief The type is always "class"
         public variable type class
-        
+
         # The token that defines the script (e.g. eval, namespace, type, class...)
         public variable token ""
-        
+
         public variable inherits {}
         public variable isitk 0
-        
+
         # @v inheritstring: A string containing the base classes of this
         # @v inheritstring: class comma separated. Used for displayformat
         public variable inheritstring ""
         # @v displayformat: overrides the display format for tests
         public variable displayformat {"%s : %s" -name -inheritstring}
-            
+
         # @c insert the public and protected identifiers
         # @c (methods and variables) to this class
         public method updatePTokens {} {
@@ -63,7 +63,7 @@ namespace eval ::Parser {
                 }
             }
         }
-        
+
         ## \brief Update all methods with the class variables.
         public method updateVariables {} {
             set vs [getVariables 1]
@@ -76,9 +76,9 @@ namespace eval ::Parser {
                     $pNode addVariable $v 0 1
                 }
             }
-            
+
         }
-        
+
         ## \brief Update all methods with command names
         public method updateCommands {} {
             set cs [getProcs]
@@ -92,26 +92,26 @@ namespace eval ::Parser {
                 }
             }
         }
-        
+
     }
-    
+
     ## \brief A specialized proc for representing methods and class procs
     class OOProcNode {
         inherit ::Parser::ProcNode
         constructor {args} {chain {*}$args} {}
-        
+
         ## \brief Indicates whether the body is defined externally
         public variable bodyextern 0
-        
+
         ## \brief The declaration of Proc or methods. This might be separate
         #         from the definition.
         public variable declaration ""
-        
+
         ## \brief The declaration bytecode range
         public variable decbrange {}
-        
+
     }
-    
+
     class TclOOClassNode {
         inherit ClassNode
         constructor {args} {chain {*}$args} {}
@@ -120,7 +120,7 @@ namespace eval ::Parser {
 
 ## \brief Contains class and procedures for parsing TclOO code
 namespace eval ::Parser::TclOO {
-    
+
     ## \brief Create a class from previously parsed name and definition
     proc createClass {node clsName clsDef defRange} {
         #set nsAll [regsub -all {::} [string trimleft $clsName :] " "]
@@ -139,11 +139,11 @@ namespace eval ::Parser::TclOO {
             -defbrange $defRange -token class -inherits {} -inheritstring {}
         return $clsNode
     }
-    
+
     ::sugar::proc parseConstructor {node cTree content mdo defOffPtr} {
         upvar $defOffPtr defOff
         set defEnd 0
-        
+
         set defLst [list cDef $mdo argList [incr mdo] cBody [incr mdo]]
         foreach {tkn idx} $defLst {
             set $tkn [m-parse-token $content $cTree $idx]
@@ -151,7 +151,7 @@ namespace eval ::Parser::TclOO {
         lassign [m-parse-defrange $cTree $mdo] defOff defEnd
         set argList [lindex $argList 0]
         set cBody [string trim $cBody \{\}]
-        
+
         # return existing method node if already present
         set csNode [$node lookup "constructor"]
         if {$csNode == "" || [$csNode cget -type] != "constructor"} {
@@ -162,17 +162,17 @@ namespace eval ::Parser::TclOO {
         $csNode configure -arglist $argList -definition $cBody -isvalid 1
         return $csNode
     }
-    
+
     ::sugar::proc parseDestructor {node cTree content mdo defOffPtr} {
         upvar $defOffPtr defOff
         set defEnd 0
         set dDef ""
-        
+
         foreach {tkn idx} [list dDef $mdo dBody [incr mdo]] {
             set $tkn [m-parse-token $content $cTree $idx]
         }
         lassign [m-parse-defrange $cTree $mdo] defOff defEnd
-        
+
         set dNode [$node lookup "destructor"]
         if {$dNode == "" || [$dNode cget -type] != "destructor"} {
             set dNode [::Parser::OOProcNode ::#auto -type destructor -name destructor]
@@ -180,9 +180,9 @@ namespace eval ::Parser::TclOO {
         }
         $dNode configure -definition $dBody -isvalid 1
         return $dNode
-        
+
     }
-    
+
     proc parseInherit {node cTree content} {
         set classes {}
         set clsStr ""
@@ -190,7 +190,7 @@ namespace eval ::Parser::TclOO {
             set range [lindex [lindex $cTree $i] 1]
             set iCls [::parse getstring $content $range]
             append clsStr ", [string trimleft $iCls :]"
-            
+
             set nsAll [regsub -all {::} [string trimleft $iCls :] " "]
             set iCls [lindex $nsAll end]
             set iNode ""
@@ -201,17 +201,17 @@ namespace eval ::Parser::TclOO {
             } else {
                 set iNode [[$node getParent] lookup $iCls]
             }
-            
+
             if {$iNode != ""} {
                 lappend classes $iNode
             }
-            
+
         }
-        
+
         $node configure -inherits $classes -inheritstring [string range $clsStr 2 end]
     }
-    
-    
+
+
     ## \brief Parses a method node inside Itcl classes.
     #
     # Given a token list, the method node can be one of the following:
@@ -246,9 +246,9 @@ namespace eval ::Parser::TclOO {
         upvar $defOffPtr defOff
         set nTk [llength $cTree]
         set dOff 0
-        
+
         # method blubb {args} {body}
-        
+
         foreach {tkn idx} [list def $mdo methName [incr mdo] \
                 argList [incr mdo] methBody [incr mdo]] {
             set $tkn [m-parse-token $content $cTree $idx]
@@ -261,7 +261,7 @@ namespace eval ::Parser::TclOO {
         }
         set argList [lindex $argList 0]
         set strt [lindex [lindex [lindex $cTree 0] 1] 0]
-        
+
         # return existing method node if already present
         set mNode [$node lookup $methName]
         if {$mNode == "" || [$mNode cget -type] != "[set accLev]_method"} {
@@ -272,13 +272,13 @@ namespace eval ::Parser::TclOO {
         }
         $mNode configure -arglist $argList -definition $methBody -isvalid 1 \
             -defoffset [expr {$defOff - $strt}]
-        
+
         # setup local variables for code completion
         ::Parser::parse $mNode [expr {$defOff + $offset}] $methBody
-        
+
         return $mNode
     }
-    
+
     ## \brief Parse variables
     ::sugar::proc parseVar {node cTree content off {mdo 0}} {
         set vNode [::Parser::Tcl::parseVar $node $cTree $content $off $mdo]
@@ -294,15 +294,15 @@ namespace eval ::Parser::TclOO {
         }
         return $vNode
     }
-    
+
     ## \brief Parse a class node and returns it as tree
     ::sugar::proc parseClassDef {node off content} {
-        
+
         if {$content == ""} {
             return
         }
         set size [::parse getrange $content]
-        
+
         while {1} {
             # if this step fails, we must not proceed
             if {[catch {::parse command $content {0 end}} res]} {
@@ -316,14 +316,14 @@ namespace eval ::Parser::TclOO {
             set cmdRange [lindex $res 1]
             lset cmdRange 0 [expr {[lindex $cmdRange 0] + $off}]
             lset cmdRange 1 [expr {[lindex $cmdRange 1] - 1}]
-            
+
             # get the first token and decide further operation
             set token [m-parse-token $content $codeTree 0]
             switch -glob -- $token {
                 superclass - extends {
                     parseInherit $node $codeTree $content
                 }
-                
+
                 method {
                     set defOff 0
                     set mNode [parseMethod $node $codeTree $content $off 0 defOff]
@@ -331,36 +331,37 @@ namespace eval ::Parser::TclOO {
                     ::Parser::parse $mNode $off [$mNode cget -definition]
                     $node addMethod $mNode
                 }
-                
+
                 constructor - construct {
                     set defOff 0
                     set csNode [parseConstructor $node $codeTree $content 0 defOff]
                     $csNode configure -token $token -byterange $cmdRange
                     ::Parser::parse $csNode [expr {$off + $defOff}] [$csNode cget -definition]
                 }
-                
+
                 destructor {
                     set defOff 0
                     set dNode [parseDestructor $node $codeTree $content 0 defOff]
                     $dNode configure -token $token -byterange $cmdRange
                     ::Parser::parse $dNode [expr {$off + $defOff}] [$dNode cget -definition]
                 }
-                
+
                 variable - field - property {
                     set vNode [parseVar $node $codeTree $content $off 0]
                     if {$vNode != ""} {
                         $vNode configure -token $token -byterange $cmdRange
                     }
+                    $node addVariable [$vNode cget -name] 0 1
                 }
-                
+
             }
-            
+
             # step forward in the content
             set idx [lindex [lindex $res 2] 0]
             incr off $idx
             set content [::parse getstring $content [list $idx end]]
         }
-        
+
         $node updateVariables
         if {[$node cget -isitk]} {
             $node addVariable itk_interior 0 1
@@ -369,7 +370,7 @@ namespace eval ::Parser::TclOO {
         $node updatePTokens
         $node addVariable this 0 1
     }
-    
+
     ## \brief Parses the oo::define command to alter class definitions.
     ::sugar::proc parseDefine {node cTree content cmdRange off} {
         # Get associated class node
@@ -409,7 +410,7 @@ namespace eval ::Parser::TclOO {
             set vNode [parseVar $clsNode $cTree $content $off 2]
             $vNode configure -byterange $cmdRange -bodyextern 1 -token $token -scope $cmd
         }
-        
+
         }
     }
 }
